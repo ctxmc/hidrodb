@@ -48,5 +48,9 @@ def main():
         print(f"Error: {args.hidro} does not exist")
         exit(1)
 
+    hidro = DatabaseConnection(args.hidro)
+
+    hidro.close()
+
 if __name__ == "__main__":
     main()
