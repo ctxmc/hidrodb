@@ -24,6 +24,20 @@
 
 import argparse
 import os
+import pyodbc
+
+class DatabaseConnection:
+    def __init__(self, dbq: str):
+        client_conn_str = (
+            r'DRIVER={Microsoft Access Driver (*.mdb)};'
+            f"DBQ={dbq};"
+        )
+        self.conn = pyodbc.connect(client_conn_str)
+        self.cursor = self.conn.cursor()
+
+    def close(self):
+        self.cursor.close()
+        self.conn.close()
 
 def main():
     parser = argparse.ArgumentParser()
