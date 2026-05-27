@@ -25,6 +25,7 @@
 import argparse
 import os
 import pyodbc
+import msaccessdb
 
 class DatabaseConnection:
     def __init__(self, dbq: str):
@@ -58,9 +59,10 @@ def main():
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
     args = parser.parse_args()
     if not os.path.isfile(args.hidro):
-        # TODO: CREATE DB
         print(f"Error: {args.hidro} does not exist")
-        exit(1)
+        print(f"Creating {args.hidro}")
+        msaccessdb.create(args.hidro)
+        # TODO: CREATE TABLES
 
     hidro = DatabaseConnection(args.hidro)
     check_hidro(hidro.cursor)
