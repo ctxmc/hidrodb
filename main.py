@@ -51,15 +51,22 @@ class DatabaseConnection:
 def check_hidro(cursor, connection):
     meta = connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
-    while tables.next():
-        name = tables.getString("TABLE_NAME")
-        cursor.execute(f"SELECT COUNT(*) FROM [{name}]")
-        count = int(cursor.fetchone()[0])
-        print(f"{name}: {count} entries")
-        if count > 0:
-            cursor.execute(f"SELECT * FROM [{name}]")
-            for row in cursor.fetchall():
-                print(row)
+    if not tables.next():
+        with open("hidro.sql", "r") as f:
+            sql_script = f.read()
+            statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+            for stmt in statements:
+                connection.jconn.createStatement().execute(stmt)
+    else:
+        while tables.next():
+            name = tables.getString("TABLE_NAME")
+            cursor.execute(f"SELECT COUNT(*) FROM [{name}]")
+            count = int(cursor.fetchone()[0])
+            print(f"{name}: {count} entries")
+            if count > 0:
+                cursor.execute(f"SELECT * FROM [{name}]")
+                for row in cursor.fetchall():
+                    print(row)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,7 +76,6 @@ def main():
         print(f"Error: {args.hidro} does not exist")
         print(f"Creating {args.hidro}")
         msaccessdb.create(args.hidro)
-        # TODO: CREATE TABLES
 
     hidro = DatabaseConnection(args.hidro)
     check_hidro(hidro.cursor, hidro.conn)
