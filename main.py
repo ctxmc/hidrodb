@@ -39,6 +39,20 @@ class DatabaseConnection:
         self.cursor.close()
         self.conn.close()
 
+def check_hidro(cursor):
+    tables = {}
+    cursor.execute("SELECT Name FROM MSysObjects WHERE Type=1 AND Flags=0")
+    for row in cursor.fetchall():
+        name = row[0]
+        cursor.execute(f"SELECT COUNT(*) FROM [{name}]")
+        tables[name] = int(cursor.fetchone()[0])
+    for name, count in tables.items():
+        print(f"{name}: {count} entries")
+        if count > 0:
+            cursor.execute(f"SELECT * FROM [{name}]")
+            for row in cursor.fetchall():
+                print(row)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
@@ -49,6 +63,7 @@ def main():
         exit(1)
 
     hidro = DatabaseConnection(args.hidro)
+    check_hidro(hidro.cursor)
 
     hidro.close()
 
