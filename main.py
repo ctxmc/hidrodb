@@ -24,30 +24,37 @@
 
 import argparse
 import os
-import pyodbc
+import jaydebeapi
+import jpype
 import msaccessdb
+
+jpype.startJVM()
+jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
+jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-lang3-3.8.1.jar')
+jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
+jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
+jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 
 class DatabaseConnection:
     def __init__(self, dbq: str):
-        client_conn_str = (
-            r'DRIVER={Microsoft Access Driver (*.mdb)};'
-            f"DBQ={dbq};"
+        self.conn = jaydebeapi.connect(
+            'net.ucanaccess.jdbc.UcanaccessDriver',
+            f'jdbc:ucanaccess://{dbq}',
+            ['', '']
         )
-        self.conn = pyodbc.connect(client_conn_str)
         self.cursor = self.conn.cursor()
 
     def close(self):
         self.cursor.close()
         self.conn.close()
 
-def check_hidro(cursor):
-    tables = {}
-    cursor.execute("SELECT Name FROM MSysObjects WHERE Type=1 AND Flags=0")
-    for row in cursor.fetchall():
-        name = row[0]
+def check_hidro(cursor, connection):
+    meta = connection.jconn.getMetaData()
+    tables = meta.getTables(None, None, None, ["TABLE"])
+    while tables.next():
+        name = tables.getString("TABLE_NAME")
         cursor.execute(f"SELECT COUNT(*) FROM [{name}]")
-        tables[name] = int(cursor.fetchone()[0])
-    for name, count in tables.items():
+        count = int(cursor.fetchone()[0])
         print(f"{name}: {count} entries")
         if count > 0:
             cursor.execute(f"SELECT * FROM [{name}]")
@@ -65,7 +72,7 @@ def main():
         # TODO: CREATE TABLES
 
     hidro = DatabaseConnection(args.hidro)
-    check_hidro(hidro.cursor)
+    check_hidro(hidro.cursor, hidro.conn)
 
     hidro.close()
 
