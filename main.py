@@ -29,13 +29,6 @@ import jpype
 import msaccessdb
 from enum import StrEnum
 
-jpype.startJVM()
-jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-lang3-3.8.1.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
-
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
     CLIENT = "Client"
@@ -102,4 +95,10 @@ def main():
     hidro.close()
 
 if __name__ == "__main__":
+    jpype.startJVM()
+    jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
+    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-lang3-3.8.1.jar')
+    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
+    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
+    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
     main()
