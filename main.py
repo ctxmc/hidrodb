@@ -59,6 +59,7 @@ def check_hidro(db):
         statements = [s.strip() for s in sql_script.split(';') if s.strip()]
         for stmt in statements:
             db.connection.jconn.createStatement().execute(stmt)
+        db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
 
 def main():
     parser = argparse.ArgumentParser()
