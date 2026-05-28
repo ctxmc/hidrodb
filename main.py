@@ -69,21 +69,20 @@ def check_db(db):
         print(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
-                init_hidro(db)
+                execute_sql_file(db, "hidro.sql")
+                db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
             case DatabaseType.CLIENT:
-                init_client(db)
+                execute_sql_file(db, "client.sql")
 
-def init_client(db):
-    # TODO
-    pass
-
-def init_hidro(db):
-    with open("hidro.sql", "r") as f:
+def execute_sql_file(db, sql_file_path):
+    if not os.path.isfile(sql_file_path):
+        print(f"Error: {sql_file_path} does not exists")
+        return
+    with open(sql_file_path, "r") as f:
         sql_script = f.read()
     statements = [s.strip() for s in sql_script.split(';') if s.strip()]
     for stmt in statements:
         db.connection.jconn.createStatement().execute(stmt)
-    db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
 
 def main():
     parser = argparse.ArgumentParser()
