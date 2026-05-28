@@ -87,6 +87,11 @@ def execute_sql_file(db, sql_file_path):
     for stmt in statements:
         db.connection.jconn.createStatement().execute(stmt)
 
+def check_hidro(hidro, client):
+    hidro.cursor.execute("SELECT COUNT(*) FROM Bacia")
+    if (not hidro.cursor.fetchone()[0]):
+        print("Bacia has no Entries, requesting data")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
@@ -100,6 +105,8 @@ def main():
     create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
+
+    check_hidro(hidro, client)
 
     client.close()
     hidro.close()
