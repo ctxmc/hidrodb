@@ -28,6 +28,7 @@ import jaydebeapi
 import jpype
 import msaccessdb
 from enum import StrEnum
+import getpass
 
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
@@ -66,6 +67,10 @@ def init_db(db):
                 db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
             case DatabaseType.CLIENT:
                 execute_sql_file(db, "client.sql")
+                user_id  = input("Enter API username: ")
+                password = getpass.getpass("Enter API password: ")
+                db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
+                                   f"""VALUES ('{user_id}', '{password}');""")
 
 def execute_sql_file(db, sql_file_path):
     if not os.path.isfile(sql_file_path):
