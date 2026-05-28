@@ -126,6 +126,21 @@ def check_token(client):
         client.cursor.execute("""INSERT INTO Token (Token, Expires)"""
                               f"""VALUES ('{token}', '{expires}');""")
         return True
+    else:
+        client.cursor.execute("SELECT Expires FROM Token")
+        expires_ISOND = client.cursor.fetchone()[0]
+        expires_datetime = datetime.strptime(expires_ISOND, "%Y-%m-%d %H:%M:%S")
+        if datetime.now() < expires_datetime:
+            return True
+        else:
+            print("Token expired, requesting new.")
+            token, expires = request_token(client)
+            client.cursor.execute("""UPDATE [Token] SET"""
+                                  f"""[Token]   = '{token}',"""
+                                  f"""[Expires] = '{expires}'"""
+                                  f"""WHERE [Expires] = '{expires_ISOND}';""")
+            print("Token updated.")
+            return True
 
 def check_hidro(hidro, client):
     hidro.cursor.execute("SELECT COUNT(*) FROM Bacia")
