@@ -27,6 +27,7 @@ import os
 import jaydebeapi
 import jpype
 import msaccessdb
+from enum import Enum, auto
 
 jpype.startJVM()
 jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
@@ -35,8 +36,11 @@ jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
 jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
 jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 
+class DatabaseType(Enum):
+    HIDRO  = auto()
+
 class DatabaseConnection:
-    def __init__(self, dbq: str):
+    def __init__(self, dbq: str, db_type: DatabaseType):
         self.connection = jaydebeapi.connect(
             'net.ucanaccess.jdbc.UcanaccessDriver',
             f'jdbc:ucanaccess://{dbq}',
@@ -44,6 +48,7 @@ class DatabaseConnection:
         )
         self.cursor = self.connection.cursor()
         self.name   = dbq
+        self.type   = db_type
 
     def close(self):
         self.cursor.close()
@@ -62,7 +67,12 @@ def check_db(db):
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
         print(f"No tables found for {db.name}. Initializing.")
-        init_hidro(db)
+        match db.type:
+            case DatabaseType.HIDRO:
+                init_hidro(db)
+            case _:
+                pass
+
 def init_hidro(db):
     with open("hidro.sql", "r") as f:
         sql_script = f.read()
@@ -77,7 +87,7 @@ def main():
     args = parser.parse_args()
 
     create_db(args.hidro)
-    hidro = DatabaseConnection(args.hidro)
+    hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     check_db(hidro)
 
     hidro.close()
