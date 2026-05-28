@@ -49,29 +49,36 @@ class DatabaseConnection:
         self.cursor.close()
         self.connection.close()
 
-def check_hidro(db):
+def create_db(db_path):
+    if not os.path.isfile(db_path):
+        print(f"Error: {db_path} does not exists")
+        print(f"Creating {db_path}")
+        msaccessdb.create(db_path)
+    else:
+        print(f"{db_path} exists.")
+
+def check_db(db):
     meta   = db.connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
         print(f"No tables found for {db.name}. Initializing.")
-        with open("hidro.sql", "r") as f:
-            sql_script = f.read()
-        statements = [s.strip() for s in sql_script.split(';') if s.strip()]
-        for stmt in statements:
-            db.connection.jconn.createStatement().execute(stmt)
-        db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
+        init_hidro(db)
+def init_hidro(db):
+    with open("hidro.sql", "r") as f:
+        sql_script = f.read()
+    statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+    for stmt in statements:
+        db.connection.jconn.createStatement().execute(stmt)
+    db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
     args = parser.parse_args()
-    if not os.path.isfile(args.hidro):
-        print(f"Error: {args.hidro} does not exist")
-        print(f"Creating {args.hidro}")
-        msaccessdb.create(args.hidro)
 
+    create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro)
-    check_hidro(hidro)
+    check_db(hidro)
 
     hidro.close()
 
