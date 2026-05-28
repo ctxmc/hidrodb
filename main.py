@@ -55,7 +55,7 @@ def create_db(db_path):
     else:
         print(f"{db_path} exists.")
 
-def check_db(db):
+def init_db(db):
     meta   = db.connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
@@ -85,11 +85,11 @@ def main():
 
     create_db(args.client)
     client = DatabaseConnection(args.client, DatabaseType.CLIENT)
-    check_db(client)
+    init_db(client)
 
     create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
-    check_db(hidro)
+    init_db(hidro)
 
     client.close()
     hidro.close()
