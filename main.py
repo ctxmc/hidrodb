@@ -37,36 +37,28 @@ jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 
 class DatabaseConnection:
     def __init__(self, dbq: str):
-        self.conn = jaydebeapi.connect(
+        self.connection = jaydebeapi.connect(
             'net.ucanaccess.jdbc.UcanaccessDriver',
             f'jdbc:ucanaccess://{dbq}',
             ['', '']
         )
-        self.cursor = self.conn.cursor()
+        self.cursor = self.connection.cursor()
+        self.name   = dbq
 
     def close(self):
         self.cursor.close()
-        self.conn.close()
+        self.connection.close()
 
-def check_hidro(cursor, connection):
-    meta = connection.jconn.getMetaData()
+def check_hidro(db):
+    meta   = db.connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
+        print(f"No tables found for {db.name}. Initializing.")
         with open("hidro.sql", "r") as f:
             sql_script = f.read()
-            statements = [s.strip() for s in sql_script.split(';') if s.strip()]
-            for stmt in statements:
-                connection.jconn.createStatement().execute(stmt)
-    else:
-        while tables.next():
-            name = tables.getString("TABLE_NAME")
-            cursor.execute(f"SELECT COUNT(*) FROM [{name}]")
-            count = int(cursor.fetchone()[0])
-            print(f"{name}: {count} entries")
-            if count > 0:
-                cursor.execute(f"SELECT * FROM [{name}]")
-                for row in cursor.fetchall():
-                    print(row)
+        statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+        for stmt in statements:
+            db.connection.jconn.createStatement().execute(stmt)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -78,7 +70,7 @@ def main():
         msaccessdb.create(args.hidro)
 
     hidro = DatabaseConnection(args.hidro)
-    check_hidro(hidro.cursor, hidro.conn)
+    check_hidro(hidro)
 
     hidro.close()
 
