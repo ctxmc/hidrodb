@@ -87,10 +87,17 @@ def execute_sql_file(db, sql_file_path):
     for stmt in statements:
         db.connection.jconn.createStatement().execute(stmt)
 
+def check_token(client):
+    client.cursor.execute("SELECT COUNT(*) FROM Token")
+    if (not client.cursor.fetchone()[0]):
+        print("No Token present, requesting.")
+
 def check_hidro(hidro, client):
     hidro.cursor.execute("SELECT COUNT(*) FROM Bacia")
     if (not hidro.cursor.fetchone()[0]):
         print("Bacia has no Entries, requesting data")
+        if (check_token(client)):
+            print("TODO")
 
 def main():
     parser = argparse.ArgumentParser()
