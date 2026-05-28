@@ -38,6 +38,7 @@ jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 
 class DatabaseType(Enum):
     HIDRO  = auto()
+    CLIENT = auto()
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
@@ -70,8 +71,14 @@ def check_db(db):
         match db.type:
             case DatabaseType.HIDRO:
                 init_hidro(db)
+            case DatabaseType.CLIENT:
+                init_client(db)
             case _:
                 pass
+
+def init_client(db):
+    # TODO
+    pass
 
 def init_hidro(db):
     with open("hidro.sql", "r") as f:
@@ -84,12 +91,18 @@ def init_hidro(db):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
+    parser.add_argument('--client', type=str, default='client.mdb')
     args = parser.parse_args()
+
+    create_db(args.client)
+    client = DatabaseConnection(args.client, DatabaseType.CLIENT)
+    check_db(client)
 
     create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     check_db(hidro)
 
+    client.close()
     hidro.close()
 
 if __name__ == "__main__":
