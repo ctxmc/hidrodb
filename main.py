@@ -64,13 +64,18 @@ def init_db(db):
         match db.type:
             case DatabaseType.HIDRO:
                 execute_sql_file(db, "hidro.sql")
-                db.cursor.execute("INSERT INTO Versao (Versao) VALUES ('1.4.0.000');")
+                VERSION = '1.4.0.000'
+                db.cursor.execute(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}');")
+                print(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
                 execute_sql_file(db, "client.sql")
                 user_id  = input("Enter API username: ")
                 password = getpass.getpass("Enter API password: ")
                 db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
                                    f"""VALUES ('{user_id}', '{password}');""")
+                print(f"Initialized {db.type} Database.")
+    else:
+        print(f"{db.type} Database is Initialized.")
 
 def execute_sql_file(db, sql_file_path):
     if not os.path.isfile(sql_file_path):
