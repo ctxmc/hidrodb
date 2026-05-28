@@ -27,7 +27,7 @@ import os
 import jaydebeapi
 import jpype
 import msaccessdb
-from enum import Enum, auto
+from enum import StrEnum
 
 jpype.startJVM()
 jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
@@ -36,9 +36,9 @@ jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
 jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
 jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 
-class DatabaseType(Enum):
-    HIDRO  = auto()
-    CLIENT = auto()
+class DatabaseType(StrEnum):
+    HIDRO  = "Hidro"
+    CLIENT = "Client"
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
@@ -48,7 +48,6 @@ class DatabaseConnection:
             ['', '']
         )
         self.cursor = self.connection.cursor()
-        self.name   = dbq
         self.type   = db_type
 
     def close(self):
@@ -67,14 +66,12 @@ def check_db(db):
     meta   = db.connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
-        print(f"No tables found for {db.name}. Initializing.")
+        print(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
                 init_hidro(db)
             case DatabaseType.CLIENT:
                 init_client(db)
-            case _:
-                pass
 
 def init_client(db):
     # TODO
