@@ -22,73 +22,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse
 import os
-import jaydebeapi
-import jpype
-import msaccessdb
-from enum import StrEnum
-import getpass
+import argparse
 import requests
 import json
 from datetime import datetime
 
-class DatabaseType(StrEnum):
-    HIDRO  = "Hidro"
-    CLIENT = "Client"
+from database import *
 
-class DatabaseConnection:
-    def __init__(self, dbq: str, db_type: DatabaseType):
-        self.connection = jaydebeapi.connect(
-            'net.ucanaccess.jdbc.UcanaccessDriver',
-            f'jdbc:ucanaccess://{dbq}',
-            ['', '']
-        )
-        self.cursor = self.connection.cursor()
-        self.type   = db_type
-
-    def close(self):
-        self.cursor.close()
-        self.connection.close()
-
-def create_db(db_path):
-    if not os.path.isfile(db_path):
-        print(f"Error: {db_path} does not exists")
-        print(f"Creating {db_path}")
-        msaccessdb.create(db_path)
-    else:
-        print(f"{db_path} exists.")
-
-def init_db(db):
-    meta   = db.connection.jconn.getMetaData()
-    tables = meta.getTables(None, None, None, ["TABLE"])
-    if not tables.next():
-        print(f"No tables found for {db.type} Database. Initializing.")
-        match db.type:
-            case DatabaseType.HIDRO:
-                execute_sql_file(db, "hidro.sql")
-                VERSION = '1.4.0.000'
-                db.cursor.execute(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}');")
-                print(f"Initialized {db.type} Database Version {VERSION}.")
-            case DatabaseType.CLIENT:
-                execute_sql_file(db, "client.sql")
-                user_id  = input("Enter API username: ")
-                password = getpass.getpass("Enter API password: ")
-                db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
-                                   f"""VALUES ('{user_id}', '{password}');""")
-                print(f"Initialized {db.type} Database.")
-    else:
-        print(f"{db.type} Database is Initialized.")
-
-def execute_sql_file(db, sql_file_path):
-    if not os.path.isfile(sql_file_path):
-        print(f"Error: {sql_file_path} does not exists")
-        return
-    with open(sql_file_path, "r") as f:
-        sql_script = f.read()
-    statements = [s.strip() for s in sql_script.split(';') if s.strip()]
-    for stmt in statements:
-        db.connection.jconn.createStatement().execute(stmt)
 
 def request_token(client):
     client.cursor.execute("SELECT ID FROM Credentials")
@@ -169,10 +110,4 @@ def main():
     hidro.close()
 
 if __name__ == "__main__":
-    jpype.startJVM()
-    jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
-    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-lang3-3.8.1.jar')
-    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
-    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
-    jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
     main()
