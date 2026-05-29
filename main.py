@@ -107,6 +107,8 @@ def check_table(hidro, client, table):
             match table:
                 case "Bacia":
                     endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
+                case "SubBacia":
+                    endpoint  = "/EstacoesTelemetricas/HidroSubBacia/v1"
                 case "Entidade":
                     endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
                 case "Municipio":
@@ -127,6 +129,12 @@ def check_table(hidro, client, table):
                         name   = item.get("Nome_Bacia")
                         rows   = 'Codigo, Nome, DataIns, DataAlt'
                         values = f"'{code}', '{name}', '{time}', {last_date}"
+                    case "SubBacia":
+                        code           = item.get("codigosubbacia")
+                        code_basin     = item.get("Bacia_Codigo")
+                        name           = item.get("Sub_Bacia_Nome").replace("'", "''")
+                        rows   = 'BaciaCodigo, Codigo, Nome, DataIns, DataAlt'
+                        values = f"'{code_basin}', '{code}', '{name}', '{time}', {last_date}"
                     case "Entidade":
                         code   = item.get("codigoentidade")
                         name   = item.get("Entidade_Nome")
@@ -172,6 +180,7 @@ def main():
     init_db(hidro)
 
     check_table(hidro, client, "Bacia")
+    check_table(hidro, client, "SubBacia")
     check_table(hidro, client, "Entidade")
     check_table(hidro, client, "Municipio")
     check_table(hidro, client, "Rio")
