@@ -30,27 +30,12 @@ from datetime import datetime
 
 from database import *
 
-
-def request_token(client):
-    client.cursor.execute("SELECT ID FROM Credentials")
-    client_id = client.cursor.fetchone()[0]
-    client.cursor.execute("SELECT Password FROM Credentials")
-    client_password = client.cursor.fetchone()[0]
+def request_hidro_ws(endpoint, headers):
     url      = "https://www.ana.gov.br/hidrowebservice"
-    endpoint = "/EstacoesTelemetricas/OAUth/v1"
-    headers = {
-        "accept":        "*/*",
-        "Identificador": f"{client_id}",
-        "Senha":         f"{client_password}",
-    }
     response = requests.get(f"{url}{endpoint}", headers=headers)
     if response.ok:
         try:
-            data            = response.json()
-            token           = data.get("items", {}).get("tokenautenticacao")
-            expires_RFC2822 = data.get("items", {}).get("validade")
-            expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-            return [token, expires_ISOND]
+            return response.json()
         except e:
             print(f"Error: {e}")
     else:
@@ -58,6 +43,24 @@ def request_token(client):
             print(f"Error: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
             print(f"Error: response {response}")
+
+
+def request_token(client):
+    client.cursor.execute("SELECT ID FROM Credentials")
+    client_id = client.cursor.fetchone()[0]
+    client.cursor.execute("SELECT Password FROM Credentials")
+    client_password = client.cursor.fetchone()[0]
+    endpoint = "/EstacoesTelemetricas/OAUth/v1"
+    headers = {
+        "accept":        "*/*",
+        "Identificador": f"{client_id}",
+        "Senha":         f"{client_password}",
+    }
+    data = request_hidro_ws(endpoint, headers)
+    token           = data.get("items", {}).get("tokenautenticacao")
+    expires_RFC2822 = data.get("items", {}).get("validade")
+    expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
+    return [token, expires_ISOND]
 
 def check_token(client):
     client.cursor.execute("SELECT COUNT(*) FROM Token")
