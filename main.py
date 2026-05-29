@@ -115,6 +115,8 @@ def check_table(hidro, client, table):
                     endpoint = "/EstacoesTelemetricas/HidroMunicipio/v1"
                 case "Rio":
                     endpoint = "/EstacoesTelemetricas/HidroRio/v1"
+                case "Estado":
+                    endpoint = "/EstacoesTelemetricas/HidroUF/v1"
                 case _:
                     print(f"TODO {table}")
                     return
@@ -158,6 +160,14 @@ def check_table(hidro, client, table):
                         jurisdiction   = "NULL" if jurisdiction is None else f"'{jurisdiction}'"
                         rows   = 'BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt'
                         values = f"'{code_basin}','{code_sub_basin}','{code}','{name}',{jurisdiction},'{time}', {last_date}"
+                    case "Estado":
+                        code      = item.get("codigouf")
+                        code_IBGE = item.get("Estado_Codigo_IBGE")
+                        code_IBGE = "NULL" if code_IBGE is None else f"'{code_IBGE}'"
+                        sigla     = item.get("Estado_Sigla")
+                        name      = item.get("Estado_Nome").replace("'", "''")
+                        rows   = 'Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt'
+                        values = f"'{code}',{code_IBGE},'{sigla}','{name}','{time}', {last_date}"
                     case _:
                         print(f"TODO {table}")
                         return
@@ -184,6 +194,7 @@ def main():
     check_table(hidro, client, "Entidade")
     check_table(hidro, client, "Municipio")
     check_table(hidro, client, "Rio")
+    check_table(hidro, client, "Estado")
 
     client.close()
     hidro.close()
