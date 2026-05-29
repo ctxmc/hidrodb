@@ -121,15 +121,15 @@ def check_table(hidro, client, table):
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 match table:
                     case "Bacia":
-                        code = item.get("codigobacia")
-                        name = item.get("Nome_Bacia")
-                        rows = 'Codigo, Nome, DataIns, DataAlt'
+                        code   = item.get("codigobacia")
+                        name   = item.get("Nome_Bacia")
+                        rows   = 'Codigo, Nome, DataIns, DataAlt'
                         values = f"'{code}', '{name}', '{time}', {last_date}"
                     case "Entidade":
-                        code      = item.get("codigoentidade")
-                        name      = item.get("Entidade_Nome")
-                        sigla     = item.get("Entidade_Sigla")
-                        rows      = 'Codigo, Sigla, Nome, DataIns, DataAlt'
+                        code   = item.get("codigoentidade")
+                        name   = item.get("Entidade_Nome")
+                        sigla  = item.get("Entidade_Sigla")
+                        rows   = 'Codigo, Sigla, Nome, DataIns, DataAlt'
                         values = f"'{code}', '{sigla}', '{name}', '{time}', {last_date}"
                     case "Municipio":
                         code_state = item.get("Estado_Codigo")
