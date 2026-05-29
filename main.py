@@ -36,7 +36,7 @@ def request_hidro_ws(endpoint, headers):
     if response.ok:
         try:
             return response.json()
-        except e:
+        except Exception as e:
             print(f"Error: {e}")
     else:
         try:
