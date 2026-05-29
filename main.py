@@ -91,7 +91,23 @@ def check_hidro(hidro, client):
     if (not hidro.cursor.fetchone()[0]):
         print("Bacia has no Entries, requesting data")
         if (check_token(client)):
-            print("TODO")
+            client.cursor.execute("SELECT Token FROM Token")
+            token = client.cursor.fetchone()[0]
+            endpoint = "/EstacoesTelemetricas/HidroBacia/v1"
+            headers = {
+                "accept":        "*/*",
+                "Authorization": f"Bearer {token}"
+            }
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            for item in items:
+                code = item.get("codigobacia")
+                name = item.get("Nome_Bacia")
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                rows = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Nome, DataIns'
+                values = f"{float(code)}, 0, 0, 0, 0, '{code}', '{name}', '{time}' "
+                hidro.cursor.execute(f"INSERT INTO Bacia ({rows}) VALUES ({values});")
+    else:
+        print("Bacia has Entries; TODO")
 
 def main():
     parser = argparse.ArgumentParser()
