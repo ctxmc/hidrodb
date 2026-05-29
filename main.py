@@ -44,7 +44,6 @@ def request_hidro_ws(endpoint, headers):
         except:
             print(f"Error: response {response}")
 
-
 def request_token(client):
     client.cursor.execute("SELECT ID FROM Credentials")
     client_id = client.cursor.fetchone()[0]
@@ -100,11 +99,16 @@ def check_bacia(hidro, client):
             }
             items = request_hidro_ws(endpoint, headers).get("items", {})
             for item in items:
+                hidro.cursor.execute("SELECT MAX([RegistroID]) + 1 FROM Bacia")
+                reg_id = hidro.cursor.fetchone()[0]
+                reg_id = 1 if reg_id is None else int(reg_id)
                 code = item.get("codigobacia")
                 name = item.get("Nome_Bacia")
+                last_date = item.get("Data_Ultima_Alteracao")
+                last_date = "NULL" if last_date is None else f"'{last_date}'"
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                rows = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Nome, DataIns'
-                values = f"{float(code)}, 0, 0, 0, 0, '{code}', '{name}', '{time}' "
+                rows = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Nome, DataIns, DataAlt'
+                values = f"{reg_id}, 0, 0, 0, 0, '{code}', '{name}', '{time}', {last_date}"
                 hidro.cursor.execute(f"INSERT INTO Bacia ({rows}) VALUES ({values});")
     else:
         print("Bacia has Entries; TODO")
@@ -125,6 +129,9 @@ def check_entidade(hidro, client):
             with open('entidade.json', 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
             for item in items:
+                hidro.cursor.execute("SELECT MAX([RegistroID]) + 1 FROM Entidade")
+                reg_id = hidro.cursor.fetchone()[0]
+                reg_id = 1 if reg_id is None else int(reg_id)
                 code      = item.get("codigoentidade")
                 name      = item.get("Entidade_Nome")
                 sigla     = item.get("Entidade_Sigla")
@@ -132,11 +139,11 @@ def check_entidade(hidro, client):
                 last_date = "NULL" if last_date is None else f"'{last_date}'"
                 time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 rows      = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Sigla, Nome, DataIns, DataAlt'
-                values = f"{float(code)}, 0, 0, 0, 0, '{code}', '{sigla}', '{name}', '{time}', {last_date}"
+                values = f"{reg_id}, 0, 0, 0, 0, '{code}', '{sigla}', '{name}', '{time}', {last_date}"
                 hidro.cursor.execute(f"INSERT INTO Entidade ({rows}) VALUES ({values});")
     else:
         print("Entidade has Entries; TODO")
-
+        
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
