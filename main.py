@@ -85,64 +85,56 @@ def check_token(client):
             print("Token updated.")
             return True
 
-def check_bacia(hidro, client):
-    hidro.cursor.execute("SELECT COUNT(*) FROM Bacia")
+def insert_table(hidro, table, table_rows, table_values):
+    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    rows   = f"RegistroID, Importado, Temporario, Removido, ImportadoRepetido, {table_rows}"
+    values = f"{reg_id}, 0, 0, 0, 0, {table_values}"
+    hidro.cursor.execute(f"INSERT INTO {table} ({rows}) VALUES ({values});")
+
+def check_table(hidro, client, table):
+    hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
     if (not hidro.cursor.fetchone()[0]):
-        print("Bacia has no Entries, requesting data")
+        print(f"{table} has no Entries, requesting data")
         if (check_token(client)):
             client.cursor.execute("SELECT Token FROM Token")
             token = client.cursor.fetchone()[0]
-            endpoint = "/EstacoesTelemetricas/HidroBacia/v1"
             headers = {
                 "accept":        "*/*",
                 "Authorization": f"Bearer {token}"
             }
+            match table:
+                case "Bacia":
+                    endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
+                case "Entidade":
+                    endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
+                case _:
+                    print(f"TODO {table}")
+                    return
             items = request_hidro_ws(endpoint, headers).get("items", {})
             for item in items:
-                hidro.cursor.execute("SELECT MAX([RegistroID]) + 1 FROM Bacia")
-                reg_id = hidro.cursor.fetchone()[0]
-                reg_id = 1 if reg_id is None else int(reg_id)
-                code = item.get("codigobacia")
-                name = item.get("Nome_Bacia")
                 last_date = item.get("Data_Ultima_Alteracao")
                 last_date = "NULL" if last_date is None else f"'{last_date}'"
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                rows = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Nome, DataIns, DataAlt'
-                values = f"{reg_id}, 0, 0, 0, 0, '{code}', '{name}', '{time}', {last_date}"
-                hidro.cursor.execute(f"INSERT INTO Bacia ({rows}) VALUES ({values});")
+                match table:
+                    case "Bacia":
+                        code = item.get("codigobacia")
+                        name = item.get("Nome_Bacia")
+                        rows = 'Codigo, Nome, DataIns, DataAlt'
+                        values = f"'{code}', '{name}', '{time}', {last_date}"
+                    case "Entidade":
+                        code      = item.get("codigoentidade")
+                        name      = item.get("Entidade_Nome")
+                        sigla     = item.get("Entidade_Sigla")
+                        rows      = 'Codigo, Sigla, Nome, DataIns, DataAlt'
+                        values = f"'{code}', '{sigla}', '{name}', '{time}', {last_date}"
+                    case _:
+                        print(f"TODO {table}")
+                        return
+                insert_table(hidro, table, rows, values)
     else:
-        print("Bacia has Entries; TODO")
-
-def check_entidade(hidro, client):
-    hidro.cursor.execute("SELECT COUNT(*) FROM Entidade")
-    if (not hidro.cursor.fetchone()[0]):
-        print("Entidade has no Entries, requesting data")
-        if (check_token(client)):
-            client.cursor.execute("SELECT Token FROM Token")
-            token = client.cursor.fetchone()[0]
-            endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
-            headers = {
-                "accept":        "*/*",
-                "Authorization": f"Bearer {token}"
-            }
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open('entidade.json', 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-            for item in items:
-                hidro.cursor.execute("SELECT MAX([RegistroID]) + 1 FROM Entidade")
-                reg_id = hidro.cursor.fetchone()[0]
-                reg_id = 1 if reg_id is None else int(reg_id)
-                code      = item.get("codigoentidade")
-                name      = item.get("Entidade_Nome")
-                sigla     = item.get("Entidade_Sigla")
-                last_date = item.get("Data_Ultima_Alteracao")
-                last_date = "NULL" if last_date is None else f"'{last_date}'"
-                time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                rows      = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Sigla, Nome, DataIns, DataAlt'
-                values = f"{reg_id}, 0, 0, 0, 0, '{code}', '{sigla}', '{name}', '{time}', {last_date}"
-                hidro.cursor.execute(f"INSERT INTO Entidade ({rows}) VALUES ({values});")
-    else:
-        print("Entidade has Entries; TODO")
+        print(f"{table} has Entries; TODO")
         
 def main():
     parser = argparse.ArgumentParser()
@@ -158,8 +150,8 @@ def main():
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
 
-    check_bacia(hidro, client)
-    check_entidade(hidro, client)
+    check_table(hidro, client, "Bacia")
+    check_table(hidro, client, "Entidade")
 
     client.close()
     hidro.close()
