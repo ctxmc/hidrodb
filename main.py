@@ -86,7 +86,7 @@ def check_token(client):
             print("Token updated.")
             return True
 
-def check_hidro(hidro, client):
+def check_bacia(hidro, client):
     hidro.cursor.execute("SELECT COUNT(*) FROM Bacia")
     if (not hidro.cursor.fetchone()[0]):
         print("Bacia has no Entries, requesting data")
@@ -109,6 +109,34 @@ def check_hidro(hidro, client):
     else:
         print("Bacia has Entries; TODO")
 
+def check_entidade(hidro, client):
+    hidro.cursor.execute("SELECT COUNT(*) FROM Entidade")
+    if (not hidro.cursor.fetchone()[0]):
+        print("Entidade has no Entries, requesting data")
+        if (check_token(client)):
+            client.cursor.execute("SELECT Token FROM Token")
+            token = client.cursor.fetchone()[0]
+            endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
+            headers = {
+                "accept":        "*/*",
+                "Authorization": f"Bearer {token}"
+            }
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open('entidade.json', 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+            for item in items:
+                code      = item.get("codigoentidade")
+                name      = item.get("Entidade_Nome")
+                sigla     = item.get("Entidade_Sigla")
+                last_date = item.get("Data_Ultima_Alteracao")
+                last_date = "NULL" if last_date is None else f"'{last_date}'"
+                time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                rows      = 'RegistroID, Importado, Temporario, Removido, ImportadoRepetido, Codigo, Sigla, Nome, DataIns, DataAlt'
+                values = f"{float(code)}, 0, 0, 0, 0, '{code}', '{sigla}', '{name}', '{time}', {last_date}"
+                hidro.cursor.execute(f"INSERT INTO Entidade ({rows}) VALUES ({values});")
+    else:
+        print("Entidade has Entries; TODO")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
@@ -123,7 +151,8 @@ def main():
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
 
-    check_hidro(hidro, client)
+    check_bacia(hidro, client)
+    check_entidade(hidro, client)
 
     client.close()
     hidro.close()
