@@ -29,37 +29,7 @@ import json
 from datetime import datetime
 
 from database import *
-
-def request_hidro_ws(endpoint, headers):
-    url      = "https://www.ana.gov.br/hidrowebservice"
-    response = requests.get(f"{url}{endpoint}", headers=headers)
-    if response.ok:
-        try:
-            return response.json()
-        except Exception as e:
-            print(f"Error: {e}")
-    else:
-        try:
-            print(f"Error: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
-        except:
-            print(f"Error: response {response}")
-
-def request_token(client):
-    client.cursor.execute("SELECT ID FROM Credentials")
-    client_id = client.cursor.fetchone()[0]
-    client.cursor.execute("SELECT Password FROM Credentials")
-    client_password = client.cursor.fetchone()[0]
-    endpoint = "/EstacoesTelemetricas/OAUth/v1"
-    headers = {
-        "accept":        "*/*",
-        "Identificador": f"{client_id}",
-        "Senha":         f"{client_password}",
-    }
-    data = request_hidro_ws(endpoint, headers)
-    token           = data.get("items", {}).get("tokenautenticacao")
-    expires_RFC2822 = data.get("items", {}).get("validade")
-    expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-    return [token, expires_ISOND]
+from hidro_webservices import *
 
 def check_token(client):
     client.cursor.execute("SELECT COUNT(*) FROM Token")
