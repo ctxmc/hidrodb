@@ -65,126 +65,24 @@ def check_table(hidro, client, table):
             match table:
                 case "Bacia":
                     basins = request_basins(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, code, name in basins:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        # TODO: USING datetime.min because this executemany dont allow NULL or "" for DateTime
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        items.append((reg_id, 0, 0, 0, 0, code, name, time, last_date))
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                    Codigo, Nome, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_basins(hidro, basins, table)
                 case "SubBacia":
                     sub_basins = request_sub_basins(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, code, code_basin, name in sub_basins:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        items.append((reg_id, 0, 0, 0, 0, code, code_basin, name, time, last_date))
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                    BaciaCodigo, Codigo, Nome, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_sub_basins(hidro, sub_basins, table)
                 case "Entidade":
                     entities = request_entity(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, code, name, acronym in entities:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        items.append(
-                            (reg_id, 0, 0, 0, 0,
-                             code, name, acronym,
-                             time, last_date)
-                        )
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                        Codigo, Nome, Sigla, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_entities(hidro, entities, table)
                 case "Municipio":
                     towns = request_township(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, state_code, IBGE_code, name, code in towns:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        # TODO: USING -1 this executemany dont allow NULL or "" for Long
-                        IBGE_code = -1 if IBGE_code is None else IBGE_code
-                        items.append(
-                            (reg_id, 0, 0, 0, 0,
-                             state_code, code, IBGE_code,
-                             name, time, last_date)
-                        )
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                    EstadoCodigo, Codigo, CodigoIBGE, Nome, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_towns(hidro, towns, table)
                 case "Rio":
                     rivers = request_rivers(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        # TODO: USING 0 this executemany dont allow NULL or "" for Byte
-                        jurisdiction = 0 if jurisdiction is None else jurisdiction
-                        items.append(
-                            (reg_id, 0, 0, 0, 0,
-                             basin_code, sub_basin_code,
-                             code, name, jurisdiction,
-                             time, last_date)
-                        )
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                    BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_rivers(hidro, rivers, table)
                 case "Estado":
                     states = request_states(token)
-                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-                    reg_id = hidro.cursor.fetchone()[0]
-                    reg_id = 1 if reg_id is None else int(reg_id)
-                    items = []
-                    for last_date, code, IBGE_code, acronym, name in states:
-                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-                        IBGE_code = -1 if IBGE_code is None else IBGE_code
-                        items.append(
-                            (reg_id, 0, 0, 0, 0,
-                             code, IBGE_code, acronym,
-                             name, time, last_date)
-                        )
-                        reg_id += 1
-                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-                    Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt"""
-                    values = ','.join('?' for _ in cols.split(','))
-                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
-                    return
+                    insert_states(hidro, states, table)
                 case _:
                     print(f"TODO {table}")
-                    return
     else:
         print(f"{table} has Entries; TODO")
 
@@ -202,12 +100,12 @@ def main():
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
 
-    check_table(hidro, client, "Bacia")
-    check_table(hidro, client, "SubBacia")
-    check_table(hidro, client, "Entidade")
-    check_table(hidro, client, "Municipio")
-    check_table(hidro, client, "Rio")
-    check_table(hidro, client, "Estado")
+    tables = [
+        "Bacia", "SubBacia", "Entidade",
+        "Municipio", "Rio", "Estado"
+    ]
+    for table in tables:
+        check_table(hidro, client, table)
 
     client.close()
     hidro.close()
