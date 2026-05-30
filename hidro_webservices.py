@@ -59,3 +59,137 @@ def request_token(client):
     expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
     return [token, expires_ISOND]
 
+def request_basins(token):
+    endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        basins = []
+        for item in items:
+            basin = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("codigobacia"),
+                item.get("Nome_Bacia")
+            )
+            basins.append(basin)
+        return basins
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_sub_basins(token):
+    endpoint  = "/EstacoesTelemetricas/HidroSubBacia/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        sub_basins = []
+        for item in items:
+            basin = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("codigosubbacia"),
+                item.get("Bacia_Codigo"),
+                item.get("Sub_Bacia_Nome").replace("'", "''")
+            )
+            sub_basins.append(basin)
+        return sub_basins
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_entity(token):
+    endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        entities = []
+        for item in items:
+            item = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("codigoentidade"),
+                item.get("Entidade_Nome"),
+                item.get("Entidade_Sigla")
+            )
+            entities.append(item)
+        return entities
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_township(token):
+    endpoint = "/EstacoesTelemetricas/HidroMunicipio/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        towns = []
+        for item in items:
+            item = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("Estado_Codigo"),
+                item.get("Municipio_Codigo_IBGE"),
+                item.get("Municipio_Nome").replace("'", "''"),
+                item.get("codigomunicipio")
+            )
+            towns.append(item)
+        return towns
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_rivers(token):
+    endpoint = "/EstacoesTelemetricas/HidroRio/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        rivers = []
+        for item in items:
+            item = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("codigorio"),
+                item.get("Bacia_Codigo"),
+                item.get("Sub_Bacia_Codigo"),
+                item.get("Nome_Rio").replace("'", "''"),
+                item.get("Rio_Jurisdicao")
+            )
+            rivers.append(item)
+        return rivers
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_states(token):
+    endpoint = "/EstacoesTelemetricas/HidroUF/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
+        states = []
+        for item in items:
+            item = (
+                item.get("Data_Ultima_Alteracao"),
+                item.get("codigouf"),
+                item.get("Estado_Codigo_IBGE"),
+                item.get("Estado_Sigla"),
+                item.get("Estado_Nome").replace("'", "''")
+            )
+            states.append(item)
+        return states
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
