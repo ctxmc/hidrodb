@@ -55,14 +55,6 @@ def check_token(client):
             print("Token updated.")
             return True
 
-def insert_table(hidro, table, table_rows, table_values):
-    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    rows   = f"RegistroID, Importado, Temporario, Removido, ImportadoRepetido, {table_rows}"
-    values = f"{reg_id}, 0, 0, 0, 0, {table_values}"
-    hidro.cursor.execute(f"INSERT INTO {table} ({rows}) VALUES ({values});")
-
 def check_table(hidro, client, table):
     hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
     if (not hidro.cursor.fetchone()[0]):
@@ -70,81 +62,132 @@ def check_table(hidro, client, table):
         if (check_token(client)):
             client.cursor.execute("SELECT Token FROM Token")
             token = client.cursor.fetchone()[0]
-            headers = {
-                "accept":        "*/*",
-                "Authorization": f"Bearer {token}"
-            }
             match table:
                 case "Bacia":
-                    endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
+                    basins = request_basins(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, code, name in basins:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        # TODO: USING datetime.min because this executemany dont allow NULL or "" for DateTime
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        items.append((reg_id, 0, 0, 0, 0, code, name, time, last_date))
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                    Codigo, Nome, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case "SubBacia":
-                    endpoint  = "/EstacoesTelemetricas/HidroSubBacia/v1"
+                    sub_basins = request_sub_basins(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, code, code_basin, name in sub_basins:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        items.append((reg_id, 0, 0, 0, 0, code, code_basin, name, time, last_date))
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                    BaciaCodigo, Codigo, Nome, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case "Entidade":
-                    endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
+                    entities = request_entity(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, code, name, acronym in entities:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        items.append(
+                            (reg_id, 0, 0, 0, 0,
+                             code, name, acronym,
+                             time, last_date)
+                        )
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                        Codigo, Nome, Sigla, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case "Municipio":
-                    endpoint = "/EstacoesTelemetricas/HidroMunicipio/v1"
+                    towns = request_township(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, state_code, IBGE_code, name, code in towns:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        # TODO: USING -1 this executemany dont allow NULL or "" for Long
+                        IBGE_code = -1 if IBGE_code is None else IBGE_code
+                        items.append(
+                            (reg_id, 0, 0, 0, 0,
+                             state_code, code, IBGE_code,
+                             name, time, last_date)
+                        )
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                    EstadoCodigo, Codigo, CodigoIBGE, Nome, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case "Rio":
-                    endpoint = "/EstacoesTelemetricas/HidroRio/v1"
+                    rivers = request_rivers(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        # TODO: USING 0 this executemany dont allow NULL or "" for Byte
+                        jurisdiction = 0 if jurisdiction is None else jurisdiction
+                        items.append(
+                            (reg_id, 0, 0, 0, 0,
+                             basin_code, sub_basin_code,
+                             code, name, jurisdiction,
+                             time, last_date)
+                        )
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                    BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case "Estado":
-                    endpoint = "/EstacoesTelemetricas/HidroUF/v1"
+                    states = request_states(token)
+                    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+                    reg_id = hidro.cursor.fetchone()[0]
+                    reg_id = 1 if reg_id is None else int(reg_id)
+                    items = []
+                    for last_date, code, IBGE_code, acronym, name in states:
+                        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
+                        IBGE_code = -1 if IBGE_code is None else IBGE_code
+                        items.append(
+                            (reg_id, 0, 0, 0, 0,
+                             code, IBGE_code, acronym,
+                             name, time, last_date)
+                        )
+                        reg_id += 1
+                    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+                    Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt"""
+                    values = ','.join('?' for _ in cols.split(','))
+                    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+                    return
                 case _:
                     print(f"TODO {table}")
                     return
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            for item in items:
-                last_date = item.get("Data_Ultima_Alteracao")
-                last_date = "NULL" if last_date is None else f"'{last_date}'"
-                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                match table:
-                    case "Bacia":
-                        code   = item.get("codigobacia")
-                        name   = item.get("Nome_Bacia")
-                        rows   = 'Codigo, Nome, DataIns, DataAlt'
-                        values = f"'{code}', '{name}', '{time}', {last_date}"
-                    case "SubBacia":
-                        code           = item.get("codigosubbacia")
-                        code_basin     = item.get("Bacia_Codigo")
-                        name           = item.get("Sub_Bacia_Nome").replace("'", "''")
-                        rows   = 'BaciaCodigo, Codigo, Nome, DataIns, DataAlt'
-                        values = f"'{code_basin}', '{code}', '{name}', '{time}', {last_date}"
-                    case "Entidade":
-                        code   = item.get("codigoentidade")
-                        name   = item.get("Entidade_Nome")
-                        sigla  = item.get("Entidade_Sigla")
-                        rows   = 'Codigo, Sigla, Nome, DataIns, DataAlt'
-                        values = f"'{code}', '{sigla}', '{name}', '{time}', {last_date}"
-                    case "Municipio":
-                        code_state = item.get("Estado_Codigo")
-                        code_IBGE  = item.get("Municipio_Codigo_IBGE")
-                        code_IBGE  = "NULL" if code_IBGE is None else f"'{code_IBGE}'"
-                        name       = item.get("Municipio_Nome").replace("'", "''")
-                        code       = item.get("codigomunicipio")
-                        rows   = 'EstadoCodigo, Codigo, CodigoIBGE, Nome, DataIns, DataAlt'
-                        values = f"'{code_state}', {code_IBGE}, '{code}', '{name}', '{time}', {last_date}"
-                    case "Rio":
-                        code           = item.get("codigorio")
-                        code_basin     = item.get("Bacia_Codigo")
-                        code_sub_basin = item.get("Sub_Bacia_Codigo")
-                        name           = item.get("Nome_Rio").replace("'", "''")
-                        jurisdiction   = item.get("Rio_Jurisdicao")
-                        jurisdiction   = "NULL" if jurisdiction is None else f"'{jurisdiction}'"
-                        rows   = 'BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt'
-                        values = f"'{code_basin}','{code_sub_basin}','{code}','{name}',{jurisdiction},'{time}', {last_date}"
-                    case "Estado":
-                        code      = item.get("codigouf")
-                        code_IBGE = item.get("Estado_Codigo_IBGE")
-                        code_IBGE = "NULL" if code_IBGE is None else f"'{code_IBGE}'"
-                        sigla     = item.get("Estado_Sigla")
-                        name      = item.get("Estado_Nome").replace("'", "''")
-                        rows   = 'Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt'
-                        values = f"'{code}',{code_IBGE},'{sigla}','{name}','{time}', {last_date}"
-                    case _:
-                        print(f"TODO {table}")
-                        return
-                insert_table(hidro, table, rows, values)
     else:
         print(f"{table} has Entries; TODO")
-        
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
