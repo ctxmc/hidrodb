@@ -1,2 +1,2 @@
-jaydebeapi
+jpype1
 requests
