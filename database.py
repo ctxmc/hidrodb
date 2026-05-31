@@ -101,8 +101,6 @@ def insert_basins(hidro, basins, table):
     items = []
     for last_date, code, name in basins:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # TODO: USING datetime.min because this executemany dont allow NULL or "" for DateTime
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
         items.append((reg_id, 0, 0, 0, 0, code, name, time, last_date))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
@@ -117,7 +115,6 @@ def insert_sub_basins(hidro, sub_basins, table):
     items = []
     for last_date, code, code_basin, name in sub_basins:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
         items.append((reg_id, 0, 0, 0, 0, code, code_basin, name, time, last_date))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
@@ -132,7 +129,6 @@ def insert_entities(hidro, entities, table):
     items = []
     for last_date, code, name, acronym in entities:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
         items.append(
             (reg_id, 0, 0, 0, 0,
              code, name, acronym,
@@ -151,9 +147,6 @@ def insert_towns(hidro, towns, table):
     items = []
     for last_date, state_code, IBGE_code, name, code in towns:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-        # TODO: USING -1 this executemany dont allow NULL or "" for Long
-        IBGE_code = -1 if IBGE_code is None else IBGE_code
         items.append(
             (reg_id, 0, 0, 0, 0,
              state_code, code, IBGE_code,
@@ -172,9 +165,6 @@ def insert_rivers(hidro, rivers, table):
     items = []
     for last_date, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-        # TODO: USING 0 this executemany dont allow NULL or "" for Byte
-        jurisdiction = 0 if jurisdiction is None else jurisdiction
         items.append(
             (reg_id, 0, 0, 0, 0,
              basin_code, sub_basin_code,
@@ -194,8 +184,6 @@ def insert_states(hidro, states, table):
     items = []
     for last_date, code, IBGE_code, acronym, name in states:
         time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_date = datetime.min.strftime("%Y-%m-%d %H:%M:%S") if last_date is None else last_date
-        IBGE_code = -1 if IBGE_code is None else IBGE_code
         items.append(
             (reg_id, 0, 0, 0, 0,
              code, IBGE_code, acronym,
