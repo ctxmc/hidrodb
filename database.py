@@ -70,12 +70,12 @@ def init_db(db):
         print(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
-                execute_sql_file(db, "hidro.sql")
+                execute_sql_file(db, "tables/hidro.sql")
                 VERSION = '1.4.0.000'
                 db.cursor.execute(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}');")
                 print(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
-                execute_sql_file(db, "client.sql")
+                execute_sql_file(db, "tables/client.sql")
                 user_id  = input("Enter API username: ")
                 password = getpass.getpass("Enter API password: ")
                 db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
