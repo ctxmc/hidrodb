@@ -520,7 +520,11 @@ class Cursor(object):
     def _set_stmt_parms(self, prep_stmt, parameters):
         for i in range(len(parameters)):
             # print (i, parameters[i], type(parameters[i]))
-            prep_stmt.setObject(i + 1, parameters[i])
+            if parameters[i] is None:
+                import jpype
+                prep_stmt.setNull(i + 1, jpype.java.sql.Types.NULL)
+            else:
+                prep_stmt.setObject(i + 1, parameters[i])
 
     def execute(self, operation, parameters=None):
         if self._connection._closed:
