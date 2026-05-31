@@ -81,6 +81,16 @@ def check_table(hidro, client, table):
                 case "Estado":
                     states = request_states(token)
                     insert_states(hidro, states, table)
+                case "Estacao":
+                    hidro.cursor.execute("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL")
+                    for (UF,) in hidro.cursor.fetchall():
+                        if (check_token(client)):
+                            client.cursor.execute("SELECT Token FROM Token")
+                            token       = client.cursor.fetchone()[0]
+                            stations    = request_stations(token, UF)
+                            if len(stations) > 0:
+                                insert_stations(hidro, stations, table)
+
                 case _:
                     print(f"TODO {table}")
     else:
@@ -102,7 +112,8 @@ def main():
 
     tables = [
         "Bacia", "SubBacia", "Entidade",
-        "Municipio", "Rio", "Estado"
+        "Municipio", "Rio", "Estado",
+        "Estacao"
     ]
     for table in tables:
         check_table(hidro, client, table)
