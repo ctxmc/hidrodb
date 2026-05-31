@@ -90,11 +90,66 @@ def check_table(hidro, client, table):
                             stations    = request_stations(token, UF)
                             if len(stations) > 0:
                                 insert_stations(hidro, stations, table)
-
+                case "Chuvas":
+                    stations_with_rain_data_sql = (
+                        "SELECT Codigo, "
+                        "CASE  "
+                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NULL THEN 'active' "
+                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NOT NULL THEN 'finished' "
+                        "END AS status "
+                        "FROM Estacao "
+                        "WHERE PeriodoRegistradorChuvaInicio IS NOT NULL "
+                        "OR PeriodoRegistradorChuvaFim IS NOT NULL "
+                    )
+                    hidro.cursor.execute(stations_with_rain_data_sql)
+                    active, finished = [], []
+                    for code, status in hidro.cursor.fetchall():
+                        (active if status.strip() == 'active' else finished).append(code)
+                    print(
+                        f"\nTotal stations with rain data: {len(active+finished)}"
+                        f"\nTotal stations with finished rain data collection: {len(finished)}"
+                        f"\nTotal stations with active rain data collection: {len(active)}"
+                    )
+                    print("\nColleting Stations with finished data:")
+                    insert_rain_data(hidro, client, finished)
+                    print("\nColleting Stations with active data:")
+                    insert_rain_data(hidro, client, active)
                 case _:
                     print(f"TODO {table}")
     else:
         print(f"{table} has Entries; TODO")
+
+def insert_rain_data(hidro, client, stations_code):
+    for station_code in stations_code:
+        data = ""
+        station_data_sql = (
+            "SELECT e.Nome, e.TipoEstacao, e.estadoCodigo, e.municipioCodigo, "
+            "e.PeriodoRegistradorChuvaInicio, e.PeriodoRegistradorChuvaFim, "
+            "m.Nome as municipioNome, est.Sigla as Sigla "
+            "FROM Estacao e "
+            "LEFT JOIN Municipio m ON e.municipioCodigo = m.Codigo "
+            "LEFT JOIN Estado est ON e.estadoCodigo = est.Codigo "
+            "WHERE e.Codigo = ?"
+        )
+        hidro.cursor.execute(station_data_sql, (station_code,))
+        (station_name, station_type, _, _, start, end, town_name, UF), = hidro.cursor.fetchall()
+        start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+        if end is None:
+            end = datetime.today()
+        else:
+            end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+        years = end.year - start.year - ((end.month, end.day) < (start.month, start.day))
+        print(
+            f"""\nStation code: {station_code}"""
+            f"""\nname: {station_name}"""
+            f"""\ntype: {"Fluviométrica" if station_type == 1 else "Pluviometrica" }"""
+            f"""\ntown: {town_name}, state: {UF}"""
+            f"""\nstart: {start}"""
+            f"""\nend: {end}"""
+            f"""\nTotal: {years} years"""
+        )
+        print("TODO: Request Data")
+        print("TODO: Insert Data")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -113,7 +168,7 @@ def main():
     tables = [
         "Bacia", "SubBacia", "Entidade",
         "Municipio", "Rio", "Estado",
-        "Estacao"
+        "Estacao", "Chuvas"
     ]
     for table in tables:
         check_table(hidro, client, table)
