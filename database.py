@@ -99,9 +99,13 @@ def insert_basins(hidro, basins, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, code, name in basins:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append((reg_id, 0, 0, 0, 0, code, name, time, last_date))
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, code, name in basins:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            code, name,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     Codigo, Nome, DataIns, DataAlt"""
@@ -113,9 +117,13 @@ def insert_sub_basins(hidro, sub_basins, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, code, code_basin, name in sub_basins:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append((reg_id, 0, 0, 0, 0, code, code_basin, name, time, last_date))
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, code, code_basin, name in sub_basins:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            code_basin, code, name,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     BaciaCodigo, Codigo, Nome, DataIns, DataAlt"""
@@ -127,13 +135,13 @@ def insert_entities(hidro, entities, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, code, name, acronym in entities:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append(
-            (reg_id, 0, 0, 0, 0,
-             code, name, acronym,
-             time, last_date)
-        )
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, code, name, acronym in entities:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            code, name, acronym,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     Codigo, Nome, Sigla, DataIns, DataAlt"""
@@ -145,13 +153,13 @@ def insert_towns(hidro, towns, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, state_code, IBGE_code, name, code in towns:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append(
-            (reg_id, 0, 0, 0, 0,
-             state_code, code, IBGE_code,
-             name, time, last_date)
-        )
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, state_code, IBGE_code, name, code in towns:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            state_code, code, IBGE_code, name,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     EstadoCodigo, Codigo, CodigoIBGE, Nome, DataIns, DataAlt"""
@@ -163,14 +171,14 @@ def insert_rivers(hidro, rivers, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append(
-            (reg_id, 0, 0, 0, 0,
-             basin_code, sub_basin_code,
-             code, name, jurisdiction,
-             time, last_date)
-        )
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            basin_code, sub_basin_code,
+            code, name, jurisdiction,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt"""
@@ -182,13 +190,13 @@ def insert_states(hidro, states, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for last_date, code, IBGE_code, acronym, name in states:
-        time      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        items.append(
-            (reg_id, 0, 0, 0, 0,
-             code, IBGE_code, acronym,
-             name, time, last_date)
-        )
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for date_last_update, code, IBGE_code, acronym, name in states:
+        items.append((
+            reg_id, 0, 0, 0, 0,
+            code, IBGE_code, acronym, name,
+            date_insertion, date_last_update
+        ))
         reg_id += 1
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt"""
@@ -200,10 +208,14 @@ def insert_stations(hidro, stations, table):
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     items = []
-    for altitude, drainage, basin_name, code_aditional, code_operator_uf, date_climatology_end, date_climatology_start, date_desc_liquid_end, date_desc_liquid_start, date_scale_end, date_scale_start, date_piezo_end, date_piezo_start, date_pluvi_end, date_pluvi_start, date_water_quality_end, date_water_quality_start, date_rain_registry_end, date_rain_registry_start, date_level_registry_end, date_level_registry_start, date_sediment_end, date_sediment_start, date_tank_evaporation_end, date_tank_evaporation_start, date_telemetric_end, date_telemetric_start, date_last_update, station_name, latitude, longitude, town_code, town_name, operator_code, operator_acronym, operator_sub_uf, operator, responsible_code, responsible_acronym, responsible_uf, river_code, river_name, sub_basin_code, sub_basin_name, station_type, station_type_climatology, station_type_desc_liquid, station_type_scale, station_type_piezo, station_type_pluvi, station_type_water_quality, station_type_registry_rain, station_type_registry_level, station_type_sediment, station_type_tank_evaporation, station_type_telemetric, network_type_basic, network_type_captation, network_type_flow_rate_class, network_type_watercourse, network_type_energetic, network_type_strategic, network_type_navigation, network_type_water_quality, network_type_sendiments, uf_acronym, uf_name, code_basin, station_code in stations:
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # TODO: Find a smart and cleaner way to this, e.g ORM
+    for altitude, drainage, basin_name, code_aditional, code_operator_uf, date_climatology_end, date_climatology_start, date_desc_liquid_end, date_desc_liquid_start, date_scale_end, date_scale_start, date_piezo_end, date_piezo_start, date_pluvi_end, date_pluvi_start, date_water_quality_end, date_water_quality_start, date_rain_registry_end, date_rain_registry_start, date_level_registry_end, date_level_registry_start, date_sediment_end, date_sediment_start, date_tank_evaporation_end, date_tank_evaporation_start, date_telemetric_end, date_telemetric_start, date_last_update, station_name, latitude, longitude, town_code, town_name, operator_code, operator_acronym, operator_sub_uf, operator, responsible_code, responsible_acronym, responsible_uf, river_code, river_name, sub_basin_code, sub_basin_name, station_type, station_type_climatology, station_type_desc_liquid, station_type_scale, station_type_piezo, station_type_pluvi, station_type_water_quality, station_type_registry_rain, station_type_registry_level, station_type_sediment, station_type_tank_evaporation, station_type_telemetric, network_type_basic, network_type_captation, network_type_flow_rate_class, network_type_watercourse, network_type_energetic, network_type_strategic, network_type_navigation, network_type_water_quality, network_type_sendiments, uf_acronym, uf_name, code_basin, station_code in stations:        
+        hidro.cursor.execute(f"SELECT Codigo FROM Estado WHERE Sigla = '{uf_acronym}'")
+        state_code = hidro.cursor.fetchone()[0]
         items.append((
             reg_id, 0, 0, 0, 0,
-            code_basin, sub_basin_code, river_code, town_code,
+            code_basin, sub_basin_code, river_code, town_code, state_code,
             responsible_code, responsible_uf,
             operator_code, code_operator_uf, operator_sub_uf,
             station_code, station_name, code_aditional,
@@ -223,12 +235,13 @@ def insert_stations(hidro, stations, table):
             network_type_basic, network_type_energetic, network_type_navigation,
             network_type_watercourse, network_type_strategic, network_type_captation,
             network_type_sendiments, network_type_water_quality,
-            network_type_flow_rate_class, date_last_update, operator
+            network_type_flow_rate_class, date_last_update, operator,
+            date_insertion, date_last_update
         ))
         reg_id += 1
     cols = (
         "RegistroID,  Importado, Temporario, Removido, ImportadoRepetido,"
-        "BaciaCodigo, SubBaciaCodigo, RioCodigo, MunicipioCodigo," # EstadoCodigo,
+        "BaciaCodigo, SubBaciaCodigo, RioCodigo, MunicipioCodigo, EstadoCodigo,"
         "ResponsavelCodigo, ResponsavelUnidade,"                   # ResponsavelJurisdicao,
         "OperadoraCodigo, OperadoraUnidade, OperadoraSubUnidade,"  # TipoEstacao,
         "Codigo, Nome, CodigoAdicional,"
@@ -248,9 +261,9 @@ def insert_stations(hidro, stations, table):
         "TipoRedeBasica, TipoRedeEnergetica, TipoRedeNavegacao,"
         "TipoRedeCursoDagua, TipoRedeEstrategica, TipoRedeCaptacao,"
         "TipoRedeSedimentos, TipoRedeQualAgua,"
-        "TipoRedeClasseVazao, UltimaAtualizacao, Operando"
+        "TipoRedeClasseVazao, UltimaAtualizacao, Operando,"
         # "Descricao, Historico, NumImagens,"
-        # "DataIns, DataAlt, RespAlt"
+        "DataIns, DataAlt" # RespAlt"
     )
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
