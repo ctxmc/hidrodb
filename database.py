@@ -212,12 +212,17 @@ def insert_stations(hidro, stations, table):
     # TODO: Find a smart and cleaner way to this, e.g ORM
     for altitude, drainage, basin_name, code_aditional, code_operator_uf, date_climatology_end, date_climatology_start, date_desc_liquid_end, date_desc_liquid_start, date_scale_end, date_scale_start, date_piezo_end, date_piezo_start, date_pluvi_end, date_pluvi_start, date_water_quality_end, date_water_quality_start, date_rain_registry_end, date_rain_registry_start, date_level_registry_end, date_level_registry_start, date_sediment_end, date_sediment_start, date_tank_evaporation_end, date_tank_evaporation_start, date_telemetric_end, date_telemetric_start, date_last_update, station_name, latitude, longitude, town_code, town_name, operator_code, operator_acronym, operator_sub_uf, operator, responsible_code, responsible_acronym, responsible_uf, river_code, river_name, sub_basin_code, sub_basin_name, station_type, station_type_climatology, station_type_desc_liquid, station_type_scale, station_type_piezo, station_type_pluvi, station_type_water_quality, station_type_registry_rain, station_type_registry_level, station_type_sediment, station_type_tank_evaporation, station_type_telemetric, network_type_basic, network_type_captation, network_type_flow_rate_class, network_type_watercourse, network_type_energetic, network_type_strategic, network_type_navigation, network_type_water_quality, network_type_sendiments, uf_acronym, uf_name, code_basin, station_code in stations:        
         hidro.cursor.execute(f"SELECT Codigo FROM Estado WHERE Sigla = '{uf_acronym}'")
+        match station_type:
+            case "Fluviometrica":
+                station_type = 1
+            case "Pluviometrica":
+                station_type = 2
         state_code = hidro.cursor.fetchone()[0]
         items.append((
             reg_id, 0, 0, 0, 0,
             code_basin, sub_basin_code, river_code, town_code, state_code,
             responsible_code, responsible_uf,
-            operator_code, code_operator_uf, operator_sub_uf,
+            operator_code, code_operator_uf, operator_sub_uf, station_type,
             station_code, station_name, code_aditional,
             latitude, longitude, altitude, drainage,
             station_type_scale, station_type_registry_level, station_type_desc_liquid,
@@ -243,7 +248,7 @@ def insert_stations(hidro, stations, table):
         "RegistroID,  Importado, Temporario, Removido, ImportadoRepetido,"
         "BaciaCodigo, SubBaciaCodigo, RioCodigo, MunicipioCodigo, EstadoCodigo,"
         "ResponsavelCodigo, ResponsavelUnidade,"                   # ResponsavelJurisdicao,
-        "OperadoraCodigo, OperadoraUnidade, OperadoraSubUnidade,"  # TipoEstacao,
+        "OperadoraCodigo, OperadoraUnidade, OperadoraSubUnidade, TipoEstacao,"
         "Codigo, Nome, CodigoAdicional,"
         "Latitude, Longitude, Altitude, AreaDrenagem,"
         "TipoEstacaoEscala, TipoEstacaoRegistradorNivel, TipoEstacaoDescLiquida,"
