@@ -111,9 +111,9 @@ def check_table(hidro, client, table):
                         f"\nTotal stations with active rain data collection: {len(active)}"
                     )
                     print("\nColleting Stations with finished data:")
-                    insert_rain_data(hidro, client, finished)
+                    handle_rain_data(hidro, client, finished, table)
                     print("\nColleting Stations with active data:")
-                    insert_rain_data(hidro, client, active)
+                    handle_rain_data(hidro, client, active, table)
                 case _:
                     print(f"TODO {table}")
     else:
@@ -138,7 +138,7 @@ def insert_rain_data(hidro, client, stations_code):
             end = datetime.today()
         else:
             end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
-        years = end.year - start.year - ((end.month, end.day) < (start.month, start.day))
+        total_years = end.year - start.year
         print(
             f"""\nStation code: {station_code}"""
             f"""\nname: {station_name}"""
@@ -146,10 +146,17 @@ def insert_rain_data(hidro, client, stations_code):
             f"""\ntown: {town_name}, state: {UF}"""
             f"""\nstart: {start}"""
             f"""\nend: {end}"""
-            f"""\nTotal: {years} years"""
+            f"""\nTotal: {total_years} years"""
         )
-        print("TODO: Request Data")
-        print("TODO: Insert Data")
+        current_year = start
+        for count_year in range(1, total_years+1):
+            next_year = current_year.replace(year=current_year.year+1)
+            if next_year > end:
+                next_year = end
+            if (check_token(client)):
+                print("TODO: Request Data")
+                print("TODO: Insert Data")
+            current_year = next_year
 
 def main():
     parser = argparse.ArgumentParser()
