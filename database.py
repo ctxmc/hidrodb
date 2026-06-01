@@ -26,7 +26,7 @@ import jaydebeapi
 import jpype
 import msaccessdb
 import os
-from enum import StrEnum
+from enum import Enum, StrEnum, auto
 import getpass
 from datetime import datetime
 
@@ -40,6 +40,12 @@ jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
     CLIENT = "Client"
+    JOBS   = "Jobs"
+
+class JobStatus(Enum):
+    PENDING   = auto()
+    FAILED    = auto()
+    COMPLETED = auto()
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
@@ -80,6 +86,9 @@ def init_db(db):
                 password = getpass.getpass("Enter API password: ")
                 db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
                                    f"""VALUES ('{user_id}', '{password}');""")
+                print(f"Initialized {db.type} Database.")
+            case DatabaseType.JOBS:
+                execute_sql_file(db, "tables/jobs.sql")
                 print(f"Initialized {db.type} Database.")
     else:
         print(f"{db.type} Database is Initialized.")

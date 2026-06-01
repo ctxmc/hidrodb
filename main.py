@@ -164,6 +164,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
     parser.add_argument('--client', type=str, default='client.mdb')
+    parser.add_argument('--jobs',   type=str, default='jobs.mdb')
     args = parser.parse_args()
 
     create_db(args.client)
@@ -173,6 +174,11 @@ def main():
     create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
+
+    create_db(args.jobs)
+    jobs = DatabaseConnection(args.jobs, DatabaseType.JOBS)
+    init_db(jobs)
+    jobs.close()
 
     tables = [
         "Bacia", "SubBacia", "Entidade",
