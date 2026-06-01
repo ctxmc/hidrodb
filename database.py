@@ -295,3 +295,8 @@ def insert_rain_data(hidro, station_code, table, rain_data):
     TipoMedicaoChuvas, Total, TotalAnual, TotalAnualstatus, TotalStatus, EstacaoCodigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
+
+def insert_jobs(jobs, table):
+    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)
+    db.close()

@@ -111,54 +111,40 @@ def check_table(hidro, client, table):
                         f"\nTotal stations with active rain data collection: {len(active)}"
                     )
                     print("\nPraparing Jobs for collection")
+                    prepare_rain_collection_job(hidro, (finished + active))
                 case _:
                     print(f"TODO {table}")
     else:
         print(f"{table} has Entries; TODO")
 
-def insert_rain_data(hidro, client, stations_code):
+def prepare_rain_collection_job(hidro, stations_code):
+    jobs = []
     for station_code in stations_code:
-        data = ""
         station_data_sql = (
-            "SELECT e.Nome, e.TipoEstacao, e.estadoCodigo, e.municipioCodigo, "
-            "e.PeriodoRegistradorChuvaInicio, e.PeriodoRegistradorChuvaFim, "
-            "m.Nome as municipioNome, est.Sigla as Sigla "
-            "FROM Estacao e "
-            "LEFT JOIN Municipio m ON e.municipioCodigo = m.Codigo "
-            "LEFT JOIN Estado est ON e.estadoCodigo = est.Codigo "
-            "WHERE e.Codigo = ?"
+            "SELECT PeriodoRegistradorChuvaInicio, PeriodoRegistradorChuvaFim "
+            "FROM Estacao WHERE Codigo = ?"
         )
         hidro.cursor.execute(station_data_sql, (station_code,))
-        (station_name, station_type, _, _, start, end, town_name, UF), = hidro.cursor.fetchall()
+        (start, end), = hidro.cursor.fetchall()
         start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
         if end is None:
             end = datetime.today()
         else:
             end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
         total_years = end.year - start.year
-        print(
-            f"""\nStation code: {station_code}"""
-            f"""\nname: {station_name}"""
-            f"""\ntype: {"Fluviométrica" if station_type == 1 else "Pluviometrica" }"""
-            f"""\ntown: {town_name}, state: {UF}"""
-            f"""\nstart: {start}"""
-            f"""\nend: {end}"""
-            f"""\nTotal: {total_years} years"""
-        )
         current_year = start
         for count_year in range(1, total_years+1):
             next_year = current_year.replace(year=current_year.year+1)
             if next_year > end:
                 next_year = end
-            if (check_token(client)):
-                client.cursor.execute("SELECT Token FROM Token")
-                token = client.cursor.fetchone()[0]
-                rain_data = request_rain_data(token, station_code, current_year, next_year)
-                if len(rain_data) > 0:
-                    insert_rain_data(hidro, station_code, table, rain_data)
-                else:
-                    print(f"Rain data for station {station_code} on period {current_year}-{next_year} is null")
+            jobs.append((
+                station_code,
+                current_year.strftime("%Y-%m-%d %H:%M:%S"),
+                next_year.strftime("%Y-%m-%d %H:%M:%S"),
+                JobStatus.PENDING.value
+            ))
             current_year = next_year
+    insert_jobs(jobs, "Rain")
 
 def main():
     parser = argparse.ArgumentParser()
