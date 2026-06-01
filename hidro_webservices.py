@@ -202,82 +202,37 @@ def request_stations(token, UF):
     }
     params    = {"Unidade Federativa": f"{UF}"}
     try:
-        items  = request_hidro_ws(endpoint, headers, params).get("items", {})
-        stations = []
-        for item in items:
-            item = (
-                item.get("Altitude"),
-                item.get("Area_Drenagem"),
-                item.get("Bacia_Nome"),
-                item.get("Codigo_Adicional"),
-                item.get("Codigo_Operadora_Unidade_UF"),
-                item.get("Data_Periodo_Climatologica_Fim"),
-                item.get("Data_Periodo_Climatologica_Inicio"),
-                item.get("Data_Periodo_Desc_Liquida_Fim"),
-                item.get("Data_Periodo_Desc_liquida_Inicio"),
-                item.get("Data_Periodo_Escala_Fim"),
-                item.get("Data_Periodo_Escala_Inicio"),
-                item.get("Data_Periodo_Piezometria_Fim"),
-                item.get("Data_Periodo_Piezometria_Inicio"),
-                item.get("Data_Periodo_Pluviometro_Fim"),
-                item.get("Data_Periodo_Pluviometro_Inicio"),
-                item.get("Data_Periodo_Qual_Agua_Fim"),
-                item.get("Data_Periodo_Qual_Agua_Inicio"),
-                item.get("Data_Periodo_Registrador_Chuva_Fim"),
-                item.get("Data_Periodo_Registrador_Chuva_Inicio"),
-                item.get("Data_Periodo_Registrador_Nivel_Fim"),
-                item.get("Data_Periodo_Registrador_Nivel_Inicio"),
-                item.get("Data_Periodo_Sedimento_Inicio"),
-                item.get("Data_Periodo_Sedimento_fim"),
-                item.get("Data_Periodo_Tanque_Evapo_Fim"),
-                item.get("Data_Periodo_Tanque_Evapo_Inicio"),
-                item.get("Data_Periodo_Telemetrica_Fim"),
-                item.get("Data_Periodo_Telemetrica_Inicio"),
-                item.get("Data_Ultima_Atualizacao"),
-                item.get("Estacao_Nome"),
-                item.get("Latitude"),
-                item.get("Longitude"),
-                item.get("Municipio_Codigo"),
-                item.get("Municipio_Nome"),
-                item.get("Operadora_Codigo"),
-                item.get("Operadora_Sigla"),
-                item.get("Operadora_Sub_Unidade_UF"),
-                item.get("Operando"),
-                item.get("Responsavel_Codigo"),
-                item.get("Responsavel_Sigla"),
-                item.get("Responsavel_Unidade_UF"),
-                item.get("Rio_Codigo"),
-                item.get("Rio_Nome"),
-                item.get("Sub_Bacia_Codigo"),
-                item.get("Sub_Bacia_Nome"),
-                item.get("Tipo_Estacao"),
-                item.get("Tipo_Estacao_Climatologica"),
-                item.get("Tipo_Estacao_Desc_Liquida"),
-                item.get("Tipo_Estacao_Escala"),
-                item.get("Tipo_Estacao_Piezometria"),
-                item.get("Tipo_Estacao_Pluviometro"),
-                item.get("Tipo_Estacao_Qual_Agua"),
-                item.get("Tipo_Estacao_Registrador_Chuva"),
-                item.get("Tipo_Estacao_Registrador_Nivel"),
-                item.get("Tipo_Estacao_Sedimentos"),
-                item.get("Tipo_Estacao_Tanque_evapo"),
-                item.get("Tipo_Estacao_Telemetrica"),
-                item.get("Tipo_Rede_Basica"),
-                item.get("Tipo_Rede_Captacao"),
-                item.get("Tipo_Rede_Classe_Vazao"),
-                item.get("Tipo_Rede_Curso_Dagua"),
-                item.get("Tipo_Rede_Energetica"),
-                item.get("Tipo_Rede_Estrategica"),
-                item.get("Tipo_Rede_Navegacao"),
-                item.get("Tipo_Rede_Qual_Agua"),
-                item.get("Tipo_Rede_Sedimentos"),
-                item.get("UF_Estacao"),
-                item.get("UF_Nome_Estacao"),
-                item.get("codigobacia"),
-                item.get("codigoestacao")
-            )
-            stations.append(item)
-        return stations
+        file_path = f"./json/stations/Estacao_{UF}.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
+
+def request_rain_data(token, station_code, date_start, date_end):
+    endpoint = "/EstacoesTelemetricas/HidroSerieChuva/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_start, _] = date_start.strftime("%Y-%m-%d %H-%M-%S").split()
+    [ymd_end, _] = date_end.strftime("%Y-%m-%d %H-%M-%S").split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
+        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
+    }
+    try:
+        items = request_hidro_ws(endpoint, headers, params).get("items", {})
+        print(f"From {ymd_start} to {ymd_end}")
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []

@@ -272,3 +272,17 @@ def insert_stations(hidro, stations, table):
     )
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+
+def insert_rain_data(hidro, station_code, table, rain_data):
+    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    chuva_sequence = ", ".join(f"Chuva{i:02d}{suffix}" for i in range(1, 32) for suffix in ("", "Status"))
+    rain_data = [(reg_id+i, 0, 0, 0, 0, *rain, date_insertion)
+             for i, rain in enumerate(rain_data)]
+    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido, {chuva_sequence},
+    Data, DataAlt, DiaMaxima, Maxima, MaximaStatus, NivelConsistencia, NumDiasDeChuva, NumDiasDeChuvaStatus,
+    TipoMedicaoChuvas, Total, TotalAnual, TotalAnualstatus, TotalStatus, EstacaoCodigo, DataIns"""
+    values = ','.join('?' for _ in cols.split(','))
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
