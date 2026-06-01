@@ -93,27 +93,37 @@ def check_table(hidro, client, table):
                             if len(stations) > 0:
                                 insert_stations(hidro, stations, table)
                 case "Chuvas":
-                    stations_with_rain_data_sql = (
-                        "SELECT Codigo, "
-                        "CASE  "
-                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NULL THEN 'active' "
-                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NOT NULL THEN 'finished' "
-                        "END AS status "
-                        "FROM Estacao "
-                        "WHERE PeriodoRegistradorChuvaInicio IS NOT NULL "
-                        "OR PeriodoRegistradorChuvaFim IS NOT NULL "
-                    )
-                    hidro.cursor.execute(stations_with_rain_data_sql)
-                    active, finished = [], []
-                    for code, status in hidro.cursor.fetchall():
-                        (active if status.strip() == 'active' else finished).append(code)
-                    print(
-                        f"\nTotal stations with rain data: {len(active+finished)}"
-                        f"\nTotal stations with finished rain data collection: {len(finished)}"
-                        f"\nTotal stations with active rain data collection: {len(active)}"
-                    )
-                    print("\nPraparing Jobs for collection")
-                    prepare_rain_collection_job(hidro, (finished + active))
+                    jobs = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+                    jobs.cursor.execute(f"SELECT COUNT(*) FROM RAIN")
+                    jobs_count = jobs.cursor.fetchone()[0]
+                    jobs.close()
+                    if (not jobs_count):
+                        print("Praparing Jobs for collection")
+                        stations_with_rain_data_sql = (
+                            "SELECT Codigo, "
+                            "CASE  "
+                            "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "AND PeriodoRegistradorChuvaFim IS NULL THEN 'active' "
+                            "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "AND PeriodoRegistradorChuvaFim IS NOT NULL THEN 'finished' "
+                            "END AS status "
+                            "FROM Estacao "
+                            "WHERE PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "OR PeriodoRegistradorChuvaFim IS NOT NULL "
+                        )
+                        hidro.cursor.execute(stations_with_rain_data_sql)
+                        active, finished = [], []
+                        for code, status in hidro.cursor.fetchall():
+                            (active if status.strip() == 'active' else finished).append(code)
+                        print(
+                            f"\nTotal stations with rain data: {len(active+finished)}"
+                            f"\nTotal stations with finished rain data collection: {len(finished)}"
+                            f"\nTotal stations with active rain data collection: {len(active)}"
+                        )
+                        prepare_rain_collection_job(hidro, (finished + active))
+                        handle_rain_job()
+                    else:
+                        handle_rain_job()
                 case _:
                     print(f"TODO {table}")
     else:
@@ -147,6 +157,9 @@ def prepare_rain_collection_job(hidro, stations_code):
             ))
             current_year = next_year
     insert_jobs(jobs, "Rain")
+
+def handle_rain_job():
+    print("Initiating jobs for collect rain data")
     job_queue = Queue()
     rain_collection = Queue()
     threads = [Thread(target=worker, args=(job_queue, rain_collection), daemon=True) for _ in range(10)]
