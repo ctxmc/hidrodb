@@ -121,9 +121,9 @@ def check_table(hidro, client, table):
                             f"\nTotal stations with active rain data collection: {len(active)}"
                         )
                         prepare_rain_collection_job(hidro, (finished + active))
-                        handle_rain_job()
+                        trigger_rain_job()
                     else:
-                        handle_rain_job()
+                        trigger_rain_job()
                 case _:
                     print(f"TODO {table}")
     else:
@@ -158,7 +158,7 @@ def prepare_rain_collection_job(hidro, stations_code):
             current_year = next_year
     insert_jobs(jobs, "Rain")
 
-def handle_rain_job():
+def trigger_rain_job():
     print("Initiating jobs for collect rain data")
     job_queue = Queue()
     rain_collection = Queue()
@@ -187,7 +187,7 @@ def worker(job_queue, rain_collection):
         handle_rain(*task, rain_collection)
         job_queue.task_done()
 
-def handle_rain(job_id, station_code, current_year, next_year, rain_collection):
+def handle_rain_job(job_id, station_code, current_year, next_year, rain_collection):
     client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
     if (check_token(client)):
         client.cursor.execute("SELECT Token FROM Token")
