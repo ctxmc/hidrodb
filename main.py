@@ -146,6 +146,18 @@ def prepare_rain_collection_job(hidro, stations_code):
             current_year = next_year
     insert_jobs(jobs, "Rain")
 
+def handle_rain(job_id, station_code, current_year, next_year, rain_collection):
+    client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
+    if (check_token(client)):
+        client.cursor.execute("SELECT Token FROM Token")
+        token = client.cursor.fetchone()[0]
+        rain_data = request_rain_data(token, station_code, current_year, next_year)
+        if len(rain_data) > 0:
+            print(f"Got rain data for station {station_code} on period ({current_year})-({next_year})")
+            rain_collection.put(rain_data)
+        else:
+            print(f"Rain data for station {station_code} on period ({current_year})-({next_year}) is null")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
