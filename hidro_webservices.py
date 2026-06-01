@@ -214,3 +214,25 @@ def request_stations(token, UF):
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
+
+def request_rain_data(token, station_code, date_start, date_end):
+    endpoint = "/EstacoesTelemetricas/HidroSerieChuva/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_start, _] = date_start.strftime("%Y-%m-%d %H-%M-%S").split()
+    [ymd_end, _] = date_end.strftime("%Y-%m-%d %H-%M-%S").split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
+        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
+    }
+    try:
+        items = request_hidro_ws(endpoint, headers, params).get("items", {})
+        print(f"From {ymd_start} to {ymd_end}")
+        return [tuple(item.values()) for item in items]
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return []
