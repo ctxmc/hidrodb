@@ -110,10 +110,7 @@ def check_table(hidro, client, table):
                         f"\nTotal stations with finished rain data collection: {len(finished)}"
                         f"\nTotal stations with active rain data collection: {len(active)}"
                     )
-                    print("\nColleting Stations with finished data:")
-                    handle_rain_data(hidro, client, finished, table)
-                    print("\nColleting Stations with active data:")
-                    handle_rain_data(hidro, client, active, table)
+                    print("\nPraparing Jobs for collection")
                 case _:
                     print(f"TODO {table}")
     else:
