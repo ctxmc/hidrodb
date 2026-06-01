@@ -126,7 +126,11 @@ def check_table(hidro, client, table):
                 case _:
                     print(f"TODO {table}")
     else:
-        print(f"{table} has Entries; TODO")
+        match table:
+            case "Chuvas":
+                trigger_rain_job()
+            case _:
+                print(f"{table} has Entries; TODO")
 
 def prepare_rain_collection_job(hidro, stations_code):
     jobs = []
