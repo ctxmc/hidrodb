@@ -28,6 +28,7 @@ import requests
 import json
 from datetime import datetime
 from queue import Queue
+from threading import Thread
 
 from database import *
 from hidro_webservices import *
@@ -146,6 +147,24 @@ def prepare_rain_collection_job(hidro, stations_code):
             ))
             current_year = next_year
     insert_jobs(jobs, "Rain")
+    job_queue = Queue()
+    rain_collection = Queue()
+    threads = [Thread(target=worker, args=(job_queue, rain_collection), daemon=True) for _ in range(10)]
+    for t in threads:
+        t.start()
+    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db.cursor.execute(
+        "SELECT ID, StationID, FromDate, ToDate FROM Rain "
+        f"WHERE Status = {JobStatus.PENDING.value} "
+        f"OR Status = {JobStatus.FAILED.value}"
+    )
+    for job_id, station_code, from_date, to_date in db.cursor.fetchall():
+        job_queue.put((job_id, station_code, from_date, to_date))
+    job_queue.join()
+    results = []
+    while not rain_collection.empty():
+        results.append(rain_collection.get())
+    print(results)
 
 def worker(job_queue, rain_collection):
     while True:
