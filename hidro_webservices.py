@@ -221,8 +221,8 @@ def request_rain_data(token, station_code, date_start, date_end):
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = date_start.strftime("%Y-%m-%d %H-%M-%S").split()
-    [ymd_end, _] = date_end.strftime("%Y-%m-%d %H-%M-%S").split()
+    [ymd_start, _] = date_start.split()
+    [ymd_end, _] = date_end.split()
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
