@@ -27,6 +27,7 @@ import argparse
 import requests
 import json
 from datetime import datetime
+from queue import Queue
 
 from database import *
 from hidro_webservices import *
@@ -145,6 +146,14 @@ def prepare_rain_collection_job(hidro, stations_code):
             ))
             current_year = next_year
     insert_jobs(jobs, "Rain")
+
+def worker(job_queue, rain_collection):
+    while True:
+        task = job_queue.get()
+        if task is None:
+            break
+        handle_rain(*task, rain_collection)
+        job_queue.task_done()
 
 def handle_rain(job_id, station_code, current_year, next_year, rain_collection):
     client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
