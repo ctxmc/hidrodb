@@ -158,7 +158,7 @@ def insert_rain_data(hidro, client, stations_code):
                 token = client.cursor.fetchone()[0]
                 rain_data = request_rain_data(token, station_code, current_year, next_year)
                 if len(rain_data) > 0:
-                    print("TODO: Insert Data")
+                    insert_rain_data(hidro, station_code, table, rain_data)
                 else:
                     print(f"Rain data for station {station_code} on period {current_year}-{next_year} is null")
             current_year = next_year
