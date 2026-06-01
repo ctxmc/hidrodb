@@ -282,7 +282,9 @@ def insert_stations(hidro, stations, table):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
 
-def insert_rain_data(hidro, station_code, table, rain_data):
+def insert_rain_data(rain_data):
+    hidro = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+    table = "Chuvas"
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
@@ -295,8 +297,17 @@ def insert_rain_data(hidro, station_code, table, rain_data):
     TipoMedicaoChuvas, Total, TotalAnual, TotalAnualstatus, TotalStatus, EstacaoCodigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
+    hidro.close()
 
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)
+    db.close()
+
+def update_jobs(table, status, job_id):
+    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db.cursor.execute(
+        f"UPDATE [{table}] SET [Status] = '{status}' "
+        f"WHERE [ID] = '{job_id}'"
+    )
     db.close()

@@ -231,7 +231,7 @@ def request_rain_data(token, station_code, date_start, date_end):
     }
     try:
         items = request_hidro_ws(endpoint, headers, params).get("items", {})
-        return [tuple(item.values()) for item in items]
+        return (True, [tuple(item.values()) for item in items])
     except Exception as e:
             print(f"Error (exception): {e}")
-            return []
+            return (False, [])

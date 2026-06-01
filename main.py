@@ -27,8 +27,7 @@ import argparse
 import requests
 import json
 from datetime import datetime
-from queue import Queue
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from database import *
 from hidro_webservices import *
@@ -160,44 +159,39 @@ def prepare_rain_collection_job(hidro, stations_code):
 
 def trigger_rain_job():
     print("Initiating jobs for collect rain data")
-    job_queue = Queue()
-    rain_collection = Queue()
-    threads = [Thread(target=worker, args=(job_queue, rain_collection), daemon=True) for _ in range(10)]
-    for t in threads:
-        t.start()
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.execute(
         "SELECT ID, StationID, FromDate, ToDate FROM Rain "
         f"WHERE Status = {JobStatus.PENDING.value} "
         f"OR Status = {JobStatus.FAILED.value}"
     )
-    for job_id, station_code, from_date, to_date in db.cursor.fetchall():
-        job_queue.put((job_id, station_code, from_date, to_date))
-    job_queue.join()
-    results = []
-    while not rain_collection.empty():
-        results.append(rain_collection.get())
-    print(results)
+    jobs = db.cursor.fetchall()
+    db.close()
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        future_to_job = {
+            executor.submit(handle_rain_job, job): job
+            for job in jobs
+        }
+        for future in as_completed(future_to_job):
+            result = future.result()
+            if result:
+                success, data, job_id = result
+                status = JobStatus.COMPLETED if success else JobStatus.FAILED
+                update_jobs("Rain", status.value, job_id)
+                if (len(data) > 1):
+                    insert_rain_data(data)
 
-def worker(job_queue, rain_collection):
-    while True:
-        task = job_queue.get()
-        if task is None:
-            break
-        handle_rain(*task, rain_collection)
-        job_queue.task_done()
-
-def handle_rain_job(job_id, station_code, current_year, next_year, rain_collection):
+def handle_rain_job(job_data):
+    job_id, station_code, current_year, next_year = job_data
     client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
     if (check_token(client)):
         client.cursor.execute("SELECT Token FROM Token")
         token = client.cursor.fetchone()[0]
-        rain_data = request_rain_data(token, station_code, current_year, next_year)
-        if len(rain_data) > 0:
-            print(f"Got rain data for station {station_code} on period ({current_year})-({next_year})")
-            rain_collection.put(rain_data)
-        else:
-            print(f"Rain data for station {station_code} on period ({current_year})-({next_year}) is null")
+        client.close()
+        success, data = request_rain_data(token, station_code, current_year, next_year)
+        status = "Completed" if success else "Failed"
+        print(f"{status} request for station {station_code} on period ({current_year})-({next_year})")
+        return (success, data, job_id)
 
 def main():
     parser = argparse.ArgumentParser()
