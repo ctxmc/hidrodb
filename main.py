@@ -27,6 +27,8 @@ import argparse
 from datetime import datetime, timedelta
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from queue import Queue
+from threading import Thread, Lock
 
 from database import *
 from hidro_webservices import *
@@ -161,29 +163,27 @@ def prepare_rain_collection_job(hidro, stations_code):
             current_year = next_year
     insert_jobs(jobs, "Rain")
 
+write_queue = Queue()
 def trigger_rain_job():
     print("Initiating jobs for collect rain data")
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.execute(
         "SELECT ID, StationID, FromDate, ToDate FROM Rain "
-        f"WHERE Status = {JobStatus.PENDING.value} "
-        f"OR Status = {JobStatus.FAILED.value}"
+        f"WHERE Status = {JobStatus.FAILED.value} "
+        f"OR Status = {JobStatus.PENDING.value}"
     )
     jobs = db.cursor.fetchall()
-    db.close()
-    with ThreadPoolExecutor(max_workers=100) as executor:
-        future_to_job = {
-            executor.submit(handle_rain_job, job): job
-            for job in jobs
-        }
-        for future in as_completed(future_to_job):
-            result = future.result()
-            if result:
-                success, data, job_id = result
-                status = JobStatus.COMPLETED if success else JobStatus.FAILED
-                update_jobs("Rain", status.value, job_id)
-                if (len(data) > 1):
-                    insert_rain_data(data)
+    if (len(jobs) > 1):
+        writer = Thread(target=db_writer, daemon=True)
+        writer.start()
+        MAX_WORKERS=10
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            for job in jobs:
+                executor.submit(handle_rain_job, job)
+            executor.shutdown(wait=True)
+        print("\nJOBS DONE")
+        write_queue.put((None, None, None, True))
+        writer.join()
 
 def handle_rain_job(job_data):
     job_id, station_code, current_year, next_year = job_data
@@ -193,9 +193,39 @@ def handle_rain_job(job_data):
         token = client.cursor.fetchone()[0]
         client.close()
         success, data = request_rain_data(token, station_code, current_year, next_year)
-        status = "Completed" if success else "Failed"
-        print(f"{status} request for station {station_code} on period ({current_year})-({next_year})")
-        return (success, data, job_id)
+        if success:
+            status = JobStatus.COMPLETED
+            status_label = "Completed"
+        else:
+            status = JobStatus.FAILED
+            status_label = "Failed"
+        print(f"[JOB ID {job_id}]: {status_label} request for station {station_code} on period ({current_year})-({next_year})")
+        write_queue.put((job_id, status.value, data, False))
+        return
+
+def db_writer():
+    batch_buffer = {"jobs": [], "data": []}
+    BATCH_SIZE = 5000
+    while True:
+        try:
+            if write_queue.empty():
+                time.sleep(0.1)
+                continue
+            job_id, status, data, stop_signal = write_queue.get()
+            if stop_signal:
+                update_jobs("Rain", batch_buffer["jobs"])
+                insert_rain_data(batch_buffer["data"])
+                print(f"[WRITER]: Wrote {len(batch_buffer['data'])} entries on Chuva")
+                break;
+            batch_buffer["jobs"].append((status, job_id))
+            if len(data) > 1:
+                batch_buffer["data"].extend(data)
+            if len(batch_buffer["data"]) >= BATCH_SIZE:
+                insert_rain_data(batch_buffer["data"])
+                update_jobs("Rain", batch_buffer["jobs"])
+                batch_buffer = {"jobs": [], "data": []}
+        except Exception as e:
+            print(f"[ERROR] db_writer exception: {e}")
 
 def main():
     parser = argparse.ArgumentParser()

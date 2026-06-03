@@ -304,10 +304,7 @@ def insert_jobs(jobs, table):
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)
     db.close()
 
-def update_jobs(table, status, job_id):
+def update_jobs(table, jobs):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
-    db.cursor.execute(
-        f"UPDATE [{table}] SET [Status] = '{status}' "
-        f"WHERE [ID] = '{job_id}'"
-    )
+    db.cursor.executemany(f"UPDATE [{table}] SET [Status] = ? WHERE [ID] = ?", jobs)
     db.close()
