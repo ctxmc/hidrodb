@@ -53,11 +53,14 @@ def request_token(client):
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
-    data = request_hidro_ws(endpoint, headers, {})
-    token           = data.get("items", {}).get("tokenautenticacao")
-    expires_RFC2822 = data.get("items", {}).get("validade")
-    expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-    return [token, expires_ISOND]
+    try:
+        data = request_hidro_ws(endpoint, headers, {})
+        token           = data.get("items", {}).get("tokenautenticacao")
+        expires_RFC2822 = data.get("items", {}).get("validade")
+        expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
+        return [token, expires_ISOND]
+    except Exception as e:
+            print(f"Error (exception): {e}")
 
 def request_basins(token):
     endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
