@@ -299,6 +299,22 @@ def insert_rain_data(rain_data):
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
     hidro.close()
 
+def insert_liquid_desc(liquid_desc_data):
+    hidro = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+    table = "ResumoDescarga"
+    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    liquid_desc_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
+                        for i, data in enumerate(liquid_desc_data)]
+    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+    AreaMolhada, Cota, Data, DataAlt, Largura, NivelConsistencia, Profundidade,
+    Vazao, VelMedia, EstacaoCodigo, DataIns"""
+    values = ','.join('?' for _ in cols.split(','))
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", liquid_desc_data)
+    hidro.close()
+
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)

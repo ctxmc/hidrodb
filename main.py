@@ -124,6 +124,57 @@ def check_table(hidro, client, table):
                         trigger_rain_job()
                     else:
                         trigger_rain_job()
+                case "ResumoDescarga":
+                    sql = (
+                        "SELECT COUNT(*) FROM Estacao "
+                        "WHERE TipoEstacaoDescLiquida IS NOT NULL "
+                        "AND TipoEstacaoDescLiquida <> 0"
+                    )
+                    hidro.cursor.execute(sql)
+                    print(hidro.cursor.fetchone()[0])
+
+                    sql = (
+                        "SELECT COUNT(*) FROM Estacao "
+                        "WHERE PeriodoDescLiquidaInicio IS NOT NULL"
+                    )
+                    hidro.cursor.execute(sql)
+                    print(hidro.cursor.fetchone()[0])
+
+                    sql = (
+                        "SELECT COUNT(*) FROM Estacao "
+                        "WHERE PeriodoDescLiquidaFim IS NOT NULL "
+                    )
+                    hidro.cursor.execute(sql)
+                    print(hidro.cursor.fetchone()[0])
+
+                    sql = (
+                        "SELECT COUNT(*) FROM Estacao "
+                        "WHERE TipoEstacaoDescLiquida IS NOT NULL "
+                        "AND TipoEstacaoDescLiquida <> 0 "
+                        "AND PeriodoDescLiquidaFim IS NOT NULL "
+                        "AND PeriodoDescLiquidaInicio IS NOT NULL"
+                    )
+                    hidro.cursor.execute(sql)
+                    print(hidro.cursor.fetchone()[0])
+
+                    sql = (
+                        "SELECT Codigo, PeriodoDescLiquidaInicio FROM Estacao "
+                        "WHERE TipoEstacaoDescLiquida IS NOT NULL "
+                        "AND TipoEstacaoDescLiquida <> 0 "
+                        "AND PeriodoDescLiquidaFim IS NOT NULL "
+                        "AND PeriodoDescLiquidaInicio IS NOT NULL"
+                    )
+                    hidro.cursor.execute(sql)
+                    data = hidro.cursor.fetchall()
+                    for station_code, start_date in data:
+                        start = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+                        end_date = start.replace(year=start.year+1)
+                        end_date = end_date.strftime("%Y-%m-%d %H:%M:%S")
+                        print(station_code, start_date, end_date)
+                        sucess, data = request_liquid_desc(token, station_code, start_date, end_date)
+                        if sucess:
+                            insert_liquid_desc(data)
+                        exit(0)
                 case _:
                     print(f"TODO {table}")
     else:
@@ -250,7 +301,7 @@ def main():
     tables = [
         "Bacia", "SubBacia", "Entidade",
         "Municipio", "Rio", "Estado",
-        "Estacao", "Chuvas"
+        "Estacao", "Chuvas", "ResumoDescarga"
     ]
     for table in tables:
         check_table(hidro, client, table)

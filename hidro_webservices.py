@@ -238,3 +238,24 @@ def request_rain_data(token, station_code, date_start, date_end):
     except Exception as e:
             print(f"Error (exception): {e}")
             return (False, [])
+
+def request_liquid_desc(token, station_code, date_start, date_end):
+    endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_start, _] = date_start.split()
+    [ymd_end, _] = date_end.split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
+        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
+    }
+    try:
+        items = request_hidro_ws(endpoint, headers, params).get("items", {})
+        return (True, [tuple(item.values()) for item in items])
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return (False, [])
