@@ -221,8 +221,8 @@ def request_rain_data(token, station_code, date_start, date_end):
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = date_start.strftime("%Y-%m-%d %H-%M-%S").split()
-    [ymd_end, _] = date_end.strftime("%Y-%m-%d %H-%M-%S").split()
+    [ymd_start, _] = date_start.split()
+    [ymd_end, _] = date_end.split()
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
@@ -231,8 +231,10 @@ def request_rain_data(token, station_code, date_start, date_end):
     }
     try:
         items = request_hidro_ws(endpoint, headers, params).get("items", {})
-        print(f"From {ymd_start} to {ymd_end}")
-        return [tuple(item.values()) for item in items]
+        for item in items:
+            if (len(item) < 76):
+                return (False, [])
+        return (True, [tuple(item.values()) for item in items])
     except Exception as e:
             print(f"Error (exception): {e}")
-            return []
+            return (False, [])

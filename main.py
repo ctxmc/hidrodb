@@ -24,9 +24,11 @@
 
 import os
 import argparse
-import requests
-import json
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from queue import Queue
+from threading import Thread, Lock
 
 from database import *
 from hidro_webservices import *
@@ -91,82 +93,145 @@ def check_table(hidro, client, table):
                             if len(stations) > 0:
                                 insert_stations(hidro, stations, table)
                 case "Chuvas":
-                    stations_with_rain_data_sql = (
-                        "SELECT Codigo, "
-                        "CASE  "
-                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NULL THEN 'active' "
-                        "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL AND PeriodoRegistradorChuvaFim IS NOT NULL THEN 'finished' "
-                        "END AS status "
-                        "FROM Estacao "
-                        "WHERE PeriodoRegistradorChuvaInicio IS NOT NULL "
-                        "OR PeriodoRegistradorChuvaFim IS NOT NULL "
-                    )
-                    hidro.cursor.execute(stations_with_rain_data_sql)
-                    active, finished = [], []
-                    for code, status in hidro.cursor.fetchall():
-                        (active if status.strip() == 'active' else finished).append(code)
-                    print(
-                        f"\nTotal stations with rain data: {len(active+finished)}"
-                        f"\nTotal stations with finished rain data collection: {len(finished)}"
-                        f"\nTotal stations with active rain data collection: {len(active)}"
-                    )
-                    print("\nColleting Stations with finished data:")
-                    handle_rain_data(hidro, client, finished, table)
-                    print("\nColleting Stations with active data:")
-                    handle_rain_data(hidro, client, active, table)
+                    jobs = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+                    jobs.cursor.execute(f"SELECT COUNT(*) FROM RAIN")
+                    jobs_count = jobs.cursor.fetchone()[0]
+                    jobs.close()
+                    if (not jobs_count):
+                        print("Praparing Jobs for collection")
+                        stations_with_rain_data_sql = (
+                            "SELECT Codigo, "
+                            "CASE  "
+                            "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "AND PeriodoRegistradorChuvaFim IS NULL THEN 'active' "
+                            "WHEN PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "AND PeriodoRegistradorChuvaFim IS NOT NULL THEN 'finished' "
+                            "END AS status "
+                            "FROM Estacao "
+                            "WHERE PeriodoRegistradorChuvaInicio IS NOT NULL "
+                            "OR PeriodoRegistradorChuvaFim IS NOT NULL "
+                        )
+                        hidro.cursor.execute(stations_with_rain_data_sql)
+                        active, finished = [], []
+                        for code, status in hidro.cursor.fetchall():
+                            (active if status.strip() == 'active' else finished).append(code)
+                        print(
+                            f"\nTotal stations with rain data: {len(active+finished)}"
+                            f"\nTotal stations with finished rain data collection: {len(finished)}"
+                            f"\nTotal stations with active rain data collection: {len(active)}"
+                        )
+                        prepare_rain_collection_job(hidro, (finished + active))
+                        trigger_rain_job()
+                    else:
+                        trigger_rain_job()
                 case _:
                     print(f"TODO {table}")
     else:
-        print(f"{table} has Entries; TODO")
+        match table:
+            case "Chuvas":
+                trigger_rain_job()
+            case _:
+                print(f"{table} has Entries; TODO")
 
-def insert_rain_data(hidro, client, stations_code):
+def prepare_rain_collection_job(hidro, stations_code):
+    jobs = []
     for station_code in stations_code:
-        data = ""
         station_data_sql = (
-            "SELECT e.Nome, e.TipoEstacao, e.estadoCodigo, e.municipioCodigo, "
-            "e.PeriodoRegistradorChuvaInicio, e.PeriodoRegistradorChuvaFim, "
-            "m.Nome as municipioNome, est.Sigla as Sigla "
-            "FROM Estacao e "
-            "LEFT JOIN Municipio m ON e.municipioCodigo = m.Codigo "
-            "LEFT JOIN Estado est ON e.estadoCodigo = est.Codigo "
-            "WHERE e.Codigo = ?"
+            "SELECT PeriodoRegistradorChuvaInicio, PeriodoRegistradorChuvaFim "
+            "FROM Estacao WHERE Codigo = ?"
         )
         hidro.cursor.execute(station_data_sql, (station_code,))
-        (station_name, station_type, _, _, start, end, town_name, UF), = hidro.cursor.fetchall()
+        (start, end), = hidro.cursor.fetchall()
         start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
         if end is None:
-            end = datetime.today()
+            end = datetime.today() - timedelta(days=1)
+            end = end.replace(hour=0, minute=0, second=0, microsecond=0)
         else:
             end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
         total_years = end.year - start.year
-        print(
-            f"""\nStation code: {station_code}"""
-            f"""\nname: {station_name}"""
-            f"""\ntype: {"Fluviométrica" if station_type == 1 else "Pluviometrica" }"""
-            f"""\ntown: {town_name}, state: {UF}"""
-            f"""\nstart: {start}"""
-            f"""\nend: {end}"""
-            f"""\nTotal: {total_years} years"""
-        )
         current_year = start
         for count_year in range(1, total_years+1):
             next_year = current_year.replace(year=current_year.year+1)
             if next_year > end:
                 next_year = end
-            if (check_token(client)):
-                client.cursor.execute("SELECT Token FROM Token")
-                token = client.cursor.fetchone()[0]
-                rain_data = request_rain_data(token, station_code, current_year, next_year)
-                if len(rain_data) > 0:
-                    insert_rain_data(hidro, station_code, table, rain_data)
-                else:
-                    print(f"Rain data for station {station_code} on period {current_year}-{next_year} is null")
+            jobs.append((
+                station_code,
+                current_year.strftime("%Y-%m-%d %H:%M:%S"),
+                next_year.strftime("%Y-%m-%d %H:%M:%S"),
+                JobStatus.PENDING.value
+            ))
             current_year = next_year
+    insert_jobs(jobs, "Rain")
+
+write_queue = Queue()
+def trigger_rain_job():
+    print("Initiating jobs for collect rain data")
+    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db.cursor.execute(
+        "SELECT ID, StationID, FromDate, ToDate FROM Rain "
+        f"WHERE Status = {JobStatus.FAILED.value} "
+        f"OR Status = {JobStatus.PENDING.value}"
+    )
+    jobs = db.cursor.fetchall()
+    if (len(jobs) > 1):
+        writer = Thread(target=db_writer, daemon=True)
+        writer.start()
+        MAX_WORKERS=10
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            for job in jobs:
+                executor.submit(handle_rain_job, job)
+            executor.shutdown(wait=True)
+        print("\nJOBS DONE")
+        write_queue.put((None, None, None, True))
+        writer.join()
+
+def handle_rain_job(job_data):
+    job_id, station_code, current_year, next_year = job_data
+    client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
+    if (check_token(client)):
+        client.cursor.execute("SELECT Token FROM Token")
+        token = client.cursor.fetchone()[0]
+        client.close()
+        success, data = request_rain_data(token, station_code, current_year, next_year)
+        if success:
+            status = JobStatus.COMPLETED
+            status_label = "Completed"
+        else:
+            status = JobStatus.FAILED
+            status_label = "Failed"
+        print(f"[JOB ID {job_id}]: {status_label} request for station {station_code} on period ({current_year})-({next_year})")
+        write_queue.put((job_id, status.value, data, False))
+        return
+
+def db_writer():
+    batch_buffer = {"jobs": [], "data": []}
+    BATCH_SIZE = 5000
+    while True:
+        try:
+            if write_queue.empty():
+                time.sleep(0.1)
+                continue
+            job_id, status, data, stop_signal = write_queue.get()
+            if stop_signal:
+                update_jobs("Rain", batch_buffer["jobs"])
+                insert_rain_data(batch_buffer["data"])
+                print(f"[WRITER]: Wrote {len(batch_buffer['data'])} entries on Chuva")
+                break;
+            batch_buffer["jobs"].append((status, job_id))
+            if len(data) > 1:
+                batch_buffer["data"].extend(data)
+            if len(batch_buffer["data"]) >= BATCH_SIZE:
+                insert_rain_data(batch_buffer["data"])
+                update_jobs("Rain", batch_buffer["jobs"])
+                batch_buffer = {"jobs": [], "data": []}
+        except Exception as e:
+            print(f"[ERROR] db_writer exception: {e}")
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
     parser.add_argument('--client', type=str, default='client.mdb')
+    parser.add_argument('--jobs',   type=str, default='jobs.mdb')
     args = parser.parse_args()
 
     create_db(args.client)
@@ -176,6 +241,11 @@ def main():
     create_db(args.hidro)
     hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
     init_db(hidro)
+
+    create_db(args.jobs)
+    jobs = DatabaseConnection(args.jobs, DatabaseType.JOBS)
+    init_db(jobs)
+    jobs.close()
 
     tables = [
         "Bacia", "SubBacia", "Entidade",
