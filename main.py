@@ -24,9 +24,8 @@
 
 import os
 import argparse
-import requests
-import json
-from datetime import datetime
+from datetime import datetime, timedelta
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from database import *
@@ -143,7 +142,8 @@ def prepare_rain_collection_job(hidro, stations_code):
         (start, end), = hidro.cursor.fetchall()
         start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
         if end is None:
-            end = datetime.today()
+            end = datetime.today() - timedelta(days=1)
+            end = end.replace(hour=0, minute=0, second=0, microsecond=0)
         else:
             end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
         total_years = end.year - start.year
