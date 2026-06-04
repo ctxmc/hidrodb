@@ -153,7 +153,7 @@ def handle_job(job_data, job_name, token):
     else:
         status = JobStatus.FAILED
         status_label = "Failed"
-    print(f"[JOB {job_name} {job_id}]: {status_label} request for station {station_code} on period ({initial_date})-({final_date})")
+    print(f"\n[JOB {job_name} {job_id}]: {status_label} request for station {station_code} on period ({initial_date})-({final_date})")
     write_queue.put((job_name, job_id, status.value, data, False))
 
 def db_writer():
@@ -191,6 +191,7 @@ def db_writer():
                     case "ResumoDescarga":
                         insert_liquid_desc(hidro_db, batch_buffer["data"])
                 update_jobs(job_name, batch_buffer["jobs"])
+                print(f"[WRITER]: Wrote {len(batch_buffer['data'])} entries on {job_name}")
                 batch_buffer = {"jobs": [], "data": []}
 
         except Exception as e:
