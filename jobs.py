@@ -160,28 +160,35 @@ def db_writer():
     batch_buffer = {"jobs": [], "data": []}
     BATCH_SIZE = 1000
     hidro_db = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+    total_data    = 0
+    total_jobs    = 0
+    total_elapsed = 0
     while True:
         try:
             if write_queue.empty():
                 time.sleep(0.1)
                 continue
-
             job_name, job_id, status, data, stop_signal = write_queue.get()
-
             if stop_signal:
-                write_data(hidro_db, job_name,
-                           batch_buffer["jobs"], batch_buffer["data"])
+                total_elapsed += write_data(hidro_db, job_name,
+                                            batch_buffer["jobs"], batch_buffer["data"])
+                print(f"""Total Data: {total_data}, """
+                      f"""Total Jobs: {total_jobs}, """
+                      f"""Total thread elapsed: {total_elapsed}""")
                 print(f"Finished jobs for {job_name}")
                 break;
-
             batch_buffer["jobs"].append((status, job_id))
             if len(data) > 1:
                 batch_buffer["data"].extend(data)
             if len(batch_buffer["data"]) >= BATCH_SIZE:
-                write_data(hidro_db, job_name,
-                           batch_buffer["jobs"], batch_buffer["data"])
+                total_data    += len(batch_buffer["data"])
+                total_jobs    += len(batch_buffer["jobs"])
+                total_elapsed += write_data(hidro_db, job_name,
+                                            batch_buffer["jobs"], batch_buffer["data"])
+                print(f"""Total Data: {total_data}, """
+                      f"""Total Jobs: {total_jobs}, """
+                      f"""Total thread elapsed: {total_elapsed}""")
                 batch_buffer = {"jobs": [], "data": []}
-
         except Exception as e:
             print(f"[ERROR] db_writer exception: {e}")
 
@@ -195,3 +202,4 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
     update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
     print(f"[WRITER]: Insert {len(hidro_data)} entries on {job_name} in {elapsed_time} seconds")
+    return elapsed_time
