@@ -22,6 +22,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 import requests
 import json
 from datetime import datetime
@@ -40,7 +41,11 @@ def request_hidro_ws(endpoint, headers, params):
         try:
             print(f"Error (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
-            print(f"Error (response): {response}")
+            print(f"Error (response): {response} (status: {response.status_code})")
+        match response.status_code:
+            case 503 | 504:
+                import time;
+                time.sleep(1)
 
 def request_token(client):
     client.cursor.execute("SELECT ID FROM Credentials")
@@ -53,11 +58,14 @@ def request_token(client):
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
-    data = request_hidro_ws(endpoint, headers, {})
-    token           = data.get("items", {}).get("tokenautenticacao")
-    expires_RFC2822 = data.get("items", {}).get("validade")
-    expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-    return [token, expires_ISOND]
+    try:
+        data = request_hidro_ws(endpoint, headers, {})
+        token           = data.get("items", {}).get("tokenautenticacao")
+        expires_RFC2822 = data.get("items", {}).get("validade")
+        expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
+        return [token, expires_ISOND]
+    except Exception as e:
+            print(f"Error (exception): {e}")
 
 def request_basins(token):
     endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
@@ -66,16 +74,15 @@ def request_basins(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        basins = []
-        for item in items:
-            basin = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("codigobacia"),
-                item.get("Nome_Bacia")
-            )
-            basins.append(basin)
-        return basins
+        file_path = f"./json/Bacia.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -87,17 +94,15 @@ def request_sub_basins(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        sub_basins = []
-        for item in items:
-            basin = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("codigosubbacia"),
-                item.get("Bacia_Codigo"),
-                item.get("Sub_Bacia_Nome").replace("'", "''")
-            )
-            sub_basins.append(basin)
-        return sub_basins
+        file_path = f"./json/SubBacia.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -109,17 +114,15 @@ def request_entity(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        entities = []
-        for item in items:
-            item = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("codigoentidade"),
-                item.get("Entidade_Nome"),
-                item.get("Entidade_Sigla")
-            )
-            entities.append(item)
-        return entities
+        file_path = f"./json/Entidade.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -131,18 +134,15 @@ def request_township(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        towns = []
-        for item in items:
-            item = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("Estado_Codigo"),
-                item.get("Municipio_Codigo_IBGE"),
-                item.get("Municipio_Nome").replace("'", "''"),
-                item.get("codigomunicipio")
-            )
-            towns.append(item)
-        return towns
+        file_path = f"./json/Municipio.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -154,19 +154,15 @@ def request_rivers(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        rivers = []
-        for item in items:
-            item = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("codigorio"),
-                item.get("Bacia_Codigo"),
-                item.get("Sub_Bacia_Codigo"),
-                item.get("Nome_Rio").replace("'", "''"),
-                item.get("Rio_Jurisdicao")
-            )
-            rivers.append(item)
-        return rivers
+        file_path = f"./json/Rio.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -178,18 +174,15 @@ def request_states(token):
         "Authorization": f"Bearer {token}"
     }
     try:
-        items  = request_hidro_ws(endpoint, headers, {}).get("items", {})
-        states = []
-        for item in items:
-            item = (
-                item.get("Data_Ultima_Alteracao"),
-                item.get("codigouf"),
-                item.get("Estado_Codigo_IBGE"),
-                item.get("Estado_Sigla"),
-                item.get("Estado_Nome").replace("'", "''")
-            )
-            states.append(item)
-        return states
+        file_path = f"./json/Estado.json"
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return [tuple(item.values()) for item in items]
     except Exception as e:
             print(f"Error (exception): {e}")
             return []
@@ -230,10 +223,47 @@ def request_rain_data(token, station_code, date_start, date_end):
         "Data Final (yyyy-MM-dd)": f"{ymd_end}"
     }
     try:
-        items = request_hidro_ws(endpoint, headers, params).get("items", {})
+        file_path = f"./json/rain/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        items = []
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
         for item in items:
             if (len(item) < 76):
                 return (False, [])
+        return (True, [tuple(item.values()) for item in items])
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return (False, [])
+
+def request_liquid_desc(token, station_code, date_start, date_end):
+    endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_start, _] = date_start.split()
+    [ymd_end, _] = date_end.split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
+        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
+    }
+    try:
+        file_path = f"./json/liquid_desc/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        items = []
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
         return (True, [tuple(item.values()) for item in items])
     except Exception as e:
             print(f"Error (exception): {e}")

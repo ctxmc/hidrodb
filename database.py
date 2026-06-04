@@ -93,7 +93,7 @@ def init_db(db):
     else:
         print(f"{db.type} Database is Initialized.")
 
-def execute_sql_file(db, sql_file_path):
+def execute_sql_file(db, sql_file_path, parameters=None):
     if not os.path.isfile(sql_file_path):
         print(f"Error: {sql_file_path} does not exists")
         return
@@ -101,116 +101,79 @@ def execute_sql_file(db, sql_file_path):
         sql_script = f.read()
     statements = [s.strip() for s in sql_script.split(';') if s.strip()]
     for stmt in statements:
-        db.connection.jconn.createStatement().execute(stmt)
+        db.cursor.execute(stmt, parameters)
 
 def insert_basins(hidro, basins, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, code, name in basins:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            code, name,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
-    cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    Codigo, Nome, DataIns, DataAlt"""
+    basins = [(reg_id+i, 0, 0, 0, 0, *basin, date_insertion)
+              for i, basin in enumerate(basins)]
+    cols = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+    DataAlt, Nome, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", basins)
 
 def insert_sub_basins(hidro, sub_basins, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, code, code_basin, name in sub_basins:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            code_basin, code, name,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
+    sub_basins = [(reg_id+i, 0, 0, 0, 0, *sub_basin, date_insertion)
+                  for i, sub_basin in enumerate(sub_basins)]
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    BaciaCodigo, Codigo, Nome, DataIns, DataAlt"""
+    BaciaCodigo, DataAlt, Nome, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", sub_basins)
 
 def insert_entities(hidro, entities, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, code, name, acronym in entities:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            code, name, acronym,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
+    entities = [(reg_id+i, 0, 0, 0, 0, *entity, date_insertion)
+                for i, entity in enumerate(entities)]
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    Codigo, Nome, Sigla, DataIns, DataAlt"""
+    DataAlt, Nome, Sigla, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", entities)
 
 def insert_towns(hidro, towns, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, state_code, IBGE_code, name, code in towns:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            state_code, code, IBGE_code, name,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
+    towns = [(reg_id+i, 0, 0, 0, 0, *town, date_insertion)
+                for i, town in enumerate(towns)]
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    EstadoCodigo, Codigo, CodigoIBGE, Nome, DataIns, DataAlt"""
+    DataAlt, EstadoCodigo, CodigoIBGE, Nome, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", towns)
 
 def insert_rivers(hidro, rivers, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, code, basin_code, sub_basin_code, name, jurisdiction in rivers:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            basin_code, sub_basin_code,
-            code, name, jurisdiction,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
+    rivers = [(reg_id+i, 0, 0, 0, 0, *river, date_insertion)
+             for i, river in enumerate(rivers)]
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    BaciaCodigo, SubBaciaCodigo, Codigo, Nome, Jurisdicao, DataIns, DataAlt"""
+    BaciaCodigo, DataAlt, Nome, Jurisdicao, SubBaciaCodigo, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rivers)
 
 def insert_states(hidro, states, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
-    items = []
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for date_last_update, code, IBGE_code, acronym, name in states:
-        items.append((
-            reg_id, 0, 0, 0, 0,
-            code, IBGE_code, acronym, name,
-            date_insertion, date_last_update
-        ))
-        reg_id += 1
+    states = [(reg_id+i, 0, 0, 0, 0, *state, date_insertion)
+             for i, state in enumerate(states)]
     cols   = """RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    Codigo, CodigoIBGE, Sigla, Nome, DataIns, DataAlt"""
+     DataAlt, CodigoIBGE, Nome, Sigla, Codigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", states)
 
 def insert_stations(hidro, stations, table):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
@@ -282,8 +245,7 @@ def insert_stations(hidro, stations, table):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
 
-def insert_rain_data(rain_data):
-    hidro = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+def insert_rain_data(hidro, rain_data):
     table = "Chuvas"
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
@@ -297,7 +259,20 @@ def insert_rain_data(rain_data):
     TipoMedicaoChuvas, Total, TotalAnual, TotalAnualstatus, TotalStatus, EstacaoCodigo, DataIns"""
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
-    hidro.close()
+
+def insert_liquid_desc(hidro, liquid_desc_data):
+    table = "ResumoDescarga"
+    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    liquid_desc_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
+                        for i, data in enumerate(liquid_desc_data)]
+    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+    AreaMolhada, Cota, Data, DataAlt, Largura, NivelConsistencia, Profundidade,
+    Vazao, VelMedia, EstacaoCodigo, DataIns"""
+    values = ','.join('?' for _ in cols.split(','))
+    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", liquid_desc_data)
 
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
