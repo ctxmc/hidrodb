@@ -159,6 +159,7 @@ def handle_job(job_data, job_name, token):
 def db_writer():
     batch_buffer = {"jobs": [], "data": []}
     BATCH_SIZE = 1000
+    hidro_db = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
     while True:
         try:
             if write_queue.empty():
@@ -170,12 +171,12 @@ def db_writer():
             if stop_signal:
                 if (len(batch_buffer["jobs"]) > 0):
                     update_jobs(job_name, batch_buffer["jobs"])
-                if (len(batch_buffer["jobs"]) > 1):
+                if (len(batch_buffer["data"]) > 0):
                     match job_name:
                         case "Chuvas":
-                            insert_rain_data(batch_buffer["data"])
+                            insert_rain_data(hidro_db, batch_buffer["data"])
                         case "ResumoDescarga":
-                            insert_liquid_desc(batch_buffer["data"])
+                            insert_liquid_desc(hidro_db, batch_buffer["data"])
                     print(f"[WRITER]: Wrote {len(batch_buffer['data'])} entries on {job_name}")
                 print(f"Finished jobs for {job_name}")
                 break;
@@ -186,9 +187,9 @@ def db_writer():
             if len(batch_buffer["data"]) >= BATCH_SIZE:
                 match job_name:
                     case "Chuvas":
-                        insert_rain_data(batch_buffer["data"])
+                        insert_rain_data(hidro_db, batch_buffer["data"])
                     case "ResumoDescarga":
-                        insert_liquid_desc(batch_buffer["data"])
+                        insert_liquid_desc(hidro_db, batch_buffer["data"])
                 update_jobs(job_name, batch_buffer["jobs"])
                 batch_buffer = {"jobs": [], "data": []}
 
