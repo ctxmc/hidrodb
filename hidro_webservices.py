@@ -41,7 +41,11 @@ def request_hidro_ws(endpoint, headers, params):
         try:
             print(f"Error (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
-            print(f"Error (response): {response}")
+            print(f"Error (response): {response} (status: {response.status_code})")
+        match response.status_code:
+            case 503 | 504:
+                import time;
+                time.sleep(1)
 
 def request_token(client):
     client.cursor.execute("SELECT ID FROM Credentials")
