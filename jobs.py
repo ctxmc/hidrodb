@@ -37,8 +37,8 @@ def check_token(client):
     if (not client.cursor.fetchone()[0]):
         print("No Token present, requesting.")
         token, expires = request_token(client)
-        client.cursor.execute("""INSERT INTO Token (Token, Expires)"""
-                              f"""VALUES ('{token}', '{expires}');""")
+        insert_token = "INSERT INTO Token (Token, Expires) VALUES (?, ?)"
+        client.cursor.execute(insert_token, (token, expires))
         return True
     else:
         client.cursor.execute("SELECT Expires FROM Token")
@@ -123,25 +123,27 @@ def create_jobs(stations_data, table):
     print(f"Created {len(jobs)} jobs for Table {table}")
 
 write_queue = Queue()
+lock = Lock()
 def trigger_job(jobs, job_name):
     print(f"Initiating jobs for {job_name}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
-    MAX_WORKERS=10
-    client = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
+    MAX_WORKERS=1
+    client_db = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         for job in jobs:
-            if (check_token(client)):
-                client.cursor.execute("SELECT Token FROM Token")
-                token = client.cursor.fetchone()[0]
-                executor.submit(handle_job, job, job_name, token)
+            executor.submit(handle_job, job, job_name, client_db)
         executor.shutdown(wait=True)
-    client.close()
+    client_db.close()
     write_queue.put((job_name, None, None, None, True))
     writer.join()
 
-def handle_job(job_data, job_name, token):
+def handle_job(job_data, job_name, client_db):
     job_id, station_code, initial_date, final_date = job_data
+    with lock:
+        check_token(client_db)
+        client_db.cursor.execute("SELECT Token FROM Token")
+        token = client_db.cursor.fetchone()[0]
     match job_name:
         case "Chuvas":
             success, data = request_rain_data(token, station_code, initial_date, final_date)
