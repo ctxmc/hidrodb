@@ -29,7 +29,7 @@ from datetime import datetime
 
 from database import *
 
-def request_hidro_ws(endpoint, headers, params):
+def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
     response = requests.get(f"{url}{endpoint}", headers=headers, params=params)
     if response.ok:
