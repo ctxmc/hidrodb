@@ -65,7 +65,7 @@ def request_token(client):
         expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
         return [token, expires_ISOND]
     except Exception as e:
-            print(f"Error (exception): {e}")
+        print(f"Error (exception): {e}")
 
 def request_basins(token):
     endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
@@ -208,14 +208,14 @@ def request_stations(token, UF):
             print(f"Error (exception): {e}")
             return []
 
-def request_rain_data(token, station_code, date_start, date_end):
+def request_rain_data(token, station_code, initial_date, final_date):
     endpoint = "/EstacoesTelemetricas/HidroSerieChuva/v1"
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = date_start.split()
-    [ymd_end, _] = date_end.split()
+    [ymd_start, _] = initial_date.split()
+    [ymd_end, _] = final_date.split()
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
@@ -240,14 +240,14 @@ def request_rain_data(token, station_code, date_start, date_end):
             print(f"Error (exception): {e}")
             return (False, [])
 
-def request_liquid_desc(token, station_code, date_start, date_end):
+def request_liquid_desc(token, station_code, initial_date, final_date):
     endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = date_start.split()
-    [ymd_end, _] = date_end.split()
+    [ymd_start, _] = initial_date.split()
+    [ymd_end,   _] = final_date.split()
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
