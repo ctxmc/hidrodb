@@ -45,6 +45,8 @@ class DatabaseType(StrEnum):
 class JobStatus(Enum):
     PENDING   = auto()
     FAILED    = auto()
+    INVALID   = auto()
+    CORRUPTED = auto()
     COMPLETED = auto()
 
 class DatabaseConnection:
