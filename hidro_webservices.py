@@ -200,7 +200,7 @@ def request_stations(token, UF):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return [tuple(item.values()) for item in items]
