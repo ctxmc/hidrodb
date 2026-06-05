@@ -233,12 +233,12 @@ def request_rain_data(token, station_code, initial_date, final_date):
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         for item in items:
-            if (len(item) < 76):
-                return (False, [])
-        return (True, [tuple(item.values()) for item in items])
+            if (len(item) != 76):
+                return (JobStatus.INVALID, [])
+        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
     except Exception as e:
             print(f"Error (exception): {e}")
-            return (False, [])
+            return (JobStatus.FAILED, [])
 
 def request_liquid_desc(token, station_code, initial_date, final_date):
     endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
@@ -264,7 +264,10 @@ def request_liquid_desc(token, station_code, initial_date, final_date):
             items = request_hidro_ws(endpoint, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
-        return (True, [tuple(item.values()) for item in items])
+        for item in items:
+            if (len(item) != 10):
+                return (JobStatus.INVALID, [])
+        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
     except Exception as e:
             print(f"Error (exception): {e}")
-            return (False, [])
+            return (JobStatus.FAILED, [])

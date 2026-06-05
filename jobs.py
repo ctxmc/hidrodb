@@ -153,16 +153,18 @@ def handle_job(job_data, job_name, client_db):
         token = client_db.cursor.fetchone()[0]
     match job_name:
         case "Chuvas":
-            success, data = request_rain_data(token, station_code, initial_date, final_date)
+            status, data = request_rain_data(token, station_code, initial_date, final_date)
         case "ResumoDescarga":
-            success, data = request_liquid_desc(token, station_code, initial_date, final_date)
-    if success:
-        status = JobStatus.COMPLETED
-        status_label = "Completed"
-    else:
-        status = JobStatus.FAILED
-        status_label = "Failed"
-    print(f"\n[JOB {job_name} {job_id}]: {status_label} request for station {station_code} on period ({initial_date})-({final_date})")
+            status, data = request_liquid_desc(token, station_code, initial_date, final_date)
+    match status:
+        case JobStatus.COMPLETED:
+            status_label = "Completed"
+        case JobStatus.FAILED:
+            status_label = "Failed"
+        case JobStatus.INVALID:
+            status_label = "Invalid"
+    print(f"""\n[JOB {job_name} {job_id}]: {status_label} request for station {station_code} """
+          f"""on period ({initial_date})-({final_date})""")
     write_queue.put((job_name, job_id, status.value, data, False))
 
 def db_writer():
