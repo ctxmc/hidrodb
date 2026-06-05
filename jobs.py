@@ -74,6 +74,11 @@ def check_job(job_name):
                     "SELECT Codigo, PeriodoDescLiquidaInicio, PeriodoDescLiquidaFim "
                     "FROM Estacao WHERE PeriodoDescLiquidaInicio IS NOT NULL"
                 )
+            case "Sedimentos":
+                sql = (
+                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
+                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
+                )
             case _:
                 print(f"TODO: {job_name}:")
                 return
@@ -130,7 +135,6 @@ def create_jobs(stations_data, table):
     print(f"Created {len(jobs)} jobs for Table {table}")
 
 write_queue = Queue()
-lock = Lock()
 def trigger_job(jobs, job_name):
     print(f"Initiating jobs for {job_name}")
     writer = Thread(target=db_writer, daemon=True)
@@ -145,6 +149,7 @@ def trigger_job(jobs, job_name):
     write_queue.put((job_name, None, None, None, True))
     writer.join()
 
+lock = Lock()
 def handle_job(job_data, job_name, client_db):
     job_id, station_code, initial_date, final_date = job_data
     with lock:
@@ -156,6 +161,8 @@ def handle_job(job_data, job_name, client_db):
             status, data = request_rain_data(token, station_code, initial_date, final_date)
         case "ResumoDescarga":
             status, data = request_liquid_desc(token, station_code, initial_date, final_date)
+        case "Sedimentos":
+            status, data = request_sediments(token, station_code, initial_date, final_date)
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -211,6 +218,8 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_rain_data(hidro_db, job_name, hidro_data)
             case "ResumoDescarga":
                 insert_liquid_desc(hidro_db, job_name, hidro_data)
+            case "Sedimentos":
+                insert_sediments(hidro_db, job_name, hidro_data)
     update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
     print(f"[WRITER]: Insert {len(hidro_data)} entries on {job_name} in {elapsed_time} seconds")

@@ -98,7 +98,10 @@ def main():
     for table in tables:
         check_table(hidro, client, table)
 
-    jobs = ["Chuvas", "ResumoDescarga"]
+    jobs = [
+        "Chuvas", "ResumoDescarga",
+        "Sedimentos"
+    ]
     for job in jobs:
         check_job(job)
 

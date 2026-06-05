@@ -274,6 +274,20 @@ def insert_liquid_desc(hidro, table, liquid_desc_data):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", liquid_desc_data)
 
+def insert_sediments(hidro_db, table, hidro_data):
+    hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro_db.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    hidro_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
+                        for i, data in enumerate(hidro_data)]
+    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+    AreaMolhada, ConcentracaoMatSuspensao, ConcentracaoDaAmostraExtra, CondutividadeEletrica,
+    Cota, CotaDeMedicao, Data, DataLiq, DataAlt, Largura, NivelConsistencia, NumMedicao,
+    NumMedicaoLiq, Observacoes, TemperaturaDaAgua, Vazao, Velmedia, EstacaoCodigo, DataIns"""
+    values = ','.join('?' for _ in cols.split(','))
+    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
+
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)
