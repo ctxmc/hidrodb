@@ -196,11 +196,12 @@ def db_writer():
 
 def write_data(hidro_db, job_name, job_data, hidro_data):
     start_time = time.perf_counter()
-    match job_name:
-        case "Chuvas":
-            insert_rain_data(hidro_db, hidro_data)
-        case "ResumoDescarga":
-            insert_liquid_desc(hidro_db, hidro_data)
+    if len(hidro_data) > 1:
+        match job_name:
+            case "Chuvas":
+                insert_rain_data(hidro_db, job_name, hidro_data)
+            case "ResumoDescarga":
+                insert_liquid_desc(hidro_db, job_name, hidro_data)
     update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
     print(f"[WRITER]: Insert {len(hidro_data)} entries on {job_name} in {elapsed_time} seconds")

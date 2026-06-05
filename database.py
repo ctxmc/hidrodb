@@ -245,8 +245,7 @@ def insert_stations(hidro, stations, table):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", items)
 
-def insert_rain_data(hidro, rain_data):
-    table = "Chuvas"
+def insert_rain_data(hidro, table, rain_data):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
@@ -260,8 +259,7 @@ def insert_rain_data(hidro, rain_data):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
 
-def insert_liquid_desc(hidro, liquid_desc_data):
-    table = "ResumoDescarga"
+def insert_liquid_desc(hidro, table, liquid_desc_data):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
