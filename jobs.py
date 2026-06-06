@@ -84,6 +84,25 @@ def check_job(job_name):
                     "SELECT Codigo, PeriodoQualAguaInicio, PeriodoQualAguaFim "
                     "FROM Estacao WHERE PeriodoQualAguaInicio IS NOT NULL"
                 )
+            case "Cotas":
+                sql = ("""
+                SELECT 
+                    Codigo, 
+                    MIN(PeriodoInicio) AS PeriodoInicio, 
+                    CASE 
+                        WHEN MAX(CASE WHEN PeriodoFim IS NULL THEN 1 ELSE 0 END) = 1 
+                        THEN NULL 
+                        ELSE MAX(PeriodoFim) 
+                    END AS PeriodoFim 
+                FROM ( 
+                    SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim 
+                    FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL 
+                    UNION 
+                    SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim 
+                    FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL 
+                ) combined 
+                GROUP BY Codigo 
+                """)
             case _:
                 print(f"TODO: {job_name}:")
                 return
@@ -170,6 +189,8 @@ def handle_job(job_data, job_name, client_db):
             status, data = request_sediments(token, station_code, initial_date, final_date)
         case "QualAgua":
             status, data = request_qa(token, station_code, initial_date, final_date)
+        case "Cotas":
+            status, data = request_stage(token, station_code, initial_date, final_date)
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -235,6 +256,8 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                     qa_status.extend(item['status'])
                 insert_qa(hidro_db, job_name, qa_data)
                 insert_qa_status(hidro_db, job_name, qa_status)
+            case "Cotas":
+                insert_stage(hidro_db, job_name, hidro_data)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
