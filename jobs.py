@@ -228,7 +228,13 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
             case "Sedimentos":
                 insert_sediments(hidro_db, job_name, hidro_data)
             case "QualAgua":
-                insert_qa(hidro_db, job_name, hidro_data)
+                qa_data   = []
+                qa_status = []
+                for item in hidro_data:
+                    qa_data.extend(item['data'])
+                    qa_status.extend(item['status'])
+                insert_qa(hidro_db, job_name, qa_data)
+                insert_qa_status(hidro_db, job_name, qa_status)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time

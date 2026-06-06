@@ -289,16 +289,13 @@ def insert_sediments(hidro_db, table, hidro_data):
     hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
 
 def insert_qa(hidro_db, table, hidro_data):
-    qa_data   = []
-    for item in hidro_data:
-        qa_data.extend(item['data'])
     hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro_db.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    qa_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
-               for i, data in enumerate(qa_data)]
-    data_cols = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
+    hidro_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
+               for i, data in enumerate(hidro_data)]
+    cols = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     n245T, n245TP, n246Triclorofenol, Acido24Diclorofenoxiacetico, Aldrin, AzinfosEtil,
     Benzeno, BenzoAPireno, BHC, BifenilasPolicloradas, Escherichia, Carbaril, Clordano,
     DDEPP, DDT, Demeton, Diazinon, Dieldrin, DodecacloroNonacloro, DySystonDisulfton,
@@ -325,8 +322,21 @@ def insert_qa(hidro_db, table, hidro_data):
     Sulfatos, Sulfetos, UranioTotal, Vanadio, Zinco, n11Dicloroeteno, n12Dicloroetano,
     DQO, Choveu, Data, DataAlt, NivelConsistencia, NumMedicao, PosHorizColeta, PosVertColeta,
     Profundidade, EstacaoCodigo, DataIns"""
-    data_values = ','.join('?' for _ in data_cols.split(','))
-    hidro_db.cursor.executemany(f"INSERT INTO {table} ({data_cols}) VALUES ({data_values})", qa_data)
+    values = ','.join('?' for _ in cols.split(','))
+    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
+
+def insert_qa_status(hidro_db, table, hidro_data):
+    status_sequence = ", ".join(f"{table}{idx+1:03d}status" for idx in range(len(hidro_data[0]) - 1))
+    table = f"{table}Status"
+    hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+    reg_id = hidro_db.cursor.fetchone()[0]
+    reg_id = 1 if reg_id is None else int(reg_id)
+    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    hidro_data = [(reg_id+i, 0, *data, date_insertion)
+                  for i, data in enumerate(hidro_data)]
+    cols = f"""RegistroID, Removido, {status_sequence}, DataAlt, DataIns"""
+    values = ','.join('?' for _ in cols.split(','))
+    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
 
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
