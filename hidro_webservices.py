@@ -333,6 +333,13 @@ def request_qa(token, station_code, initial_date, final_date):
                 data_keys = [k for k in item if not k.endswith("_Status")]
                 qa_status.append({k: item[k] for k in status_keys})
                 qa_data.append({k: item[k] for k in data_keys})
+            qa_status = [
+                {k: d[k] for k in
+                 sorted([k for k in d if k.split('_')[0].isdigit()],
+                        key=lambda x: int(x.split('_')[0])) +
+                 [k for k in d if not k.split('_')[0].isdigit()]}
+                for d in qa_status
+            ]
             qa_data   = [tuple(item.values()) for item in qa_data]
             qa_status = [tuple(item.values()) for item in qa_status]
             return (JobStatus.COMPLETED, [{"data": qa_data, "status": qa_status}])
