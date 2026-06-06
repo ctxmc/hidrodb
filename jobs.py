@@ -79,6 +79,11 @@ def check_job(job_name):
                     "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
+            case "QualAgua":
+                sql = (
+                    "SELECT Codigo, PeriodoQualAguaInicio, PeriodoQualAguaFim "
+                    "FROM Estacao WHERE PeriodoQualAguaInicio IS NOT NULL"
+                )
             case _:
                 print(f"TODO: {job_name}:")
                 return
@@ -163,6 +168,8 @@ def handle_job(job_data, job_name, client_db):
             status, data = request_liquid_desc(token, station_code, initial_date, final_date)
         case "Sedimentos":
             status, data = request_sediments(token, station_code, initial_date, final_date)
+        case "QualAgua":
+            status, data = request_qa(token, station_code, initial_date, final_date)
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -220,6 +227,8 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_liquid_desc(hidro_db, job_name, hidro_data)
             case "Sedimentos":
                 insert_sediments(hidro_db, job_name, hidro_data)
+            case "QualAgua":
+                insert_qa(hidro_db, job_name, hidro_data)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time

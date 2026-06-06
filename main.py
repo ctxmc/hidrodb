@@ -100,7 +100,7 @@ def main():
 
     jobs = [
         "Chuvas", "ResumoDescarga",
-        "Sedimentos"
+        "Sedimentos", "QualAgua"
     ]
     for job in jobs:
         check_job(job)
