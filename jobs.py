@@ -175,9 +175,9 @@ def handle_job(job_data, job_name, client_db):
     write_queue.put((job_name, job_id, status.value, data, False))
 
 def db_writer():
-    batch_buffer = {"jobs": [], "data": []}
-    BATCH_SIZE = 1000
     hidro_db = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+    batch_buffer = {"jobs": [], "data": []}
+    BATCH_SIZE   = 10000
     total_data    = 0
     total_jobs    = 0
     total_elapsed = 0
@@ -196,7 +196,7 @@ def db_writer():
                 print(f"Finished jobs for {job_name}")
                 break;
             batch_buffer["jobs"].append((status, job_id))
-            if len(data) > 1:
+            if len(data) > 0:
                 batch_buffer["data"].extend(data)
             if len(batch_buffer["data"]) >= BATCH_SIZE:
                 total_data    += len(batch_buffer["data"])
@@ -212,7 +212,7 @@ def db_writer():
 
 def write_data(hidro_db, job_name, job_data, hidro_data):
     start_time = time.perf_counter()
-    if len(hidro_data) > 1:
+    if len(hidro_data) > 0:
         match job_name:
             case "Chuvas":
                 insert_rain_data(hidro_db, job_name, hidro_data)
@@ -220,7 +220,8 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_liquid_desc(hidro_db, job_name, hidro_data)
             case "Sedimentos":
                 insert_sediments(hidro_db, job_name, hidro_data)
-    update_jobs(job_name, job_data)
+    if len(job_data) > 0:
+        update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
     print(f"[WRITER]: Insert {len(hidro_data)} entries on {job_name} in {elapsed_time} seconds")
     return elapsed_time
