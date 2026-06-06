@@ -325,7 +325,18 @@ def request_qa(token, station_code, initial_date, final_date):
             items = request_hidro_ws(endpoint, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
-        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
+        if (len(items) > 0):
+            qa_status = []
+            qa_data   = []
+            for item in items:
+                status_keys = [k for k in item if k.endswith("_Status") or k == "Data_Ultima_Alteracao"]
+                data_keys = [k for k in item if not k.endswith("_Status")]
+                qa_status.append({k: item[k] for k in status_keys})
+                qa_data.append({k: item[k] for k in data_keys})
+            qa_data   = [tuple(item.values()) for item in qa_data]
+            qa_status = [tuple(item.values()) for item in qa_status]
+            return (JobStatus.COMPLETED, [{"data": qa_data, "status": qa_status}])
+        return (JobStatus.COMPLETED, [])
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
