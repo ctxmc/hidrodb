@@ -240,7 +240,7 @@ def request_rain_data(token, station_code, initial_date, final_date):
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
 
-def request_liquid_desc(token, station_code, initial_date, final_date):
+def request_resume_discharge(token, station_code, initial_date, final_date):
     endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
     headers = {
         "accept":        "*/*",

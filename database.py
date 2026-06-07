@@ -261,7 +261,7 @@ def insert_rain_data(hidro, table, rain_data):
     values = ','.join('?' for _ in cols.split(','))
     hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
 
-def insert_liquid_desc(hidro, table, liquid_desc_data):
+def insert_resume_discharge(hidro, table, liquid_desc_data):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]
     reg_id = 1 if reg_id is None else int(reg_id)
@@ -294,7 +294,7 @@ def insert_qa(hidro_db, table, hidro_data):
     reg_id = 1 if reg_id is None else int(reg_id)
     date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     hidro_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
-               for i, data in enumerate(hidro_data)]
+                  for i, data in enumerate(hidro_data)]
     cols = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
     n245T, n245TP, n246Triclorofenol, Acido24Diclorofenoxiacetico, Aldrin, AzinfosEtil,
     Benzeno, BenzoAPireno, BHC, BifenilasPolicloradas, Escherichia, Carbaril, Clordano,
