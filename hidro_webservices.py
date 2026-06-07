@@ -376,3 +376,35 @@ def request_stage(token, station_code, initial_date, final_date):
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
+
+def request_discharge_flow(token, station_code, initial_date, final_date):
+    endpoint = "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1"
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_start, _] = initial_date.split()
+    [ymd_end,   _] = final_date.split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
+        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
+    }
+    try:
+        file_path = f"./json/discharge/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        items = []
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        for item in items:
+            if (len(item) != 18):
+                return (JobStatus.INVALID, [])
+        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
+    except Exception as e:
+            print(f"Error (exception): {e}")
+            return (JobStatus.FAILED, [])

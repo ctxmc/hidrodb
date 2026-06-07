@@ -69,7 +69,7 @@ def check_job(job_name):
                     "SELECT Codigo, PeriodoRegistradorChuvaInicio, PeriodoRegistradorChuvaFim "
                     "FROM Estacao WHERE PeriodoRegistradorChuvaInicio IS NOT NULL"
                 )
-            case "ResumoDescarga":
+            case "ResumoDescarga" | "CurvaDescarga":
                 sql = (
                     "SELECT Codigo, PeriodoDescLiquidaInicio, PeriodoDescLiquidaFim "
                     "FROM Estacao WHERE PeriodoDescLiquidaInicio IS NOT NULL"
@@ -191,6 +191,8 @@ def handle_job(job_data, job_name, client_db):
             status, data = request_qa(token, station_code, initial_date, final_date)
         case "Cotas":
             status, data = request_stage(token, station_code, initial_date, final_date)
+        case "CurvaDescarga":
+            status, data = request_discharge_flow(token, station_code, initial_date, final_date)
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -248,6 +250,10 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_liquid_desc(hidro_db, job_name, hidro_data)
             case "Sedimentos":
                 insert_sediments(hidro_db, job_name, hidro_data)
+            case "Cotas":
+                insert_stage(hidro_db, job_name, hidro_data)
+            case "CurvaDescarga":
+                insert_discharge_flow(hidro_db, job_name, hidro_data)
             case "QualAgua":
                 qa_data   = []
                 qa_status = []
@@ -256,8 +262,6 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                     qa_status.extend(item['status'])
                 insert_qa(hidro_db, job_name, qa_data)
                 insert_qa_status(hidro_db, job_name, qa_status)
-            case "Cotas":
-                insert_stage(hidro_db, job_name, hidro_data)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
