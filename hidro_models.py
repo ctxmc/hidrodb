@@ -23,6 +23,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from typing import Dict
+from datetime import datetime
+
+class AccessEntrie():
+    def __init__(self, reg_id: int, **kwargs):
+        self.fields = {
+            "RegistroID":        reg_id,
+            "Importado":         0,
+            "Temporario":        0,
+            "Removido":          0,
+            "ImportadoRepetido": 0,
+            "DataIns":           datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        self.fields.update(kwargs)
 
 class Basin:
     def __init__(self, json: dict):
