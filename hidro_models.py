@@ -37,6 +37,16 @@ class AccessEntrie():
         }
         self.fields.update(kwargs)
 
+    def keys(self) -> str:
+        return ", ".join(self.fields.keys())
+
+    def data(self) -> tuple:
+        return tuple(self.fields.values())
+
+    def values(self) -> str:
+        return ','.join('?' for _ in self.keys().split(','))
+
+
 class Basin:
     def __init__(self, json: dict):
         self.fields = {
