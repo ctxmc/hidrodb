@@ -22,3 +22,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import Dict
+
+class Basin:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Nome":    json.get("Nome_Bacia"),
+            "Codigo":  json.get("codigobacia"),
+            "DataAlt": json.get("Data_Ultima_Alteracao")
+        }
