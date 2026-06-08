@@ -39,8 +39,8 @@ def check_table(hidro, client, table):
             token = client.cursor.fetchone()[0]
             match table:
                 case "Bacia":
-                    basins = request_basins(token)
-                    insert_basins(hidro, basins, table)
+                    data = [Basin(item) for item in request_basins(token)]
+                    insert_hidro(hidro, table, data)
                 case "SubBacia":
                     sub_basins = request_sub_basins(token)
                     insert_sub_basins(hidro, sub_basins, table)
