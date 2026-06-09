@@ -166,21 +166,6 @@ def insert_qa_status(hidro_db, table, hidro_data):
     values = ','.join('?' for _ in cols.split(','))
     hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
 
-def insert_stage(hidro_db, table, hidro_data):
-    hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro_db.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    hidro_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
-                  for i, data in enumerate(hidro_data)]
-    cotas_sequence = ", ".join(f"Cota{i:02d}{suffix}" for i in range(1, 32) for suffix in ("", "Status"))
-    cols = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido, {cotas_sequence},
-    Data, DataAlt, DiaMaxima, DiaMinima, Maxima, MaximaStatus, Media, MediaAnual, MediaAnualStatus,
-    MediaStatus, MediaDiaria, Minima, MinimaStatus, TipoMedicaoCotas, EstacaoCodigo, NivelConsistencia,
-    DataIns"""
-    values = ','.join('?' for _ in cols.split(','))
-    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
-
 def insert_discharge_flow(hidro, table, hidro_data):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro.cursor.fetchone()[0]

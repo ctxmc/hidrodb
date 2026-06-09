@@ -42,6 +42,7 @@ class HidroEndpoint(StrEnum):
     RAIN              = "/EstacoesTelemetricas/HidroSerieChuva/v1"
     DISCHARGE_SUMMARY = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
     SEDIMENTS         = "/EstacoesTelemetricas/HidroSerieSedimentos/v1"
+    STAGE             = "/EstacoesTelemetricas/HidroSerieCotas/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -269,7 +270,6 @@ def request_qa(token, station_code, initial_date, final_date):
             return (JobStatus.FAILED, [])
 
 def request_stage(token, station_code, initial_date, final_date):
-    endpoint = "/EstacoesTelemetricas/HidroSerieCotas/v1"
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -289,10 +289,10 @@ def request_stage(token, station_code, initial_date, final_date):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            items = request_hidro_ws(HidroEndpoint.STAGE, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
-        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
+        return (JobStatus.COMPLETED, items)
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])

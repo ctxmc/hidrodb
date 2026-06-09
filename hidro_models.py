@@ -245,3 +245,28 @@ class Sediments:
             "Velmedia":                   json.get("Vel_Media"),
             "EstacaoCodigo":              json.get("codigoestacao")
         }
+
+
+class Stage:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Data":              json.get("Data_Hora_Dado"),
+            "DataAlt":           json.get("Data_Ultima_Alteracao"),
+            "DiaMaxima":         json.get("Dia_Maxima"),
+            "DiaMinima":         json.get("Dia_Minima"),
+            "Maxima":            json.get("Maxima"),
+            "MaximaStatus":      json.get("Maxima_Status"),
+            "Media":             json.get("Media"),
+            "MediaAnual":        json.get("Media_Anual"),
+            "MediaAnualStatus":  json.get("Media_Anual_Status"),
+            "MediaStatus":       json.get("Media_Status"),
+            "MediaDiaria":       json.get("Mediadiaria"),
+            "Minima":            json.get("Minima"),
+            "MinimaStatus":      json.get("Minima_Status"),
+            "TipoMedicaoCotas":  json.get("Tipo_Medicao_Cotas"),
+            "EstacaoCodigo":     json.get("codigoestacao"),
+            "NivelConsistencia": json.get("nivelconsistencia")
+        }
+        for i in range(1, 32):
+            self.fields[f"Cota{i:02d}"]       = json.get(f"Cota_{i:02d}")
+            self.fields[f"Cota{i:02d}Status"] = json.get(f"Cota_{i:02d}_Status")
