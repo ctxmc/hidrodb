@@ -74,3 +74,14 @@ class Entity:
             "Codigo":  json.get("codigoentidade"),
             "DataAlt": json.get("Data_Ultima_Alteracao")
         }
+
+
+class Township:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Nome":         json.get("Municipio_Nome"),
+            "Codigo":       json.get("codigomunicipio"),
+            "DataAlt":      json.get("Data_Ultima_Alteracao"),
+            "CodigoIBGE":   json.get("Municipio_Codigo_IBGE"),
+            "EstadoCodigo": json.get("Estado_Codigo")
+        }

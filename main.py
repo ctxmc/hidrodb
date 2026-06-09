@@ -48,8 +48,8 @@ def check_table(hidro, client, table):
                     data = [Entity(item) for item in request_entity(token)]
                     insert_hidro(hidro, table, data)
                 case "Municipio":
-                    towns = request_township(token)
-                    insert_towns(hidro, towns, table)
+                    data = [Township(item) for item in request_township(token)]
+                    insert_hidro(hidro, table, data)
                 case "Rio":
                     rivers = request_rivers(token)
                     insert_rivers(hidro, rivers, table)
