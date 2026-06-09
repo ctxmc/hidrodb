@@ -54,8 +54,8 @@ def check_table(hidro, client, table):
                     data = [River(item) for item in request_rivers(token)]
                     insert_hidro(hidro, table, data)
                 case "Estado":
-                    states = request_states(token)
-                    insert_states(hidro, states, table)
+                    data = [State(item) for item in request_states(token)]
+                    insert_hidro(hidro, table, data)
                 case "Estacao":
                     hidro.cursor.execute("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL")
                     for (UF,) in hidro.cursor.fetchall():

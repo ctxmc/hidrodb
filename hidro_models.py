@@ -97,3 +97,14 @@ class River:
             "BaciaCodigo":    json.get("Bacia_Codigo"),
             "SubBaciaCodigo": json.get("Sub_Bacia_Codigo")
         }
+
+
+class State:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Nome":           json.get("Estado_Nome"),
+            "Sigla":          json.get("Estado_Sigla"),
+            "Codigo":         json.get("codigouf"),
+            "DataAlt":        json.get("Data_Ultima_Alteracao"),
+            "CodigoIBGE":     json.get("Estado_Codigo_IBGE")
+        }
