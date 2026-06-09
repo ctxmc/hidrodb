@@ -39,6 +39,7 @@ class HidroEndpoint(StrEnum):
     RIVER     = "/EstacoesTelemetricas/HidroRio/v1"
     STATE     = "/EstacoesTelemetricas/HidroUF/v1"
     STATION   = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
+    RAIN      = "/EstacoesTelemetricas/HidroSerieChuva/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -63,14 +64,13 @@ def request_token(client):
     client_id = client.cursor.fetchone()[0]
     client.cursor.execute("SELECT Password FROM Credentials")
     client_password = client.cursor.fetchone()[0]
-    endpoint = "/EstacoesTelemetricas/OAUth/v1"
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
     try:
-        data = request_hidro_ws(endpoint, headers, {})
+        data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
         token           = data.get("items", {}).get("tokenautenticacao")
         expires_RFC2822 = data.get("items", {}).get("validade")
         expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
@@ -110,7 +110,6 @@ def request_data(token, endpoint):
             return []
 
 def request_stations(token, UF):
-    endpoint  = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -122,7 +121,7 @@ def request_stations(token, UF):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            items = request_hidro_ws(HidroEndpoint.STATION, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return items
@@ -131,7 +130,6 @@ def request_stations(token, UF):
             return []
 
 def request_rain_data(token, station_code, initial_date, final_date):
-    endpoint = "/EstacoesTelemetricas/HidroSerieChuva/v1"
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -151,13 +149,13 @@ def request_rain_data(token, station_code, initial_date, final_date):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            items = request_hidro_ws(HidroEndpoint.RAIN, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         for item in items:
             if (len(item) != 76):
                 return (JobStatus.INVALID, [])
-        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
+        return (JobStatus.COMPLETED, items)
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])

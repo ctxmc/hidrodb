@@ -26,9 +26,11 @@ import jaydebeapi
 import jpype
 import msaccessdb
 import os
-from enum import Enum, StrEnum, auto
+from enum import StrEnum, Enum, auto
 import getpass
 from datetime import datetime
+
+from hidro_models import *
 
 jpype.startJVM()
 jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
@@ -113,20 +115,6 @@ def insert_hidro(hidro, table, collection):
     data = [entry.data() for entry in entries]
     insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
     hidro.cursor.executemany(insert_sql, data)
-
-def insert_rain_data(hidro, table, rain_data):
-    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    chuva_sequence = ", ".join(f"Chuva{i:02d}{suffix}" for i in range(1, 32) for suffix in ("", "Status"))
-    rain_data = [(reg_id+i, 0, 0, 0, 0, *rain, date_insertion)
-             for i, rain in enumerate(rain_data)]
-    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido, {chuva_sequence},
-    Data, DataAlt, DiaMaxima, Maxima, MaximaStatus, NivelConsistencia, NumDiasDeChuva, NumDiasDeChuvaStatus,
-    TipoMedicaoChuvas, Total, TotalAnual, TotalAnualstatus, TotalStatus, EstacaoCodigo, DataIns"""
-    values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", rain_data)
 
 def insert_resume_discharge(hidro, table, liquid_desc_data):
     hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")

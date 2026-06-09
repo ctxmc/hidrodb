@@ -183,6 +183,8 @@ def handle_job(job_data, job_name, client_db):
     match job_name:
         case "Chuvas":
             status, data = request_rain_data(token, station_code, initial_date, final_date)
+            if status == JobStatus.COMPLETED:
+                data = [Rain(item) for item in data]
         case "ResumoDescarga":
             status, data = request_resume_discharge(token, station_code, initial_date, final_date)
         case "Sedimentos":
@@ -245,7 +247,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
     if len(hidro_data) > 0:
         match job_name:
             case "Chuvas":
-                insert_rain_data(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "ResumoDescarga":
                 insert_resume_discharge(hidro_db, job_name, hidro_data)
             case "Sedimentos":

@@ -57,7 +57,7 @@ def check_table(hidro, client, table):
                     for (UF,) in hidro.cursor.fetchall():
                         if (check_token(client)):
                             client.cursor.execute("SELECT Token FROM Token")
-                            token       = client.cursor.fetchone()[0]
+                            token = client.cursor.fetchone()[0]
                             data.extend([Station(item) for item in request_stations(token, UF)])
                 case _:
                     print(f"TODO: {table}")

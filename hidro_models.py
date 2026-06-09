@@ -155,7 +155,7 @@ class Station:
             "RioCodigo":                     json.get("Rio_Codigo"),
             # "?":                           json.get("Rio_Nome"),
             "SubBaciaCodigo":                json.get("Sub_Bacia_Codigo"),
-            # "":                            json.get("Sub_Bacia_Nome"),
+            # "?":                           json.get("Sub_Bacia_Nome"),
             # "TipoEstacao":                 json.get("Tipo_Estacao"), # TODO
             "TipoEstacaoClimatologica":      json.get("Tipo_Estacao_Climatologica"),
             "TipoEstacaoDescLiquida":        json.get("Tipo_Estacao_Desc_Liquida"),
@@ -182,3 +182,26 @@ class Station:
             "BaciaCodigo":                   json.get("codigobacia"),
             "Codigo":                        json.get("codigoestacao")
         }
+
+
+class Rain:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Data":                 json.get("Data_Hora_Dado"),
+            "DataAlt":              json.get("Data_Ultima_Alteracao"),
+            "DiaMaxima":            json.get("Dia_Maxima"),
+            "Maxima":               json.get("Maxima"),
+            "MaximaStatus":         json.get("Maxima_Status"),
+            "NivelConsistencia":    json.get("Nivel_Consistencia"),
+            "NumDiasDeChuva":       json.get("Numero_Dias_de_Chuva"),
+            "NumDiasDeChuvaStatus": json.get("Numero_Dias_de_Chuva_Status"),
+            "TipoMedicaoChuvas":    json.get("Tipo_Medicao_Chuvas"),
+            "Total":                json.get("Total"),
+            "TotalAnual":           json.get("Total_Anual"),
+            "TotalAnualStatus":     json.get("Total_Anual_Status"),
+            "TotalStatus":          json.get("Total_Status"),
+            "EstacaoCodigo":        json.get("codigoestacao")
+        }
+        for i in range(1, 32):
+            self.fields[f"Chuva{i:02d}"]       = json.get(f"Chuva_{i:02d}")
+            self.fields[f"Chuva{i:02d}Status"] = json.get(f"Chuva_{i:02d}_Status")
