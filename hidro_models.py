@@ -64,3 +64,13 @@ class SubBasin:
             "DataAlt":     json.get("Data_Ultima_Alteracao"),
             "BaciaCodigo": json.get("Bacia_Codigo")
         }
+
+
+class Entity:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Nome":    json.get("Entidade_Nome"),
+            "Sigla":   json.get("Entidade_Sigla"),
+            "Codigo":  json.get("codigoentidade"),
+            "DataAlt": json.get("Data_Ultima_Alteracao")
+        }

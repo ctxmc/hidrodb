@@ -45,8 +45,8 @@ def check_table(hidro, client, table):
                     data = [SubBasin(item) for item in request_sub_basins(token)]
                     insert_hidro(hidro, table, data)
                 case "Entidade":
-                    entities = request_entity(token)
-                    insert_entities(hidro, entities, table)
+                    data = [Entity(item) for item in request_entity(token)]
+                    insert_hidro(hidro, table, data)
                 case "Municipio":
                     towns = request_township(token)
                     insert_towns(hidro, towns, table)
