@@ -270,3 +270,27 @@ class Stage:
         for i in range(1, 32):
             self.fields[f"Cota{i:02d}"]       = json.get(f"Cota_{i:02d}")
             self.fields[f"Cota{i:02d}Status"] = json.get(f"Cota_{i:02d}_Status")
+
+
+class DischargeFlow:
+    def __init__(self, json: dict):
+        self.fields = {
+            "CoefA":                 json.get("Coef_a"),
+            "CoefH0":                json.get("Coef_h0"),
+            "CoefN":                 json.get("Coef_n"),
+            "CoefA0":                json.get("Coefa_0"),
+            "CoefA1":                json.get("Coefa_1"),
+            "CoefA2":                json.get("Coefa_2"),
+            "CoefA3":                json.get("Coefa_3"),
+            "CotaMaxima":            json.get("Cota_Maxima"),
+            "CotaMinima":            json.get("Cota_Minima"),
+            "DataAlt":               json.get("Data_Ultima_Alteracao"),
+            "NivelConsistencia":     json.get("Nivel_Consistencia"),
+            "NumeroCurva":           json.get("Numero_Curva"),
+            "PeriodovalidadeFim":    json.get("Periodo_Validade_Fim"),
+            "PeriodovalidadeInicio": json.get("Periodo_Validade_Inicio"),
+            "TabelaPassoCota":       json.get("Tabela_Passo_Cota"),
+            "TipoCurva":             json.get("Tipo_Curva"),
+            "TipoEquacao":           json.get("Tipo_Equacao"),
+            "EstacaoCodigo":         json.get("codigoestacao")
+        }

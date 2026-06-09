@@ -201,6 +201,8 @@ def handle_job(job_data, job_name, client_db):
                 data = [Stage(item) for item in data]
         case "CurvaDescarga":
             status, data = request_discharge_flow(token, station_code, initial_date, final_date)
+            if status == JobStatus.COMPLETED:
+                data = [DischargeFlow(item) for item in data]
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -261,7 +263,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
             case "Cotas":
                 insert_hidro(hidro_db, job_name, hidro_data)
             case "CurvaDescarga":
-                insert_discharge_flow(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "QualAgua":
                 qa_data   = []
                 qa_status = []
