@@ -221,3 +221,27 @@ class DischargeSummary:
             "VelMedia":          json.get("Vel_Media (m/s)"),
             "EstacaoCodigo":     json.get("codigoestacao")
         }
+
+
+class Sediments:
+    def __init__(self, json: dict):
+        self.fields = {
+            "AreaMolhada":                json.get("Area_Molhada"),
+            "ConcentracaoMatSuspensao":   json.get("Concentracao_PPM"),
+            "ConcentracaoDaAmostraExtra": json.get("Concentracao_da_Amostra_Extra"),
+            "CondutividadeEletrica":      json.get("Condutividade_Eletrica"),
+            "Cota":                       json.get("Cota_cm"),
+            "CotaDeMedicao":              json.get("Cota_de_Mediacao"),
+            "Data":                       json.get("Data_Hora_Dado"),
+            "DataLiq":                    json.get("Data_Hora_Medicao_Liquida"),
+            "DataAlt":                    json.get("Data_Ultima_Alteracao"),
+            "Largura":                    json.get("Largura"),
+            "NivelConsistencia":          json.get("Nivel_Consistencia"),
+            "NumMedicao":                 json.get("Numero_Medicao"),
+            "NumMedicaoLiq":              json.get("Numero_Medicao_Liquida"),
+            "Observacoes":                json.get("Observacoes"),
+            "TemperaturaDaAgua":          json.get("Temperatura_da_Agua"),
+            "Vazao":                      json.get("Vazao_m3_s"),
+            "Velmedia":                   json.get("Vel_Media"),
+            "EstacaoCodigo":              json.get("codigoestacao")
+        }
