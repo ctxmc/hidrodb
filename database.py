@@ -116,19 +116,6 @@ def insert_hidro(hidro, table, collection):
     insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
     hidro.cursor.executemany(insert_sql, data)
 
-def insert_resume_discharge(hidro, table, liquid_desc_data):
-    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    liquid_desc_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
-                        for i, data in enumerate(liquid_desc_data)]
-    cols   = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    AreaMolhada, Cota, Data, DataAlt, Largura, NivelConsistencia, Profundidade,
-    Vazao, VelMedia, EstacaoCodigo, DataIns"""
-    values = ','.join('?' for _ in cols.split(','))
-    hidro.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", liquid_desc_data)
-
 def insert_sediments(hidro_db, table, hidro_data):
     hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
     reg_id = hidro_db.cursor.fetchone()[0]

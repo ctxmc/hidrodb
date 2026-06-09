@@ -205,3 +205,19 @@ class Rain:
         for i in range(1, 32):
             self.fields[f"Chuva{i:02d}"]       = json.get(f"Chuva_{i:02d}")
             self.fields[f"Chuva{i:02d}Status"] = json.get(f"Chuva_{i:02d}_Status")
+
+
+class DischargeSummary:
+    def __init__(self, json: dict):
+        self.fields = {
+            "AreaMolhada":       json.get("Area_Molhada"),
+            "Cota":              json.get("Cota (cm)"),
+            "Data":              json.get("Data_Hora_Dado"),
+            "DataAlt":           json.get("Data_Ultima_Alteracao"),
+            "Largura":           json.get("Largura (m)"),
+            "NivelConsistencia": json.get("Nivel_Consistencia"),
+            "Profundidade":      json.get("Profundidade (m)"),
+            "Vazao":             json.get("Vazao (m3/s)"),
+            "VelMedia":          json.get("Vel_Media (m/s)"),
+            "EstacaoCodigo":     json.get("codigoestacao")
+        }

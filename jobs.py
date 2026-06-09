@@ -186,7 +186,9 @@ def handle_job(job_data, job_name, client_db):
             if status == JobStatus.COMPLETED:
                 data = [Rain(item) for item in data]
         case "ResumoDescarga":
-            status, data = request_resume_discharge(token, station_code, initial_date, final_date)
+            status, data = request_discharge_summary(token, station_code, initial_date, final_date)
+            if status == JobStatus.COMPLETED:
+                data = [DischargeSummary(item) for item in data]
         case "Sedimentos":
             status, data = request_sediments(token, station_code, initial_date, final_date)
         case "QualAgua":
@@ -249,7 +251,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
             case "Chuvas":
                 insert_hidro(hidro_db, job_name, hidro_data)
             case "ResumoDescarga":
-                insert_resume_discharge(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "Sedimentos":
                 insert_sediments(hidro_db, job_name, hidro_data)
             case "Cotas":

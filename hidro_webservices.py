@@ -31,15 +31,16 @@ from enum import StrEnum
 from database import *
 
 class HidroEndpoint(StrEnum):
-    AUTH      = "/EstacoesTelemetricas/OAUth/v1"
-    BASIN     = "/EstacoesTelemetricas/HidroBacia/v1"
-    SUB_BASIN = "/EstacoesTelemetricas/HidroSubBacia/v1"
-    ENTITY    = "/EstacoesTelemetricas/HidroEntidade/v1"
-    TOWNSHIP  = "/EstacoesTelemetricas/HidroMunicipio/v1"
-    RIVER     = "/EstacoesTelemetricas/HidroRio/v1"
-    STATE     = "/EstacoesTelemetricas/HidroUF/v1"
-    STATION   = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
-    RAIN      = "/EstacoesTelemetricas/HidroSerieChuva/v1"
+    AUTH              = "/EstacoesTelemetricas/OAUth/v1"
+    BASIN             = "/EstacoesTelemetricas/HidroBacia/v1"
+    SUB_BASIN         = "/EstacoesTelemetricas/HidroSubBacia/v1"
+    ENTITY            = "/EstacoesTelemetricas/HidroEntidade/v1"
+    TOWNSHIP          = "/EstacoesTelemetricas/HidroMunicipio/v1"
+    RIVER             = "/EstacoesTelemetricas/HidroRio/v1"
+    STATE             = "/EstacoesTelemetricas/HidroUF/v1"
+    STATION           = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
+    RAIN              = "/EstacoesTelemetricas/HidroSerieChuva/v1"
+    DISCHARGE_SUMMARY = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -160,8 +161,7 @@ def request_rain_data(token, station_code, initial_date, final_date):
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
 
-def request_resume_discharge(token, station_code, initial_date, final_date):
-    endpoint = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
+def request_discharge_summary(token, station_code, initial_date, final_date):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -181,13 +181,13 @@ def request_resume_discharge(token, station_code, initial_date, final_date):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            items = request_hidro_ws(HidroEndpoint.DISCHARGE_SUMMARY, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         for item in items:
             if (len(item) != 10):
                 return (JobStatus.INVALID, [])
-        return (JobStatus.COMPLETED, [tuple(item.values()) for item in items])
+        return (JobStatus.COMPLETED, items)
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
