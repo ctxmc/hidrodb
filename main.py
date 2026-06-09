@@ -58,7 +58,9 @@ def check_table(hidro, client, table):
                         if (check_token(client)):
                             client.cursor.execute("SELECT Token FROM Token")
                             token = client.cursor.fetchone()[0]
-                            data.extend([Station(item) for item in request_stations(token, UF)])
+                            params = {"Unidade Federativa": f"{UF}"}
+                            data.extend([Station(item) for item in
+                                         request_data(token, HidroEndpoint.STATION, params)])
                 case _:
                     print(f"TODO: {table}")
                     return

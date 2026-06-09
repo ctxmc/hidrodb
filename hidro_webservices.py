@@ -82,7 +82,7 @@ def request_token(client):
     except Exception as e:
         print(f"Error (exception): {e}")
 
-def request_data(token, endpoint):
+def request_data(token, endpoint, params=None):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -101,31 +101,14 @@ def request_data(token, endpoint):
                 file_path = f"./json/Rio.json"
             case HidroEndpoint.STATE:
                 file_path = f"./json/Estado.json"
+            case HidroEndpoint.STATION:
+                UF = params["Unidade Federativa"]
+                file_path = f"./json/stations/Estacao_{UF}.json"
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_stations(token, UF):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    params    = {"Unidade Federativa": f"{UF}"}
-    try:
-        file_path = f"./json/stations/Estacao_{UF}.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(HidroEndpoint.STATION, headers, params).get("items", {})
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return items
