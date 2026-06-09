@@ -26,8 +26,19 @@ import os
 import requests
 import json
 from datetime import datetime
+from enum import StrEnum
 
 from database import *
+
+class HidroEndpoint(StrEnum):
+    AUTH      = "/EstacoesTelemetricas/OAUth/v1"
+    BASIN     = "/EstacoesTelemetricas/HidroBacia/v1"
+    SUB_BASIN = "/EstacoesTelemetricas/HidroSubBacia/v1"
+    ENTITY    = "/EstacoesTelemetricas/HidroEntidade/v1"
+    TOWNSHIP  = "/EstacoesTelemetricas/HidroMunicipio/v1"
+    RIVER     = "/EstacoesTelemetricas/HidroRio/v1"
+    STATE     = "/EstacoesTelemetricas/HidroUF/v1"
+    STATION   = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -67,114 +78,25 @@ def request_token(client):
     except Exception as e:
         print(f"Error (exception): {e}")
 
-def request_basins(token):
-    endpoint  = "/EstacoesTelemetricas/HidroBacia/v1"
+def request_data(token, endpoint):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
     try:
-        file_path = f"./json/Bacia.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_sub_basins(token):
-    endpoint  = "/EstacoesTelemetricas/HidroSubBacia/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = f"./json/SubBacia.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_entity(token):
-    endpoint = "/EstacoesTelemetricas/HidroEntidade/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = f"./json/Entidade.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_township(token):
-    endpoint = "/EstacoesTelemetricas/HidroMunicipio/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = f"./json/Municipio.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_rivers(token):
-    endpoint = "/EstacoesTelemetricas/HidroRio/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = f"./json/Rio.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return []
-
-def request_states(token):
-    endpoint = "/EstacoesTelemetricas/HidroUF/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = f"./json/Estado.json"
+        match endpoint:
+            case HidroEndpoint.BASIN:
+                file_path = f"./json/Bacia.json"
+            case HidroEndpoint.SUB_BASIN:
+                file_path = f"./json/SubBacia.json"
+            case HidroEndpoint.ENTITY:
+                file_path = f"./json/Entidade.json"
+            case HidroEndpoint.TOWNSHIP:
+                file_path = f"./json/Municipio.json"
+            case HidroEndpoint.RIVER:
+                file_path = f"./json/Rio.json"
+            case HidroEndpoint.STATE:
+                file_path = f"./json/Estado.json"
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 items = json.load(f)

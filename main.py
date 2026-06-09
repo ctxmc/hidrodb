@@ -29,6 +29,7 @@ from datetime import datetime, timedelta
 from database import *
 from hidro_webservices import *
 from jobs import *
+from hidro_models import *
 
 def check_table(hidro, client, table):
     hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
@@ -38,25 +39,19 @@ def check_table(hidro, client, table):
             client.cursor.execute("SELECT Token FROM Token")
             token = client.cursor.fetchone()[0]
             match table:
-                case "Bacia":
-                    data = [Basin(item) for item in request_basins(token)]
-                    insert_hidro(hidro, table, data)
-                case "SubBacia":
-                    data = [SubBasin(item) for item in request_sub_basins(token)]
-                    insert_hidro(hidro, table, data)
-                case "Entidade":
-                    data = [Entity(item) for item in request_entity(token)]
-                    insert_hidro(hidro, table, data)
-                case "Municipio":
-                    data = [Township(item) for item in request_township(token)]
-                    insert_hidro(hidro, table, data)
-                case "Rio":
-                    data = [River(item) for item in request_rivers(token)]
-                    insert_hidro(hidro, table, data)
-                case "Estado":
-                    data = [State(item) for item in request_states(token)]
-                    insert_hidro(hidro, table, data)
-                case "Estacao":
+                case HidroTable.BASIN:
+                    data = [Basin(item)    for item in request_data(token, HidroEndpoint.BASIN)]
+                case HidroTable.SUB_BASIN:
+                    data = [SubBasin(item) for item in request_data(token, HidroEndpoint.SUB_BASIN)]
+                case HidroTable.ENTITY:
+                    data = [Entity(item)   for item in request_data(token, HidroEndpoint.ENTITY)]
+                case HidroTable.TOWNSHIP:
+                    data = [Township(item) for item in request_data(token, HidroEndpoint.TOWNSHIP)]
+                case HidroTable.RIVER:
+                    data = [River(item)    for item in request_data(token, HidroEndpoint.RIVER)]
+                case HidroTable.STATE:
+                    data = [State(item)    for item in request_data(token, HidroEndpoint.STATE)]
+                case HidroTable.STATION:
                     data = []
                     hidro.cursor.execute("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL")
                     for (UF,) in hidro.cursor.fetchall():
@@ -64,9 +59,10 @@ def check_table(hidro, client, table):
                             client.cursor.execute("SELECT Token FROM Token")
                             token       = client.cursor.fetchone()[0]
                             data.extend([Station(item) for item in request_stations(token, UF)])
-                    insert_hidro(hidro, table, data)
                 case _:
                     print(f"TODO: {table}")
+                    return
+            insert_hidro(hidro, table, data)
     else:
         print(f"{table} has Entries; TODO")
 
