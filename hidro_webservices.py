@@ -162,7 +162,7 @@ def request_rivers(token):
             items = request_hidro_ws(endpoint, headers).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
-        return [tuple(item.values()) for item in items]
+        return items
     except Exception as e:
             print(f"Error (exception): {e}")
             return []

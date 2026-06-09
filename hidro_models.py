@@ -85,3 +85,15 @@ class Township:
             "CodigoIBGE":   json.get("Municipio_Codigo_IBGE"),
             "EstadoCodigo": json.get("Estado_Codigo")
         }
+
+
+class River:
+    def __init__(self, json: dict):
+        self.fields = {
+            "Nome":           json.get("Nome_Rio"),
+            "Codigo":         json.get("codigorio"),
+            "DataAlt":        json.get("Data_Ultima_Alteracao"),
+            "Jurisdicao":     json.get("Rio_Jurisdicao"),
+            "BaciaCodigo":    json.get("Bacia_Codigo"),
+            "SubBaciaCodigo": json.get("Sub_Bacia_Codigo")
+        }

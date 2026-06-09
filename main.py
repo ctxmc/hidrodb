@@ -51,8 +51,8 @@ def check_table(hidro, client, table):
                     data = [Township(item) for item in request_township(token)]
                     insert_hidro(hidro, table, data)
                 case "Rio":
-                    rivers = request_rivers(token)
-                    insert_rivers(hidro, rivers, table)
+                    data = [River(item) for item in request_rivers(token)]
+                    insert_hidro(hidro, table, data)
                 case "Estado":
                     states = request_states(token)
                     insert_states(hidro, states, table)
