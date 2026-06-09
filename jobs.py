@@ -182,27 +182,62 @@ def handle_job(job_data, job_name, client_db):
         token = client_db.cursor.fetchone()[0]
     match job_name:
         case "Chuvas":
-            status, data = request_rain_data(token, station_code, initial_date, final_date)
-            if status == JobStatus.COMPLETED:
-                data = [Rain(item) for item in data]
+            status, data = request_serial_data(token, HidroEndpoint.RAIN,
+                                                station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 76):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [Rain(entrie) for entrie in data]
+            else:
+                status = JobStatus.FAILED
         case "ResumoDescarga":
-            status, data = request_discharge_summary(token, station_code, initial_date, final_date)
-            if status == JobStatus.COMPLETED:
-                data = [DischargeSummary(item) for item in data]
+            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_SUMMARY,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 10):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [DischargeSummary(entrie) for entrie in data]
+            else:
+                status = JobStatus.FAILED
         case "Sedimentos":
-            status, data = request_sediments(token, station_code, initial_date, final_date)
-            if status == JobStatus.COMPLETED:
+            status, data = request_serial_data(token, HidroEndpoint.SEDIMENTS,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
                 data = [Sediments(item) for item in data]
+            else:
+                status = JobStatus.FAILED
         case "QualAgua":
             status, data = request_qa(token, station_code, initial_date, final_date)
         case "Cotas":
-            status, data = request_stage(token, station_code, initial_date, final_date)
-            if status == JobStatus.COMPLETED:
+            status, data = request_serial_data(token, HidroEndpoint.STAGE,
+                                            station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
                 data = [Stage(item) for item in data]
+            else:
+                status = JobStatus.FAILED
         case "CurvaDescarga":
-            status, data = request_discharge_flow(token, station_code, initial_date, final_date)
-            if status == JobStatus.COMPLETED:
-                data = [DischargeFlow(item) for item in data]
+            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_FLOW,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 18):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [DischargeFlow(item) for item in data]
+            else:
+                status = JobStatus.FAILED
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"

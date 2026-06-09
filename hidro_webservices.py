@@ -116,7 +116,7 @@ def request_data(token, endpoint, params=None):
             print(f"Error (exception): {e}")
             return []
 
-def request_rain_data(token, station_code, initial_date, final_date):
+def request_serial_data(token, endpoint, station_code, initial_date, final_date):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -130,81 +130,30 @@ def request_rain_data(token, station_code, initial_date, final_date):
         "Data Final (yyyy-MM-dd)": f"{ymd_end}"
     }
     try:
-        file_path = f"./json/rain/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        match endpoint:
+            case HidroEndpoint.RAIN:
+                dir_path = "rain"
+            case HidroEndpoint.DISCHARGE_SUMMARY:
+                dir_path = "liquid_desc"
+            case HidroEndpoint.SEDIMENTS:
+                dir_path = "sediments"
+            case HidroEndpoint.STAGE:
+                dir_path = "stage"
+            case HidroEndpoint.DISCHARGE_FLOW:
+                dir_path = "discharge"
+        file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
         items = []
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 items = json.load(f)
         else:
-            items = request_hidro_ws(HidroEndpoint.RAIN, headers, params).get("items", {})
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
             with open(file_path, 'w') as f:
                 json.dump(items, f, indent=2, ensure_ascii=False)
-        for item in items:
-            if (len(item) != 76):
-                return (JobStatus.INVALID, [])
-        return (JobStatus.COMPLETED, items)
+        return (True, items)
     except Exception as e:
             print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])
-
-def request_discharge_summary(token, station_code, initial_date, final_date):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end,   _] = final_date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
-    try:
-        file_path = f"./json/liquid_desc/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(HidroEndpoint.DISCHARGE_SUMMARY, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        for item in items:
-            if (len(item) != 10):
-                return (JobStatus.INVALID, [])
-        return (JobStatus.COMPLETED, items)
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])
-
-def request_sediments(token, station_code, initial_date, final_date):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end,   _] = final_date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
-    try:
-        file_path = f"./json/sediments/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(HidroEndpoint.SEDIMENTS, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return (JobStatus.COMPLETED, items)
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])
+            return (False, [])
 
 def request_qa(token, station_code, initial_date, final_date):
     endpoint = "/EstacoesTelemetricas/HidroSerieQA/v1"
@@ -249,64 +198,6 @@ def request_qa(token, station_code, initial_date, final_date):
             qa_status = [tuple(item.values()) for item in qa_status]
             return (JobStatus.COMPLETED, [{"data": qa_data, "status": qa_status}])
         return (JobStatus.COMPLETED, [])
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])
-
-def request_stage(token, station_code, initial_date, final_date):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end,   _] = final_date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
-    try:
-        file_path = f"./json/stage/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(HidroEndpoint.STAGE, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return (JobStatus.COMPLETED, items)
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])
-
-def request_discharge_flow(token, station_code, initial_date, final_date):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end,   _] = final_date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
-    try:
-        file_path = f"./json/discharge/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(HidroEndpoint.DISCHARGE_FLOW, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        for item in items:
-            if (len(item) != 18):
-                return (JobStatus.INVALID, [])
-        return (JobStatus.COMPLETED, items)
     except Exception as e:
             print(f"Error (exception): {e}")
             return (JobStatus.FAILED, [])
