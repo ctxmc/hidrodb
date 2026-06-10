@@ -26,7 +26,7 @@ import jaydebeapi
 import jpype
 import msaccessdb
 import os
-from enum import StrEnum, Enum, auto
+from enum import StrEnum
 import getpass
 from datetime import datetime
 
@@ -44,12 +44,6 @@ class DatabaseType(StrEnum):
     CLIENT = "Client"
     JOBS   = "Jobs"
 
-class JobStatus(Enum):
-    PENDING   = auto()
-    FAILED    = auto()
-    INVALID   = auto()
-    CORRUPTED = auto()
-    COMPLETED = auto()
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):

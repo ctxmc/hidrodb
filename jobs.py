@@ -28,9 +28,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from queue import Queue
 from threading import Thread, Lock
 import time
+from enum import Enum, auto
 
 from database import *
 from hidro_webservices import *
+
+class JobStatus(Enum):
+    PENDING   = auto()
+    FAILED    = auto()
+    INVALID   = auto()
+    CORRUPTED = auto()
+    COMPLETED = auto()
 
 def check_token(client):
     client.cursor.execute("SELECT COUNT(*) FROM Token")

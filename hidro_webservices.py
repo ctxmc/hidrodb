@@ -28,8 +28,6 @@ import json
 from datetime import datetime
 from enum import StrEnum
 
-from database import *
-
 class HidroEndpoint(StrEnum):
     AUTH              = "/EstacoesTelemetricas/OAUth/v1"
     BASIN             = "/EstacoesTelemetricas/HidroBacia/v1"
