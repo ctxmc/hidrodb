@@ -116,56 +116,6 @@ def insert_hidro(hidro, table, collection):
     insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
     hidro.cursor.executemany(insert_sql, data)
 
-def insert_qa(hidro_db, table, hidro_data):
-    hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro_db.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    hidro_data = [(reg_id+i, 0, 0, 0, 0, *data, date_insertion)
-                  for i, data in enumerate(hidro_data)]
-    cols = f"""RegistroID, Importado, Temporario, Removido, ImportadoRepetido,
-    n245T, n245TP, n246Triclorofenol, Acido24Diclorofenoxiacetico, Aldrin, AzinfosEtil,
-    Benzeno, BenzoAPireno, BHC, BifenilasPolicloradas, Escherichia, Carbaril, Clordano,
-    DDEPP, DDT, Demeton, Diazinon, Dieldrin, DodecacloroNonacloro, DySystonDisulfton,
-    Endossulfan, FitoplanctonQuantitativo, Endrin, EpoxidoHeptacloro, Ethion,
-    Gution, Heptacloro, Lindano, Malation, MetilParation, Metoxicloro, Paration,
-    FosforoTotal, Pentaclorofenol, Phosdrin, TetracloretoCarbono, Tetracloroeteno,
-    Toxafeno, Tricloroeteno, Algas, Amoniaco, BacteriasHeterotroficas, CloroResidual,
-    Nitratos, Colifagos, ContagemBacteriasPlaca, EnteroBacteriasPatogenicas, Fungos,
-    NitrogenioAlbuminoide, Protozoarios, Salmonelas, ZooplanctonTotal, NitrogenioAmoniacal,
-    NitrogenioTotal, OrtofosfatoTotal, OD, pH, SolDissolvidosTotais, AlcalinidadeTotal,
-    SolSuspensaoTotais, TempAmostra, TempAr, Transparencia, Turbidez, Acidez, AlcalinidadeCO3,
-    AlcalinidadeHCO3, AlcalinidadeOH, Aluminiodissolvido, CarbonoOrganicoTotal, Aluminio,
-    AmoniaNaoIonizavel, Arsenio, Bario, Berilio, BismutoTotal, Borodissolvido, Boro,
-    Cadmio, CalcioTotal, Cloretos, Chumbo, Cianetolivre, Cianetos, Cobalto, Cobredissolvido,
-    Cobre, ColiformesFecais, ColiformesTotais, CompostosOrganoclorados, CompostosOrganofosforados,
-    Clorofila, CondutividadeEletrica, Cor, CromoHexavalente, CromoTotal, CromoTrivalente,
-    Densidadecianobacterias, Detergentes, Dureza, Durezamagnesio, DurezaTotal,
-    ColiformesTermotolerantes, Estanho, EstreptococosFecais, FerroDissolvido, FerroTotal,
-    Fluoretos, FosfatoTotal, Hidrocarbonetos, IndiceFenois, IQA, Litio, CondutividadeEspecifica,
-    MagnesioTotal, Manganes, Mercurio, Niquel, Nitritos, NitrogenioOrganico, NitrogenioTotalKJELDAHL,
-    OleosGraxas, ODsaturacao, PotassioTotal, DBO, Prata, ParametroProfundidade, Selenio,
-    SilicaDissolvida, SodioTotal, SolDissolvidosFixos, SolDissolvidosVolateis, SolSuspensaoFixos,
-    SolSuspensaoVolateis, SolFixos, DescargaLiquida, SolSedimentaveis, SolTotais, SolVolateis,
-    Sulfatos, Sulfetos, UranioTotal, Vanadio, Zinco, n11Dicloroeteno, n12Dicloroetano,
-    DQO, Choveu, Data, DataAlt, NivelConsistencia, NumMedicao, PosHorizColeta, PosVertColeta,
-    Profundidade, EstacaoCodigo, DataIns"""
-    values = ','.join('?' for _ in cols.split(','))
-    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
-
-def insert_qa_status(hidro_db, table, hidro_data):
-    status_sequence = ", ".join(f"{table}{idx+1:03d}status" for idx in range(len(hidro_data[0]) - 1))
-    table = f"{table}Status"
-    hidro_db.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro_db.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    date_insertion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    hidro_data = [(reg_id+i, 0, *data, date_insertion)
-                  for i, data in enumerate(hidro_data)]
-    cols = f"""RegistroID, Removido, {status_sequence}, DataAlt, DataIns"""
-    values = ','.join('?' for _ in cols.split(','))
-    hidro_db.cursor.executemany(f"INSERT INTO {table} ({cols}) VALUES ({values})", hidro_data)
-
 def insert_jobs(jobs, table):
     db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)

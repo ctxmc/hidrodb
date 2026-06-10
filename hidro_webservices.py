@@ -44,6 +44,7 @@ class HidroEndpoint(StrEnum):
     SEDIMENTS         = "/EstacoesTelemetricas/HidroSerieSedimentos/v1"
     STAGE             = "/EstacoesTelemetricas/HidroSerieCotas/v1"
     DISCHARGE_FLOW    = "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1"
+    WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -141,6 +142,8 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
                 dir_path = "stage"
             case HidroEndpoint.DISCHARGE_FLOW:
                 dir_path = "discharge"
+            case HidroEndpoint.WATER_QUALITY:
+                dir_path = "qa"
         file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
         items = []
         if os.path.exists(file_path):
@@ -154,50 +157,3 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
     except Exception as e:
             print(f"Error (exception): {e}")
             return (False, [])
-
-def request_qa(token, station_code, initial_date, final_date):
-    endpoint = "/EstacoesTelemetricas/HidroSerieQA/v1"
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end,   _] = final_date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
-    try:
-        file_path = f"./json/qa/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        if (len(items) > 0):
-            qa_status = []
-            qa_data   = []
-            for item in items:
-                status_keys = [k for k in item if k.endswith("_Status") or k == "Data_Ultima_Alteracao"]
-                data_keys = [k for k in item if not k.endswith("_Status")]
-                qa_status.append({k: item[k] for k in status_keys})
-                qa_data.append({k: item[k] for k in data_keys})
-            qa_status = [
-                {k: d[k] for k in
-                 sorted([k for k in d if k.split('_')[0].isdigit()],
-                        key=lambda x: int(x.split('_')[0])) +
-                 [k for k in d if not k.split('_')[0].isdigit()]}
-                for d in qa_status
-            ]
-            qa_data   = [tuple(item.values()) for item in qa_data]
-            qa_status = [tuple(item.values()) for item in qa_status]
-            return (JobStatus.COMPLETED, [{"data": qa_data, "status": qa_status}])
-        return (JobStatus.COMPLETED, [])
-    except Exception as e:
-            print(f"Error (exception): {e}")
-            return (JobStatus.FAILED, [])

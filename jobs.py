@@ -216,7 +216,12 @@ def handle_job(job_data, job_name, client_db):
             else:
                 status = JobStatus.FAILED
         case "QualAgua":
-            status, data = request_qa(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.WATER_QUALITY,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+            else:
+                status = JobStatus.FAILED
         case "Cotas":
             status, data = request_serial_data(token, HidroEndpoint.STAGE,
                                             station_code, initial_date, final_date)
@@ -300,13 +305,10 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
             case "CurvaDescarga":
                 insert_hidro(hidro_db, job_name, hidro_data)
             case "QualAgua":
-                qa_data   = []
-                qa_status = []
-                for item in hidro_data:
-                    qa_data.extend(item['data'])
-                    qa_status.extend(item['status'])
-                insert_qa(hidro_db, job_name, qa_data)
-                insert_qa_status(hidro_db, job_name, qa_status)
+                water_quality = [WaterQuality(item) for item in hidro_data]
+                insert_hidro(hidro_db, job_name, water_quality)
+                water_status  = [WaterQualityStatus(item) for item in hidro_data]
+                insert_hidro(hidro_db, f"{job_name}Status", water_status)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time

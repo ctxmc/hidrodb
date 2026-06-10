@@ -1379,7 +1379,10 @@ CREATE TABLE [QualAgua]
 CREATE TABLE [QualAguaStatus]
 (
 	[RegistroID]            Double,
+	[Importado]             Byte,
+	[Temporario]            Byte,
 	[Removido]              Byte,
+	[ImportadoRepetido]     Byte,
 	[QualAgua001Status]     Byte,
 	[QualAgua002Status]     Byte,
 	[QualAgua003Status]     Byte,
