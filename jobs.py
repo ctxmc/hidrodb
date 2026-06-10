@@ -28,9 +28,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from queue import Queue
 from threading import Thread, Lock
 import time
+from enum import Enum, auto
 
 from database import *
 from hidro_webservices import *
+
+class JobStatus(Enum):
+    PENDING   = auto()
+    FAILED    = auto()
+    INVALID   = auto()
+    CORRUPTED = auto()
+    COMPLETED = auto()
 
 def check_token(client):
     client.cursor.execute("SELECT COUNT(*) FROM Token")
@@ -182,17 +190,67 @@ def handle_job(job_data, job_name, client_db):
         token = client_db.cursor.fetchone()[0]
     match job_name:
         case "Chuvas":
-            status, data = request_rain_data(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.RAIN,
+                                                station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 76):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [Rain(entrie) for entrie in data]
+            else:
+                status = JobStatus.FAILED
         case "ResumoDescarga":
-            status, data = request_resume_discharge(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_SUMMARY,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 10):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [DischargeSummary(entrie) for entrie in data]
+            else:
+                status = JobStatus.FAILED
         case "Sedimentos":
-            status, data = request_sediments(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.SEDIMENTS,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                data = [Sediments(item) for item in data]
+            else:
+                status = JobStatus.FAILED
         case "QualAgua":
-            status, data = request_qa(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.WATER_QUALITY,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+            else:
+                status = JobStatus.FAILED
         case "Cotas":
-            status, data = request_stage(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.STAGE,
+                                            station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                data = [Stage(item) for item in data]
+            else:
+                status = JobStatus.FAILED
         case "CurvaDescarga":
-            status, data = request_discharge_flow(token, station_code, initial_date, final_date)
+            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_FLOW,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                for entrie in data:
+                    if (len(entrie) != 18):
+                        status = JobStatus.INVALID
+                        break
+                if status == JobStatus.COMPLETED:
+                    data = [DischargeFlow(item) for item in data]
+            else:
+                status = JobStatus.FAILED
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -245,23 +303,20 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
     if len(hidro_data) > 0:
         match job_name:
             case "Chuvas":
-                insert_rain_data(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "ResumoDescarga":
-                insert_resume_discharge(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "Sedimentos":
-                insert_sediments(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "Cotas":
-                insert_stage(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "CurvaDescarga":
-                insert_discharge_flow(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "QualAgua":
-                qa_data   = []
-                qa_status = []
-                for item in hidro_data:
-                    qa_data.extend(item['data'])
-                    qa_status.extend(item['status'])
-                insert_qa(hidro_db, job_name, qa_data)
-                insert_qa_status(hidro_db, job_name, qa_status)
+                water_quality = [WaterQuality(item) for item in hidro_data]
+                insert_hidro(hidro_db, job_name, water_quality)
+                water_status  = [WaterQualityStatus(item) for item in hidro_data]
+                insert_hidro(hidro_db, f"{job_name}Status", water_status)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
     elapsed_time = time.perf_counter() - start_time
