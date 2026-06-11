@@ -111,8 +111,13 @@ def check_job(job_name):
                 ) combined 
                 GROUP BY Codigo 
                 """)
+            case "Granulometria":
+                sql = (
+                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
+                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
+                )
             case _:
-                print(f"TODO: {job_name}:")
+                print(f"TODO: {job_name}")
                 return
         hidro = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
         hidro.cursor.execute(sql)
@@ -251,6 +256,14 @@ def handle_job(job_data, job_name, client_db):
                     data = [DischargeFlow(item) for item in data]
             else:
                 status = JobStatus.FAILED
+        case "Granulometria":
+            status, data = request_serial_data(token, HidroEndpoint.GRANULOMETRY,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+                data = [Granulometry(item) for item in data]
+            else:
+                status = JobStatus.FAILED
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -291,12 +304,12 @@ def db_writer():
                 total_jobs    += len(batch_buffer["jobs"])
                 total_elapsed += write_data(hidro_db, job_name,
                                             batch_buffer["jobs"], batch_buffer["data"])
-                print(f"""Total Data: {total_data}, """
+                print(f"""[WRITER {job_name}]: Total Data: {total_data}, """
                       f"""Total Jobs: {total_jobs}, """
                       f"""Total thread elapsed: {total_elapsed}""")
                 batch_buffer = {"jobs": [], "data": []}
         except Exception as e:
-            print(f"[ERROR] db_writer exception: {e}")
+            print(f"[WRITER ERROR]: db_writer exception: {e}")
 
 def write_data(hidro_db, job_name, job_data, hidro_data):
     start_time = time.perf_counter()
@@ -312,6 +325,8 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_hidro(hidro_db, job_name, hidro_data)
             case "CurvaDescarga":
                 insert_hidro(hidro_db, job_name, hidro_data)
+            case "Granulometria":
+                insert_hidro(hidro_db, job_name, hidro_data)
             case "QualAgua":
                 water_quality = [WaterQuality(item) for item in hidro_data]
                 insert_hidro(hidro_db, job_name, water_quality)
@@ -319,6 +334,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_hidro(hidro_db, f"{job_name}Status", water_status)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
+        print(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    print(f"[WRITER]: Insert {len(hidro_data)} entries on {job_name} in {elapsed_time} seconds")
+    print(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time

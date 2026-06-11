@@ -43,6 +43,7 @@ class HidroEndpoint(StrEnum):
     STAGE             = "/EstacoesTelemetricas/HidroSerieCotas/v1"
     DISCHARGE_FLOW    = "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1"
     WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
+    GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -142,6 +143,8 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
                 dir_path = "discharge"
             case HidroEndpoint.WATER_QUALITY:
                 dir_path = "qa"
+            case HidroEndpoint.GRANULOMETRY:
+                dir_path = "granulometry"
         file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
         items = []
         if os.path.exists(file_path):
