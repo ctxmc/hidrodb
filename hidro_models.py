@@ -471,8 +471,8 @@ class WaterQuality:
 
 class WaterQualityStatus:
     def __init__(self, json: dict):
+        self.fields = {}
         for i in range(1, 148):
-            self.fields = {}
             self.fields[f"QualAgua{i:03d}Status"] = json.get(f"{i}_Status")
 
 
