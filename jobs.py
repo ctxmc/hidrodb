@@ -116,6 +116,11 @@ def check_job(job_name):
                     "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
+            case "PerfilTransversal":
+                sql = (
+                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
+                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
+                )
             case _:
                 print(f"TODO: {job_name}")
                 return
@@ -264,6 +269,13 @@ def handle_job(job_data, job_name, client_db):
                 data = [Granulometry(item) for item in data]
             else:
                 status = JobStatus.FAILED
+        case "PerfilTransversal":
+            status, data = request_serial_data(token, HidroEndpoint.CROSS_SECTION,
+                                               station_code, initial_date, final_date)
+            if status:
+                status = JobStatus.COMPLETED
+            else:
+                status = JobStatus.FAILED
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -332,6 +344,22 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_hidro(hidro_db, job_name, water_quality)
                 water_status  = [WaterQualityStatus(item) for item in hidro_data]
                 insert_hidro(hidro_db, f"{job_name}Status", water_status)
+            case "PerfilTransversal":
+                cross_section   = []
+                v_cross_section = []
+                current_id      = None
+                for data in hidro_data:
+                    data_id = data.get("Registro_ID")
+                    if current_id == data_id:
+                        continue
+                    current_id = data_id
+                    cross_section.append(CrossSection(data))
+                    import re, ast;
+                    verticals_str = re.sub(r'(\w+)=', r'"\1":', data.get("verticais"))
+                    verticals     = ast.literal_eval(verticals_str)
+                    v_cross_section.extend([VerticalCrossSection(v, current_id) for v in verticals])
+                insert_hidro(hidro_db, job_name, cross_section, True)
+                insert_hidro(hidro_db, f"{job_name}Vert", v_cross_section, True)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
         print(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")

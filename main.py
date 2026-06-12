@@ -100,7 +100,8 @@ def main():
         "Chuvas", "ResumoDescarga",
         "Sedimentos", "QualAgua",
         "Cotas", "CurvaDescarga",
-        "Granulometria"
+        "Granulometria",
+        "PerfilTransversal"
     ]
     for job in jobs:
         check_job(job)

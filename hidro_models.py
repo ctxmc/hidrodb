@@ -37,6 +37,19 @@ class AccessEntrie():
         }
         self.fields.update(kwargs)
 
+    @classmethod
+    def with_id(cls, **kwargs):
+        instance = cls.__new__(cls)
+        instance.fields = {
+            "Importado":         0,
+            "Temporario":        0,
+            "Removido":          0,
+            "ImportadoRepetido": 0,
+            "DataIns":           datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        instance.fields.update(kwargs)
+        return instance
+
     def keys(self) -> str:
         return ", ".join(self.fields.keys())
 
@@ -583,4 +596,32 @@ class Granulometry:
             "MatSuspD84":                json.get("MatSusp_D84_mm"),
             "MatSuspD90":                json.get("MatSusp_D90_mm"),
             "DataAlt":                   json.get("Data_Ultima_Alteracao")
+        }
+
+class CrossSection:
+    def __init__(self, json: dict):
+        self.fields = {
+            "RegistroID":        json.get("Registro_ID"),
+            "EstacaoCodigo":     json.get("codigoestacao"),
+            "NivelConsistencia": json.get("Nivel_Consistencia"),
+            "Data":              json.get("Data_Hora_Medicao"),
+            "NumLevantamento":   json.get("Num_Levantamento"),
+            "TipoSecao":         json.get("Tipo_Secao"),
+            "NumVerticais":      json.get("Num_Verticais"),
+            "DistanciaPIPF":     json.get("Distancia_pipf"),
+            "EixoXDistMaxima":   json.get("Eixo_X_Dist_Maxima"),
+            "EixoXDistMinima":   json.get("Eixo_X_Dist_Minima"),
+            "EixoYCotaMaxima":   json.get("Eixo_Y_Cota_Maxima"),
+            "EixoYCotaMinima":   json.get("Eixo_Y_Cota_Minima"),
+            "ElmGeomPassoCota":  json.get("Elm_Geom_Passo_Cota"),
+            "Observacoes":       json.get("Observacoes")
+        }
+
+
+class VerticalCrossSection:
+    def __init__(self, json: dict, reg_id):
+        self.fields = {
+            "RegistroID": reg_id,
+            "Cota":       json.get("Cota"),
+            "Distancia":  json.get("Distancia")
         }

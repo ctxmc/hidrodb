@@ -1142,13 +1142,18 @@ CREATE TABLE [PerfilTransversal]
 
 CREATE TABLE [PerfilTransversalVert]
 (
-	[RegistroID]    Double NOT NULL,
-	[Removido]      Byte NOT NULL,
-	[Distancia]     Single,
-	[Cota]          Single,
-	[DataIns]       DateTime,
-	[DataAlt]       DateTime,
-	[RespAlt]       Integer
+	[RegistroID]        Double NOT NULL,
+    [Removido]          Byte NOT NULL,
+    -- NOT ORIGINALLY IMPLEMENTED
+	[Importado]         Byte NOT NULL,
+	[Temporario]        Byte NOT NULL,
+	[ImportadoRepetido] Byte NOT NULL,
+    --
+	[Distancia]         Single,
+	[Cota]              Single,
+	[DataIns]           DateTime,
+	[DataAlt]           DateTime,
+	[RespAlt]           Integer
 );
 
 CREATE TABLE [PlanTrab]

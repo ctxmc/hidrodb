@@ -101,11 +101,14 @@ def execute_sql_file(db, sql_file_path, parameters=None):
     for stmt in statements:
         db.cursor.execute(stmt, parameters)
 
-def insert_hidro(hidro, table, collection):
-    hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-    reg_id = hidro.cursor.fetchone()[0]
-    reg_id = 1 if reg_id is None else int(reg_id)
-    entries = [AccessEntrie(reg_id+i, **data.fields) for i, data in enumerate(collection)]
+def insert_hidro(hidro, table, collection, with_id=False):
+    if not with_id:
+        hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
+        reg_id = hidro.cursor.fetchone()[0]
+        reg_id = 1 if reg_id is None else int(reg_id)
+        entries = [AccessEntrie(reg_id+i, **data.fields) for i, data in enumerate(collection)]
+    else:
+        entries = [AccessEntrie.with_id(**data.fields) for data in collection]
     data = [entry.data() for entry in entries]
     insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
     hidro.cursor.executemany(insert_sql, data)
