@@ -114,11 +114,11 @@ def insert_hidro(hidro, table, collection, with_id=False):
     hidro.cursor.executemany(insert_sql, data)
 
 def insert_jobs(jobs, table):
-    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     db.cursor.executemany(f"INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)", jobs)
     db.close()
 
 def update_jobs(table, jobs):
-    db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     db.cursor.executemany(f"UPDATE [{table}] SET [Status] = ? WHERE [ID] = ?", jobs)
     db.close()

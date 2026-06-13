@@ -75,16 +75,21 @@ def main():
     parser.add_argument('--jobs',   type=str, default='jobs.mdb')
     args = parser.parse_args()
 
-    create_db(args.client)
-    client = DatabaseConnection(args.client, DatabaseType.CLIENT)
+    __builtins__.hidro_path  = args.hidro
+    __builtins__.client_path = args.client
+    __builtins__.jobs_path   = args.jobs
+
+    create_db(client_path)
+    client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     init_db(client)
 
-    create_db(args.hidro)
-    hidro = DatabaseConnection(args.hidro, DatabaseType.HIDRO)
+    create_db(hidro_path)
+    hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     init_db(hidro)
 
-    create_db(args.jobs)
-    jobs = DatabaseConnection(args.jobs, DatabaseType.JOBS)
+    create_db(jobs_path)
+    jobs = DatabaseConnection(
+        jobs_path, DatabaseType.JOBS)
     init_db(jobs)
     jobs.close()
 

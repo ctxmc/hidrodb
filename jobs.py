@@ -66,7 +66,7 @@ def check_token(client):
 
 def check_job(job_name):
     print(f"\nChecking Job for {job_name}")
-    jobs_db = DatabaseConnection("jobs.mdb", DatabaseType.JOBS)
+    jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     jobs_db.cursor.execute(f"SELECT COUNT(*) FROM {job_name}")
     jobs_count = jobs_db.cursor.fetchone()[0]
     if (not jobs_count):
@@ -124,7 +124,7 @@ def check_job(job_name):
             case _:
                 print(f"TODO: {job_name}")
                 return
-        hidro = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+        hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
         hidro.cursor.execute(sql)
         stations_data = hidro.cursor.fetchall()
         hidro.close()
@@ -182,7 +182,7 @@ def trigger_job(jobs, job_name):
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     MAX_WORKERS=1
-    client_db = DatabaseConnection("client.mdb", DatabaseType.CLIENT)
+    client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         for job in jobs:
             executor.submit(handle_job, job, job_name, client_db)
@@ -288,7 +288,7 @@ def handle_job(job_data, job_name, client_db):
     write_queue.put((job_name, job_id, status.value, data, False))
 
 def db_writer():
-    hidro_db = DatabaseConnection("hidro.mdb", DatabaseType.HIDRO)
+    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     batch_buffer = {"jobs": [], "data": []}
     BATCH_SIZE   = 10000
     total_data    = 0
