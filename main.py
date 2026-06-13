@@ -24,12 +24,6 @@
 
 import os
 import argparse
-from datetime import datetime, timedelta
-
-from database import *
-from hidro_webservices import *
-from jobs import *
-from hidro_models import *
 
 def check_table(hidro, client, table):
     hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
@@ -69,16 +63,6 @@ def check_table(hidro, client, table):
         print(f"{table} has Entries; TODO")
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--hidro',  type=str, default='hidro.mdb')
-    parser.add_argument('--client', type=str, default='client.mdb')
-    parser.add_argument('--jobs',   type=str, default='jobs.mdb')
-    args = parser.parse_args()
-
-    __builtins__.hidro_path  = args.hidro
-    __builtins__.client_path = args.client
-    __builtins__.jobs_path   = args.jobs
-
     create_db(client_path)
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     init_db(client)
@@ -115,4 +99,19 @@ def main():
     hidro.close()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--hidro',  type=str, default='hidro.mdb')
+    parser.add_argument('--client', type=str, default='client.mdb')
+    parser.add_argument('--jobs',   type=str, default='jobs.mdb')
+    args = parser.parse_args()
+
+    __builtins__.hidro_path  = args.hidro
+    __builtins__.client_path = args.client
+    __builtins__.jobs_path   = args.jobs
+
+    from database          import *
+    from hidro_webservices import *
+    from jobs              import *
+    from hidro_models      import *
+
     main()
