@@ -79,26 +79,16 @@ def main():
     init_db(jobs)
     jobs.close()
 
-    tables = [
-        "Bacia", "SubBacia", "Entidade",
-        "Municipio", "Rio", "Estado",
-        "Estacao"
-    ]
-    for table in tables:
+    for table in HidroTable:
         check_table(hidro, client, table)
-
-    jobs = [
-        "Chuvas", "ResumoDescarga",
-        "Sedimentos", "QualAgua",
-        "Cotas", "CurvaDescarga",
-        "Granulometria",
-        "PerfilTransversal"
-    ]
-    for job in jobs:
+    for job in HidroJob:
         check_job(job)
 
     client.close()
     hidro.close()
+
+    import signal;
+    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

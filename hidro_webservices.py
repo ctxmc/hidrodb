@@ -25,8 +25,10 @@
 import os
 import requests
 import json
+
 from datetime import datetime
-from enum import StrEnum
+from enum     import StrEnum
+
 import logging
 logger = logging.getLogger(__name__)
 

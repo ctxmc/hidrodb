@@ -24,12 +24,12 @@
 
 import jaydebeapi
 import jpype
-import msaccessdb
 import os
+
 import logging
 logger = logging.getLogger(__name__)
+
 from enum import StrEnum
-import getpass
 from datetime import datetime
 
 from hidro_models import *
@@ -64,6 +64,7 @@ class DatabaseConnection:
 def create_db(db_path):
     if not os.path.isfile(db_path):
         logger.info(f"{db_path} does not exists. Creating.")
+        import msaccessdb;
         msaccessdb.create(db_path)
     else:
         logger.debug(f"{db_path} exists.")
@@ -82,6 +83,7 @@ def init_db(db):
             case DatabaseType.CLIENT:
                 execute_sql_file(db, "tables/client.sql")
                 user_id  = input("Enter API username: ")
+                import getpass;
                 password = getpass.getpass("Enter API password: ")
                 db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
                                    f"""VALUES ('{user_id}', '{password}');""")

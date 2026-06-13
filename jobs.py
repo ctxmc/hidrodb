@@ -22,17 +22,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime, timedelta
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from queue import Queue
-from threading import Thread, Lock
+from queue              import Queue
+from threading          import Thread, Lock
+from datetime import datetime, timedelta
+from enum     import Enum, auto, StrEnum
+
 import time
-from enum import Enum, auto
 import logging
 logger = logging.getLogger(__name__)
 
-from database import *
+from database          import *
 from hidro_webservices import *
 
 class JobStatus(Enum):
