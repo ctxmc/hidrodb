@@ -24,11 +24,13 @@
 
 import os
 import argparse
+import logging
+logger = logging.getLogger(__name__)
 
 def check_table(hidro, client, table):
     hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
     if (not hidro.cursor.fetchone()[0]):
-        print(f"\n{table} has no Entries, requesting data")
+        logger.info(f"{table} has no Entries, requesting data")
         if (check_token(client)):
             client.cursor.execute("SELECT Token FROM Token")
             token = client.cursor.fetchone()[0]
@@ -56,11 +58,11 @@ def check_table(hidro, client, table):
                             data.extend([Station(item) for item in
                                          request_data(token, HidroEndpoint.STATION, params)])
                 case _:
-                    print(f"TODO: {table}")
+                    logger.debug(f"TODO: {table}")
                     return
             insert_hidro(hidro, table, data)
     else:
-        print(f"{table} has Entries; TODO")
+        logger.debug(f"{table} has Entries; TODO")
 
 def main():
     create_db(client_path)
@@ -100,6 +102,7 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--hidro',  type=str, default='hidro.mdb')
     parser.add_argument('--client', type=str, default='client.mdb')
     parser.add_argument('--jobs',   type=str, default='jobs.mdb')
@@ -108,6 +111,11 @@ if __name__ == "__main__":
     __builtins__.hidro_path  = args.hidro
     __builtins__.client_path = args.client
     __builtins__.jobs_path   = args.jobs
+
+    logging.basicConfig(
+        level=args.log_level,
+        format='[%(levelname)s]: %(message)s'
+    )
 
     from database          import *
     from hidro_webservices import *

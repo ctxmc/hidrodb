@@ -26,6 +26,8 @@ import jaydebeapi
 import jpype
 import msaccessdb
 import os
+import logging
+logger = logging.getLogger(__name__)
 from enum import StrEnum
 import getpass
 from datetime import datetime
@@ -61,39 +63,38 @@ class DatabaseConnection:
 
 def create_db(db_path):
     if not os.path.isfile(db_path):
-        print(f"Error: {db_path} does not exists")
-        print(f"Creating {db_path}")
+        logger.info(f"{db_path} does not exists. Creating.")
         msaccessdb.create(db_path)
     else:
-        print(f"{db_path} exists.")
+        logger.debug(f"{db_path} exists.")
 
 def init_db(db):
     meta   = db.connection.jconn.getMetaData()
     tables = meta.getTables(None, None, None, ["TABLE"])
     if not tables.next():
-        print(f"No tables found for {db.type} Database. Initializing.")
+        logger.info(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
                 execute_sql_file(db, "tables/hidro.sql")
                 VERSION = '1.4.0.000'
                 db.cursor.execute(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}');")
-                print(f"Initialized {db.type} Database Version {VERSION}.")
+                logger.info(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
                 execute_sql_file(db, "tables/client.sql")
                 user_id  = input("Enter API username: ")
                 password = getpass.getpass("Enter API password: ")
                 db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
                                    f"""VALUES ('{user_id}', '{password}');""")
-                print(f"Initialized {db.type} Database.")
+                logger.info(f"Initialized {db.type} Database.")
             case DatabaseType.JOBS:
                 execute_sql_file(db, "tables/jobs.sql")
-                print(f"Initialized {db.type} Database.")
+                logger.info(f"Initialized {db.type} Database.")
     else:
-        print(f"{db.type} Database is Initialized.")
+        logger.debug(f"{db.type} Database is Initialized.")
 
 def execute_sql_file(db, sql_file_path, parameters=None):
     if not os.path.isfile(sql_file_path):
-        print(f"Error: {sql_file_path} does not exists")
+        logger.error(f"{sql_file_path} does not exists")
         return
     with open(sql_file_path, "r") as f:
         sql_script = f.read()

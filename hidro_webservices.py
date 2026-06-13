@@ -27,6 +27,8 @@ import requests
 import json
 from datetime import datetime
 from enum import StrEnum
+import logging
+logger = logging.getLogger(__name__)
 
 class HidroEndpoint(StrEnum):
     AUTH              = "/EstacoesTelemetricas/OAUth/v1"
@@ -53,12 +55,13 @@ def request_hidro_ws(endpoint, headers, params={}):
         try:
             return response.json()
         except Exception as e:
-            print(f"Error (exception): {e}")
+            logger.error(f"(exception): {e}")
     else:
+        logger.debug(f"Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
         try:
-            print(f"Error (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+            logger.error(f"(json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
-            print(f"Error (response): {response} (status: {response.status_code})")
+            logger.error(f"(response): {response} (status: {response.status_code})")
         match response.status_code:
             case 503 | 504:
                 import time;
@@ -81,7 +84,7 @@ def request_token(client):
         expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
         return [token, expires_ISOND]
     except Exception as e:
-        print(f"Error (exception): {e}")
+        logger.error(f"(exception): {e}")
 
 def request_data(token, endpoint, params=None):
     headers = {
@@ -114,7 +117,7 @@ def request_data(token, endpoint, params=None):
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return items
     except Exception as e:
-            print(f"Error (exception): {e}")
+            logger.error(f"(exception): {e}")
             return []
 
 def request_serial_data(token, endpoint, station_code, initial_date, final_date):
@@ -159,5 +162,5 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return (True, items)
     except Exception as e:
-            print(f"Error (exception): {e}")
+            logger.error(f"(exception): {e}")
             return (False, [])

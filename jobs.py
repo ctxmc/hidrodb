@@ -29,6 +29,8 @@ from queue import Queue
 from threading import Thread, Lock
 import time
 from enum import Enum, auto
+import logging
+logger = logging.getLogger(__name__)
 
 from database import *
 from hidro_webservices import *
@@ -41,9 +43,10 @@ class JobStatus(Enum):
     COMPLETED = auto()
 
 def check_token(client):
+    logger.debug("Cheking Token.")
     client.cursor.execute("SELECT COUNT(*) FROM Token")
     if (not client.cursor.fetchone()[0]):
-        print("No Token present, requesting.")
+        logger.info("No Token present, requesting.")
         token, expires = request_token(client)
         insert_token = "INSERT INTO Token (Token, Expires) VALUES (?, ?)"
         client.cursor.execute(insert_token, (token, expires))
@@ -53,24 +56,26 @@ def check_token(client):
         expires_ISOND = client.cursor.fetchone()[0]
         expires_datetime = datetime.strptime(expires_ISOND, "%Y-%m-%d %H:%M:%S")
         if datetime.now() < expires_datetime:
+            logger.debug(f"Token is valid, continuing ({expires_datetime}).")
             return True
         else:
-            print("Token expired, requesting new.")
+            logger.info("Token expired, requesting new.")
             token, expires = request_token(client)
+            logger.info("Aquired new token, updating.")
             client.cursor.execute("""UPDATE [Token] SET"""
                                   f"""[Token]   = '{token}',"""
                                   f"""[Expires] = '{expires}'"""
                                   f"""WHERE [Expires] = '{expires_ISOND}';""")
-            print("Token updated.")
+            logger.info("Token updated.")
             return True
 
 def check_job(job_name):
-    print(f"\nChecking Job for {job_name}")
+    logger.info(f"Checking Job for {job_name}")
     jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     jobs_db.cursor.execute(f"SELECT COUNT(*) FROM {job_name}")
     jobs_count = jobs_db.cursor.fetchone()[0]
     if (not jobs_count):
-        print(f"Creating jobs for {job_name}")
+        logger.info(f"Creating jobs for {job_name}")
         match job_name:
             case "Chuvas":
                 sql = (
@@ -122,7 +127,7 @@ def check_job(job_name):
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
             case _:
-                print(f"TODO: {job_name}")
+                logger.debug(f"TODO: {job_name}")
                 return
         hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
         hidro.cursor.execute(sql)
@@ -132,7 +137,7 @@ def check_job(job_name):
         jobs_db.close()
         check_job(job_name)
     else:
-        print("TODO: Update JOBS?")
+        logger.debug("TODO: Update JOBS?")
         jobs_db.cursor.execute(
             "SELECT ID, StationID, FromDate, ToDate "
             f"FROM {job_name} WHERE Status = {JobStatus.FAILED.value} "
@@ -142,7 +147,7 @@ def check_job(job_name):
         if (len(jobs) > 1):
             trigger_job(jobs, job_name)
         else:
-            print(f"No pending jobs for {job_name}")
+            logger.info(f"No pending jobs for {job_name}")
 
 def create_jobs(stations_data, table):
     jobs = []
@@ -174,11 +179,11 @@ def create_jobs(stations_data, table):
             ))
             current_year = next_year
     insert_jobs(jobs, table)
-    print(f"Created {len(jobs)} jobs for Table {table}")
+    logger.info(f"Created {len(jobs)} jobs for Table {table}")
 
 write_queue = Queue()
 def trigger_job(jobs, job_name):
-    print(f"Initiating jobs for {job_name}")
+    logger.info(f"Initiating jobs for {job_name}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     MAX_WORKERS=1
@@ -283,14 +288,14 @@ def handle_job(job_data, job_name, client_db):
             status_label = "Failed"
         case JobStatus.INVALID:
             status_label = "Invalid"
-    print(f"""\n[JOB {job_name} {job_id}]: {status_label} request for station {station_code} """
-          f"""on period ({initial_date})-({final_date})""")
+    logger.debug(f"""[JOB {job_name} {job_id}]: {status_label} request for station {station_code} """
+                 f"""on period ({initial_date})-({final_date})""")
     write_queue.put((job_name, job_id, status.value, data, False))
 
 def db_writer():
     hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     batch_buffer = {"jobs": [], "data": []}
-    BATCH_SIZE   = 10000
+    BATCH_SIZE   = 1000
     total_data    = 0
     total_jobs    = 0
     total_elapsed = 0
@@ -303,10 +308,10 @@ def db_writer():
             if stop_signal:
                 total_elapsed += write_data(hidro_db, job_name,
                                             batch_buffer["jobs"], batch_buffer["data"])
-                print(f"""Total Data: {total_data}, """
-                      f"""Total Jobs: {total_jobs}, """
-                      f"""Total thread elapsed: {total_elapsed}""")
-                print(f"Finished jobs for {job_name}")
+                logger.info(f"""[WRITER {job_name}]: Total Data: {total_data}, """
+                            f"""Total Jobs: {total_jobs}, """
+                            f"""Total thread elapsed: {total_elapsed}"""
+                            f"""Finished jobs for {job_name}""")
                 break;
             batch_buffer["jobs"].append((status, job_id))
             if len(data) > 0:
@@ -316,16 +321,17 @@ def db_writer():
                 total_jobs    += len(batch_buffer["jobs"])
                 total_elapsed += write_data(hidro_db, job_name,
                                             batch_buffer["jobs"], batch_buffer["data"])
-                print(f"""[WRITER {job_name}]: Total Data: {total_data}, """
-                      f"""Total Jobs: {total_jobs}, """
-                      f"""Total thread elapsed: {total_elapsed}""")
+                logger.info(f"""[WRITER {job_name}]: Total Data: {total_data}, """
+                            f"""Total Jobs: {total_jobs}, """
+                            f"""Total thread elapsed: {total_elapsed}""")
                 batch_buffer = {"jobs": [], "data": []}
         except Exception as e:
-            print(f"[WRITER ERROR]: db_writer exception: {e}")
+            logger.error(f"[WRITER]: db_writer exception: {e}")
 
 def write_data(hidro_db, job_name, job_data, hidro_data):
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
+        logger.info(f"[WRITER {job_name}]: Inserting {len(hidro_data)} entries")
         match job_name:
             case "Chuvas":
                 insert_hidro(hidro_db, job_name, hidro_data)
@@ -362,7 +368,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                 insert_hidro(hidro_db, f"{job_name}Vert", v_cross_section, True)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
-        print(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")
+        logger.info(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    print(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
+    logger.info(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
