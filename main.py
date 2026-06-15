@@ -65,17 +65,11 @@ def check_table(hidro, client, table):
         logger.debug(f"{table} has Entries; TODO")
 
 def main():
-    create_db(client_path)
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     init_db(client)
-
-    create_db(hidro_path)
     hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     init_db(hidro)
-
-    create_db(jobs_path)
-    jobs = DatabaseConnection(
-        jobs_path, DatabaseType.JOBS)
+    jobs = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     init_db(jobs)
     jobs.close()
 
@@ -95,9 +89,9 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
-    parser.add_argument('--hidro',  type=str, default='hidro.mdb')
-    parser.add_argument('--client', type=str, default='client.mdb')
-    parser.add_argument('--jobs',   type=str, default='jobs.mdb')
+    parser.add_argument('--hidro',  type=str, default='db/hidro.db')
+    parser.add_argument('--client', type=str, default='db/client.db')
+    parser.add_argument('--jobs',   type=str, default='db/jobs.db')
     args = parser.parse_args()
 
     __builtins__.hidro_path  = args.hidro
