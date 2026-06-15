@@ -159,12 +159,14 @@ def create_jobs(stations_data, table):
         else:
             end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
         if start_date > datetime.today():
+            logger.warning(f"Corrupted start date {start_date} for station {station_code}")
             jobs.append((
                 station_code,
                 start_date.strftime("%Y-%m-%d %H:%M:%S"),
                 end_date.strftime("%Y-%m-%d %H:%M:%S"),
                 JobStatus.CORRUPTED.value
             ))
+            continue
         total_years  = end_date.year - start_date.year
         current_year = start_date
         for count_year in range(1, total_years+1):
