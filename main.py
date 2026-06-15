@@ -84,6 +84,8 @@ def main():
     for job in HidroJob:
         check_job(job)
 
+    check_telemeter()
+
     client.close()
     hidro.close()
 

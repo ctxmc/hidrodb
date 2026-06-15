@@ -26,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from queue              import Queue
 from threading          import Thread, Lock
 from datetime import datetime, timedelta
+from calendar import monthrange
 from enum     import Enum, auto, StrEnum
 
 import time
@@ -375,3 +376,86 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
     elapsed_time = time.perf_counter() - start_time
     logger.info(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
+
+def check_telemeter():
+    TABLE = "Telemeter"
+    logger.info(f"Checking Jobs for {TABLE}")
+    jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
+    jobs_db.cursor.execute(f"SELECT COUNT(*) FROM {TABLE}")
+    jobs_count = jobs_db.cursor.fetchone()[0]
+    if (not jobs_count):
+        logger.info(f"Creating jobs for {TABLE}")
+        sql = (
+            "SELECT Codigo, PeriodoTelemetricaInicio, PeriodoTelemetricaFim "
+            "FROM Estacao WHERE PeriodoTelemetricaInicio IS NOT NULL"
+        )
+        hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+        hidro.cursor.execute(sql)
+        stations_data = hidro.cursor.fetchall()
+        hidro.close()
+        jobs  = []
+        for station_code, start_date, end_date in stations_data:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+            if end_date is None:
+                end_date = datetime.today() - timedelta(days=1)
+                end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            else:
+                end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+            if start_date > datetime.today():
+                logger.warning(f"Corrupted start date {start_date} for station {station_code}")
+                jobs.append((
+                    station_code,
+                    start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    0,
+                    JobStatus.CORRUPTED.value
+                ))
+                continue
+            total_years  = end_date.year - start_date.year
+            total_months = total_years * 12 + (end_date.month - start_date.month)
+            current      = start_date
+            while current <= end_date:
+                month   = current.month + 1
+                year    = current.year + (month - 1) // 12
+                month   = ((month - 1) % 12) + 1
+                max_day = monthrange(year, month)[1]
+                day     = min(current.day, max_day)
+                current = current.replace(year=year, month=month, day=day)
+                jobs.append((
+                    station_code,
+                    current.strftime("%Y-%m-%d %H:%M:%S"),
+                    0,
+                    JobStatus.PENDING.value
+                ))
+        sql = f"""INSERT INTO {TABLE} (StationID, Date, Interval, Status) VALUES (?, ?, ?, ?)"""
+        insert_jobs(jobs, siql)
+        logger.info(f"Created {len(jobs)} jobs for Table {TABLE}")
+    else:
+        logger.debug("TODO: Update JOBS?")
+        jobs_db.cursor.execute(
+            "SELECT ID, StationID, Date, Interval "
+            f"FROM {TABLE} WHERE Status = {JobStatus.FAILED.value} "
+            f"OR                 Status = {JobStatus.PENDING.value}"
+        )
+        jobs = jobs_db.cursor.fetchall()
+        trigger_telemeter(jobs, TABLE)
+
+def trigger_telemeter(jobs, job_name):
+    logger.info(f"Initiating jobs for {job_name}")
+    client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    for job in jobs:
+        job_id, station_code, date, interval = job
+        check_token(client_db)
+        client_db.cursor.execute("SELECT Token FROM Token")
+        token = client_db.cursor.fetchone()[0]
+        status, data = request_telemeter_data(token, HidroEndpoint.TELEMETER, station_code, date)
+        if status:
+            status = JobStatus.COMPLETED
+        else:
+            status = JobStatus.FAILED
+        match status:
+            case JobStatus.COMPLETED:
+                status_label = "Completed"
+            case JobStatus.FAILED:
+                status_label = "Failed"
+        logger.debug(f"""[JOB {job_name} {job_id}]: {status_label} """
+                     f"""request for station {station_code} on period {date}""")

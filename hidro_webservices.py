@@ -49,6 +49,7 @@ class HidroEndpoint(StrEnum):
     WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
     GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
     CROSS_SECTION     = "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1"
+    TELEMETER         = "/EstacoesTelemetricas/HidroinfoanaSerieTelemetricaAdotada/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -154,6 +155,34 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
             case HidroEndpoint.CROSS_SECTION:
                 dir_path = "profile"
         file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        items = []
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                items = json.load(f)
+        else:
+            items = request_hidro_ws(endpoint, headers, params).get("items", {})
+            with open(file_path, 'w') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False)
+        return (True, items)
+    except Exception as e:
+            logger.error(f"(exception): {e}")
+            return (False, [])
+
+def request_telemeter_data(token, endpoint, station_code, date):
+    headers = {
+        "accept":        "*/*",
+        "Authorization": f"Bearer {token}"
+    }
+    [ymd_interval, _] = date.split()
+    params    = {
+        "Código da Estação": station_code,
+        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+        "Data de Busca (yyyy-MM-dd)": f"{ymd_interval}",
+        "Range Intervalo de busca": "DIAS_30"  # MINUTO_5, MINUTO_10, MINUTO_15, MINUTO_30, HORA_1, HORA_2, HORA_3, HORA_4, HORA_5, HORA_6, HORA_7, HORA_8, HORA_9, HORA_10, HORA_11, HORA_12, HORA_13, HORA_14, HORA_15, HORA_16, HORA_17, HORA_18, HORA_19, HORA_20, HORA_21, HORA_22, HORA_23, HORA_24, DIAS_2, DIAS_7, DIAS_14, DIAS_21, DIAS_30
+    }
+    try:
+        dir_path  = get_dir_path(endpoint)
+        file_path = f"./json/telemeter/station_{station_code}_{ymd_interval}.json"
         items = []
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:

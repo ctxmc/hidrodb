@@ -69,3 +69,13 @@ CREATE TABLE [PerfilTransversal]
     [ToDate]    DateTime NOT NULL,
     [Status]    Byte NOT NULL
 );
+
+CREATE TABLE [Telemeter]
+(
+    [ID]        AUTOINCREMENT,
+    [StationID] Long NOT NULL,
+    [Date]      DateTime NOT NULL,
+    [Interval]  Byte NOT NULL,
+    [Status]    Byte NOT NULL
+);
+
