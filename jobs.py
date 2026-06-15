@@ -178,7 +178,8 @@ def create_jobs(stations_data, table):
                 JobStatus.PENDING.value
             ))
             current_year = next_year
-    insert_jobs(jobs, table)
+    sql = f"""INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)"""
+    insert_jobs(jobs, sql)
     logger.info(f"Created {len(jobs)} jobs for Table {table}")
 
 write_queue = Queue()
