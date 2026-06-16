@@ -25,6 +25,7 @@
 import os
 import requests
 import json
+import time
 
 from datetime import datetime
 from enum     import StrEnum
@@ -67,23 +68,26 @@ def request_hidro_ws(endpoint, headers, params={}):
             logger.error(f"(response): {response} (status: {response.status_code})")
         match response.status_code:
             case 503 | 504:
-                import time;
                 time.sleep(1)
 
-def request_token(client_id, client_password):
+def request_token(client_id, client_password, max_retries=3, retry_delay=2):
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
-    try:
-        data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
-        token           = data.get("items", {}).get("tokenautenticacao")
-        expires_RFC2822 = data.get("items", {}).get("validade")
-        expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-        return [token, expires_ISOND]
-    except Exception as e:
-        logger.error(f"(exception): {e}")
+    for attempt in range(max_retries):
+        try:
+            data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
+            token           = data.get("items", {}).get("tokenautenticacao")
+            expires_RFC2822 = data.get("items", {}).get("validade")
+            expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
+            return [token, expires_ISOND]
+        except Exception as e:
+            logger.error(f"(attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+    raise
 
 def request_data(token, endpoint, params=None):
     headers = {
