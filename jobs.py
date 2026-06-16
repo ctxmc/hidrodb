@@ -178,12 +178,23 @@ def check_job(job_name):
 def create_jobs(stations_data, table):
     jobs = []
     for station_code, start_date, end_date in stations_data:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S.%f")
+        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
+        for fmt in formats:
+            try:
+                start_date = datetime.strptime(start_date, fmt)
+                break
+            except ValueError:
+                continue
         if end_date is None:
             end_date = datetime.today() - timedelta(days=1)
             end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f")
+            for fmt in formats:
+                try:
+                    end_date = datetime.strptime(end_date, fmt)
+                    break
+                except ValueError:
+                    continue
         if start_date > datetime.today():
             logger.warning(f"Corrupted start date {start_date} for station {station_code}")
             jobs.append({
@@ -241,7 +252,7 @@ def handle_job(job_data, job_name):
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
-                    data = [Rain(entrie) for entrie in data]
+                    data = [Rain.from_json(entrie) for entrie in data]
             else:
                 status = JobStatus.FAILED
         case "ResumoDescarga":
@@ -255,7 +266,7 @@ def handle_job(job_data, job_name):
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
-                    data = [DischargeSummary(entrie) for entrie in data]
+                    data = [DischargeSummary.from_json(entrie) for entrie in data]
             else:
                 status = JobStatus.FAILED
         case "Sedimentos":
@@ -263,7 +274,7 @@ def handle_job(job_data, job_name):
                                                station_code, initial_date, final_date)
             if status:
                 status = JobStatus.COMPLETED
-                data = [Sediments(item) for item in data]
+                data = [Sediments.from_json(item) for item in data]
             else:
                 status = JobStatus.FAILED
         case "QualAgua":
@@ -278,7 +289,7 @@ def handle_job(job_data, job_name):
                                             station_code, initial_date, final_date)
             if status:
                 status = JobStatus.COMPLETED
-                data = [Stage(item) for item in data]
+                data = [Stage.from_json(item) for item in data]
             else:
                 status = JobStatus.FAILED
         case "CurvaDescarga":
@@ -292,7 +303,7 @@ def handle_job(job_data, job_name):
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
-                    data = [DischargeFlow(item) for item in data]
+                    data = [DischargeFlow.from_json(item) for item in data]
             else:
                 status = JobStatus.FAILED
         case "Granulometria":
@@ -300,7 +311,7 @@ def handle_job(job_data, job_name):
                                                station_code, initial_date, final_date)
             if status:
                 status = JobStatus.COMPLETED
-                data = [Granulometry(item) for item in data]
+                data = [Granulometry.from_json(item) for item in data]
             else:
                 status = JobStatus.FAILED
         case "PerfilTransversal":
@@ -342,7 +353,7 @@ def db_writer():
                             f"""Total thread elapsed: {total_elapsed}"""
                             f"""Finished jobs for {job_name}""")
                 break;
-            batch_buffer["jobs"].append((status, job_id))
+            batch_buffer["jobs"].append({'status': status, 'job_id': job_id})
             if len(data) > 0:
                 batch_buffer["data"].extend(data)
             if len(batch_buffer["data"]) >= BATCH_SIZE:
@@ -363,22 +374,25 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
         logger.info(f"[WRITER {job_name}]: Inserting {len(hidro_data)} entries")
         match job_name:
             case "Chuvas":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "ResumoDescarga":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "Sedimentos":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "Cotas":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "CurvaDescarga":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "Granulometria":
-                insert_hidro(hidro_db, job_name, hidro_data)
+                insert_hidro(hidro_db, hidro_data)
             case "QualAgua":
-                water_quality = [WaterQuality(item) for item in hidro_data]
-                insert_hidro(hidro_db, job_name, water_quality)
-                water_status  = [WaterQualityStatus(item) for item in hidro_data]
-                insert_hidro(hidro_db, f"{job_name}Status", water_status)
+                water_quality = []
+                water_status  = []
+                for item in hidro_data:
+                    water_quality.append(WaterQuality.from_json(item))
+                    water_status.append(WaterQualityStatus.from_json(item))
+                insert_hidro(hidro_db, water_quality)
+                insert_hidro(hidro_db, water_status)
             case "PerfilTransversal":
                 cross_section   = []
                 v_cross_section = []
@@ -388,36 +402,19 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                     if current_id == data_id:
                         continue
                     current_id = data_id
-                    cross_section.append(CrossSection(data))
+                    cross_section.append(CrossSection.from_json(data))
                     import re, ast;
                     verticals_str = re.sub(r'(\w+)=', r'"\1":', data.get("verticais"))
                     verticals     = ast.literal_eval(verticals_str)
-                    v_cross_section.extend([VerticalCrossSection(v, current_id) for v in verticals])
-                insert_hidro(hidro_db, job_name, cross_section, True)
-                insert_hidro(hidro_db, f"{job_name}Vert", v_cross_section, True)
+                    v_cross_section.extend([VerticalCrossSection.from_json(v, current_id) for v in verticals])
+                insert_hidro(hidro_db, cross_section,   True)
+                insert_hidro(hidro_db, v_cross_section, True)
     if len(job_data) > 0:
         update_jobs(job_name, job_data)
         logger.info(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")
     elapsed_time = time.perf_counter() - start_time
     logger.info(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
-
-def test_write(hidro_db, job):
-    job_id, station_code, initial_date, final_date = job
-    status, data = request_serial_data(None, HidroEndpoint.RAIN,
-                                       station_code, initial_date, final_date)
-    if status:
-        status = JobStatus.COMPLETED
-        for item in data:
-            if (len(item) != 76):
-                status = JobStatus.INVALID
-                break
-        if status == JobStatus.COMPLETED:
-            data = [Rain(entrie) for entrie in data]
-    else:
-        status = JobStatus.FAILED
-    write_data(hidro_db, "Chuvas", [(status.value, job_id)], data)
-
 
 def check_telemeter():
     TABLE = "Telemeter"

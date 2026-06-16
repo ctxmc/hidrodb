@@ -38,30 +38,30 @@ def check_table(hidro, table):
         if (token):
             match table:
                 case HidroTable.BASIN:
-                    data = [Basin(item)    for item in request_data(token, HidroEndpoint.BASIN)]
+                    entries = [Basin.from_json(item) for item in request_data(token, HidroEndpoint.BASIN)]
                 case HidroTable.SUB_BASIN:
-                    data = [SubBasin(item) for item in request_data(token, HidroEndpoint.SUB_BASIN)]
+                    entries = [SubBasin.from_json(item) for item in request_data(token, HidroEndpoint.SUB_BASIN)]
                 case HidroTable.ENTITY:
-                    data = [Entity(item)   for item in request_data(token, HidroEndpoint.ENTITY)]
+                    entries = [Entity.from_json(item) for item in request_data(token, HidroEndpoint.ENTITY)]
                 case HidroTable.TOWNSHIP:
-                    data = [Township(item) for item in request_data(token, HidroEndpoint.TOWNSHIP)]
+                    entries = [Township.from_json(item) for item in request_data(token, HidroEndpoint.TOWNSHIP)]
                 case HidroTable.RIVER:
-                    data = [River(item)    for item in request_data(token, HidroEndpoint.RIVER)]
+                    entries = [River.from_json(item) for item in request_data(token, HidroEndpoint.RIVER)]
                 case HidroTable.STATE:
-                    data = [State(item)    for item in request_data(token, HidroEndpoint.STATE)]
+                    entries = [State.from_json(item) for item in request_data(token, HidroEndpoint.STATE)]
                 case HidroTable.STATION:
-                    data = []
+                    entries = []
                     result = session.execute(text("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL"))
                     for (UF,) in result.fetchall():
                         token = get_token()
                         if (token):
                             params = {"Unidade Federativa": f"{UF}"}
-                            data.extend([Station(item) for item in
-                                         request_data(token, HidroEndpoint.STATION, params)])
+                            entries.extend([Station.from_json(item) for item in
+                                            request_data(token, HidroEndpoint.STATION, params)])
                 case _:
                     logger.debug(f"TODO: {table}")
                     return
-            insert_hidro(hidro, table, data)
+            insert_hidro(hidro, entries)
     else:
         logger.debug(f"{table} has Entries; TODO")
 

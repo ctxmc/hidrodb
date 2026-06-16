@@ -1144,11 +1144,6 @@ CREATE TABLE [PerfilTransversalVert]
 (
 	[RegistroID]        Double NOT NULL,
     [Removido]          Byte NOT NULL,
-    -- NOT ORIGINALLY IMPLEMENTED
-	[Importado]         Byte NOT NULL,
-	[Temporario]        Byte NOT NULL,
-	[ImportadoRepetido] Byte NOT NULL,
-    --
 	[Distancia]         Single,
 	[Cota]              Single,
 	[DataIns]           DateTime,
@@ -1385,11 +1380,6 @@ CREATE TABLE [QualAguaStatus]
 (
 	[RegistroID]            Double,
     [Removido]              Byte,
-    -- NOT ORIGINALLY IMPLEMENTED
-	[Importado]             Byte,
-	[Temporario]            Byte,
-	[ImportadoRepetido]     Byte,
-    --
 	[QualAgua001Status]     Byte,
 	[QualAgua002Status]     Byte,
 	[QualAgua003Status]     Byte,

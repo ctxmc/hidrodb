@@ -26,7 +26,7 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, func
 from sqlalchemy.orm import sessionmaker, Session
 
 from enum import StrEnum
@@ -107,18 +107,14 @@ def execute_sql_file(db, sql_file_path, parameters=None):
                 conn.exec_driver_sql(stmt)
         conn.commit()
         
-def insert_hidro(hidro, table, collection, with_id=False):
-    if not with_id:
-        session = hidro.get_session()
-        result = session.execute(text(f"SELECT MAX([RegistroID]) + 1 FROM {table}"))
-        reg_id = result.fetchone()[0]
-        reg_id = 1 if reg_id is None else int(reg_id)
-        entries = [AccessEntrie(reg_id+i, **data.fields) for i, data in enumerate(collection)]
-    else:
-        entries = [AccessEntrie.with_id(**data.fields) for data in collection]
-    data = [entry.fields for entry in entries]
-    insert_sql = text(f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})")
-    session.execute(insert_sql, data)
+def insert_hidro(hidro, collection, has_id=False):
+    session = hidro.get_session()
+    if not has_id:
+        model_class = type(collection[0])
+        reg_id  = (session.query(func.max(model_class.RegistroID)).scalar() or 0) + 1
+        for i, entry in enumerate(collection):
+            entry.RegistroID = reg_id + i
+    session.add_all(collection)
     session.commit()
 
 def insert_jobs(jobs, sql):
@@ -130,6 +126,7 @@ def insert_jobs(jobs, sql):
 
 def update_jobs(table, jobs):
     db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    db.cursor.executemany(f"UPDATE [{table}] SET [Status] = ? WHERE [ID] = ?", jobs)
-    db.connection.commit()
+    session = db.get_session()
+    session.execute(text(f"UPDATE [{table}] SET [Status] = :status WHERE [ID] = :job_id"), jobs)
+    session.commit()
     db.close()
