@@ -70,11 +70,7 @@ def request_hidro_ws(endpoint, headers, params={}):
                 import time;
                 time.sleep(1)
 
-def request_token(client):
-    client.cursor.execute("SELECT ID FROM Credentials")
-    client_id = client.cursor.fetchone()[0]
-    client.cursor.execute("SELECT Password FROM Credentials")
-    client_password = client.cursor.fetchone()[0]
+def request_token(client_id, client_password):
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",

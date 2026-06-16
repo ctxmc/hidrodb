@@ -54,10 +54,10 @@ class AccessEntrie():
         return ", ".join(self.fields.keys())
 
     def data(self) -> tuple:
-        return tuple(self.fields.values())
+        return self.fields
 
     def values(self) -> str:
-        return ','.join('?' for _ in self.keys().split(','))
+        return ', '.join(f':{key}' for key in self.fields.keys())
 
 
 class Basin:

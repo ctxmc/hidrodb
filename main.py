@@ -27,9 +27,12 @@ import argparse
 import logging
 logger = logging.getLogger(__name__)
 
+from sqlalchemy import text
+
 def check_table(hidro, client, table):
-    hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
-    if (not hidro.cursor.fetchone()[0]):
+    session = hidro.get_session()
+    result  = session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+    if (not result.fetchone()[0]):
         logger.info(f"{table} has no Entries, requesting data")
         if (check_token(client)):
             client.cursor.execute("SELECT Token FROM Token")
@@ -49,11 +52,10 @@ def check_table(hidro, client, table):
                     data = [State(item)    for item in request_data(token, HidroEndpoint.STATE)]
                 case HidroTable.STATION:
                     data = []
-                    hidro.cursor.execute("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL")
-                    for (UF,) in hidro.cursor.fetchall():
-                        if (check_token(client)):
-                            client.cursor.execute("SELECT Token FROM Token")
-                            token = client.cursor.fetchone()[0]
+                    result = session.execute(text("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL"))
+                    for (UF,) in result.fetchall():
+                        token = get_token()
+                        if (token):
                             params = {"Unidade Federativa": f"{UF}"}
                             data.extend([Station(item) for item in
                                          request_data(token, HidroEndpoint.STATION, params)])

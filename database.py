@@ -22,11 +22,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import sqlite3
 import os
-
 import logging
 logger = logging.getLogger(__name__)
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
 
 from enum import StrEnum
 from datetime import datetime
@@ -41,70 +42,74 @@ class DatabaseType(StrEnum):
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
-        self.connection = sqlite3.connect(dbq)
-        self.cursor     = self.connection.cursor()
-        self.type       = db_type
-
+        self.engine  = create_engine(f"sqlite:///{dbq}", echo=False)
+        self.Session = sessionmaker(bind=self.engine)
+        self.type    = db_type
+    def get_session(self) -> Session:
+        return self.Session()
     def close(self):
-        self.cursor.close()
-        self.connection.close()
+        self.engine.dispose()
 
 def init_db(db):
-    db.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = db.cursor.fetchall()
+    session = db.get_session()
+    check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
+    result = session.execute(check_tables_sql)
+    tables = result.fetchall()
     if not tables:
         logger.info(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
                 execute_sql_file(db, "tables/hidro.sql")
                 VERSION = '1.4.0.000'
-                db.cursor.execute(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}');")
+                session.execute(text(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}')"))
                 logger.info(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
                 execute_sql_file(db, "tables/client.sql")
-                user_id  = input("Enter API username: ")
-                import getpass;
+                user_id = input("Enter API username: ")
+                import getpass
                 password = getpass.getpass("Enter API password: ")
-                sql = "INSERT INTO Credentials (ID, Password) VALUES (?, ?)"
-                db.cursor.execute(sql, (user_id, password))
+                insert_user_sql = f"INSERT INTO Credentials (ID, Password) VALUES ('{user_id}', '{password}')"
+                session.execute(text(insert_user_sql))
                 logger.info(f"Initialized {db.type} Database.")
             case DatabaseType.JOBS:
                 execute_sql_file(db, "tables/jobs.sql")
                 logger.info(f"Initialized {db.type} Database.")
-        db.connection.commit()
-    else:
-        logger.debug(f"{db.type} Database is Initialized.")
+        session.commit()
 
 def execute_sql_file(db, sql_file_path, parameters=None):
     if not os.path.isfile(sql_file_path):
-        logger.error(f"{sql_file_path} does not exists")
+        logger.error(f"{sql_file_path} does not exist")
         return
     with open(sql_file_path, "r") as f:
         sql_script = f.read()
-    statements = [s.strip() for s in sql_script.split(';') if s.strip()]
-    for stmt in statements:
-        if parameters and '?' in stmt:
-            db.cursor.execute(stmt, parameters)
-        else:
-            db.cursor.execute(stmt)
-
+    with db.engine.connect() as conn:
+        statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+        for stmt in statements:
+            if parameters and '?' in stmt:
+                conn.exec_driver_sql(stmt, parameters)
+            else:
+                conn.exec_driver_sql(stmt)
+        conn.commit()
+        
 def insert_hidro(hidro, table, collection, with_id=False):
     if not with_id:
-        hidro.cursor.execute(f"SELECT MAX([RegistroID]) + 1 FROM {table}")
-        reg_id = hidro.cursor.fetchone()[0]
+        session = hidro.get_session()
+        result = session.execute(text(f"SELECT MAX([RegistroID]) + 1 FROM {table}"))
+        reg_id = result.fetchone()[0]
         reg_id = 1 if reg_id is None else int(reg_id)
         entries = [AccessEntrie(reg_id+i, **data.fields) for i, data in enumerate(collection)]
     else:
         entries = [AccessEntrie.with_id(**data.fields) for data in collection]
-    data = [entry.data() for entry in entries]
-    insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
-    hidro.cursor.executemany(insert_sql, data)
-    hidro.connection.commit()
+    data = [entry.fields for entry in entries]
+    insert_sql = text(f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})")
+    session.execute(insert_sql, data)
+    session.commit()
 
 def insert_jobs(jobs, sql):
     db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    db.cursor.executemany(sql, jobs)
-    db.connection.commit()
+    session = db.get_session()
+    session.execute(sql, jobs)
+    session.commit()
     db.close()
 
 def update_jobs(table, jobs):

@@ -33,6 +33,8 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
+from sqlalchemy import text
+
 from database          import *
 from hidro_webservices import *
 
@@ -45,64 +47,76 @@ class JobStatus(Enum):
 
 def check_token(client):
     logger.debug("Cheking Token.")
-    client.cursor.execute("SELECT COUNT(*) FROM Token")
-    if (not client.cursor.fetchone()[0]):
+    client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    session = client.get_session()
+    result  = session.execute(text("SELECT COUNT(*) FROM Token"))
+    if (not result.fetchone()[0]):
         logger.info("No Token present, requesting.")
-        token, expires = request_token(client)
+        result = session.execute(text("SELECT ID FROM Credentials"))
+        client_id = result.fetchone()[0]
+        result = session.execute(text("SELECT Password FROM Credentials"))
+        client_password = result.fetchone()[0]
+        token, expires = request_token(client_id, client_password)
         expires = expires.strftime("%Y-%m-%d %H:%M:%S")
-        insert_token_sql = "INSERT INTO Token (Token, Expires) VALUES (?, ?)"
-        client.cursor.execute(insert_token_sql, (token, expires))
-        client.connection.commit()
+        insert_token_sql = f"INSERT INTO Token (Token, Expires) VALUES ('{token}', '{expires}')"
+        session.execute(text(insert_token_sql))
+        session.commit()
         return True
     else:
-        client.cursor.execute("SELECT Expires FROM Token")
-        expires_ISOND = client.cursor.fetchone()[0]
+        result = session.execute(text("SELECT Expires FROM Token"))
+        expires_ISOND = result.fetchone()[0]
         expires_datetime = datetime.strptime(expires_ISOND, "%Y-%m-%d %H:%M:%S")
         if datetime.now() < expires_datetime:
             logger.debug(f"Token is valid, continuing ({expires_datetime}).")
-            return True
+            result = session.execute(text("SELECT Token FROM Token"))
+            return result.fetchone()[0]
         else:
             logger.info("Token expired, requesting new.")
-            token, expires = request_token(client)
-            if not token:
-                return false
+            result = session.execute(text("SELECT ID FROM Credentials"))
+            client_id = result.fetchone()[0]
+            result = session.execute(text("SELECT Password FROM Credentials"))
+            client_password = result.fetchone()[0]
+            token, expires = request_token(client_id, client_password)
             logger.info("Aquired new token, updating.")
-            update_token_sql = "UPDATE [Token] SET [Token] = ?, [Expires] = ? WHERE [Expires] = ?"
-            client.cursor.execute(update_token_sql, (token, expires, expires_ISOND))
-            client.connection.commit()
+            update_token_sql = text(f"""UPDATE [Token] SET [Token] = '{token}', """
+                                    f"""[Expires] = '{expires}' """
+                                    f"""WHERE [Expires] = '{expires_ISOND}'""")
+            session.execute(update_token_sql)
+            session.commit()
             logger.info("Token updated.")
             return True
 
 def check_job(job_name):
     logger.info(f"Checking Job for {job_name}")
     jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    jobs_db.cursor.execute(f"SELECT COUNT(*) FROM {job_name}")
-    jobs_count = jobs_db.cursor.fetchone()[0]
+    jobs_session = jobs_db.get_session()
+    count_jobs_sql = text(f"SELECT COUNT(*) FROM {job_name}")
+    jobs_count = jobs_session.execute(count_jobs_sql).fetchone()[0]
     if (not jobs_count):
         logger.info(f"Creating jobs for {job_name}")
         match job_name:
             case "Chuvas":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoRegistradorChuvaInicio, PeriodoRegistradorChuvaFim "
                     "FROM Estacao WHERE PeriodoRegistradorChuvaInicio IS NOT NULL"
                 )
             case "ResumoDescarga" | "CurvaDescarga":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoDescLiquidaInicio, PeriodoDescLiquidaFim "
                     "FROM Estacao WHERE PeriodoDescLiquidaInicio IS NOT NULL"
                 )
             case "Sedimentos":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
             case "QualAgua":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoQualAguaInicio, PeriodoQualAguaFim "
                     "FROM Estacao WHERE PeriodoQualAguaInicio IS NOT NULL"
                 )
             case "Cotas":
-                sql = ("""
+                sql = text("""
                 SELECT 
                     Codigo, 
                     MIN(PeriodoInicio) AS PeriodoInicio, 
@@ -121,12 +135,12 @@ def check_job(job_name):
                 GROUP BY Codigo 
                 """)
             case "Granulometria":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
             case "PerfilTransversal":
-                sql = (
+                sql = text(
                     "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
                     "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
                 )
@@ -134,20 +148,18 @@ def check_job(job_name):
                 logger.debug(f"TODO: {job_name}")
                 return
         hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro.cursor.execute(sql)
-        stations_data = hidro.cursor.fetchall()
+        hidro_session = hidro.get_session()
+        stations_data = hidro_session.execute(sql).fetchall()
         hidro.close()
         create_jobs(stations_data, job_name)
         jobs_db.close()
         check_job(job_name)
     else:
         logger.debug("TODO: Update JOBS?")
-        jobs_db.cursor.execute(
-            "SELECT ID, StationID, FromDate, ToDate "
-            f"FROM {job_name} WHERE Status = {JobStatus.FAILED.value} "
-            f"OR                    Status = {JobStatus.PENDING.value}"
-        )
-        jobs = jobs_db.cursor.fetchall()
+        get_jobs_sql = text("""SELECT ID, StationID, FromDate, ToDate """
+                            f"""FROM {job_name} WHERE Status = {JobStatus.FAILED.value} """
+                            f"""OR                    Status = {JobStatus.PENDING.value}""")
+        jobs = jobs_session.execute(get_jobs_sql).fetchall()
         if (len(jobs) > 1):
             trigger_job(jobs, job_name)
         else:
@@ -164,12 +176,12 @@ def create_jobs(stations_data, table):
             end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f")
         if start_date > datetime.today():
             logger.warning(f"Corrupted start date {start_date} for station {station_code}")
-            jobs.append((
-                station_code,
-                start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                end_date.strftime("%Y-%m-%d %H:%M:%S"),
-                JobStatus.CORRUPTED.value
-            ))
+            jobs.append({
+                'StationID': station_code,
+                'FromDate':  start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                'ToDate':    end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                'Status':    JobStatus.CORRUPTED.value
+            })
             continue
         total_years  = end_date.year - start_date.year
         current_year = start_date
@@ -177,14 +189,15 @@ def create_jobs(stations_data, table):
             next_year = current_year.replace(year=current_year.year+1)
             if next_year > end_date:
                 next_year = end_date
-            jobs.append((
-                station_code,
-                current_year.strftime("%Y-%m-%d %H:%M:%S"),
-                next_year.strftime("%Y-%m-%d %H:%M:%S"),
-                JobStatus.PENDING.value
-            ))
+            jobs.append({
+                'StationID': station_code,
+                'FromDate':  current_year.strftime("%Y-%m-%d %H:%M:%S"),
+                'ToDate':    next_year.strftime("%Y-%m-%d %H:%M:%S"),
+                'Status':    JobStatus.PENDING.value
+            })
             current_year = next_year
-    sql = f"""INSERT INTO {table} (StationID, FromDate, ToDate, Status) VALUES (?, ?, ?, ?)"""
+    sql = text(f"""INSERT INTO {table} (StationID, FromDate, ToDate, Status)"""
+               """VALUES (:StationID, :FromDate, :ToDate, :Status)""")
     insert_jobs(jobs, sql)
     logger.info(f"Created {len(jobs)} jobs for Table {table}")
 
@@ -381,38 +394,56 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
     logger.info(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
+def test_write(hidro_db, job):
+    job_id, station_code, initial_date, final_date = job
+    status, data = request_serial_data(None, HidroEndpoint.RAIN,
+                                       station_code, initial_date, final_date)
+    if status:
+        status = JobStatus.COMPLETED
+        for item in data:
+            if (len(item) != 76):
+                status = JobStatus.INVALID
+                break
+        if status == JobStatus.COMPLETED:
+            data = [Rain(entrie) for entrie in data]
+    else:
+        status = JobStatus.FAILED
+    write_data(hidro_db, "Chuvas", [(status.value, job_id)], data)
+
+
 def check_telemeter():
     TABLE = "Telemeter"
     logger.info(f"Checking Jobs for {TABLE}")
     jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    jobs_db.cursor.execute(f"SELECT COUNT(*) FROM {TABLE}")
-    jobs_count = jobs_db.cursor.fetchone()[0]
+    jobs_session = jobs_db.get_session()
+    count_jobs_sql = text(f"SELECT COUNT(*) FROM {TABLE}")
+    jobs_count = jobs_session.execute(count_jobs_sql).fetchone()[0]
     if (not jobs_count):
         logger.info(f"Creating jobs for {TABLE}")
-        sql = (
+        sql = text(
             "SELECT Codigo, PeriodoTelemetricaInicio, PeriodoTelemetricaFim "
             "FROM Estacao WHERE PeriodoTelemetricaInicio IS NOT NULL"
         )
         hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro.cursor.execute(sql)
-        stations_data = hidro.cursor.fetchall()
+        hidro_session = hidro.get_session()
+        stations_data = hidro_session.execute(sql).fetchall()
         hidro.close()
         jobs  = []
         for station_code, start_date, end_date in stations_data:
-            start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+            start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S.%f")
             if end_date is None:
                 end_date = datetime.today() - timedelta(days=1)
                 end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
             else:
-                end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+                end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f")
             if start_date > datetime.today():
                 logger.warning(f"Corrupted start date {start_date} for station {station_code}")
-                jobs.append((
-                    station_code,
-                    start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    0,
-                    JobStatus.CORRUPTED.value
-                ))
+                jobs.append({
+                    'StationID': station_code,
+                    'Date':      start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    'Interval':  0,
+                    'Status':    JobStatus.CORRUPTED.value
+                })
                 continue
             total_years  = end_date.year - start_date.year
             total_months = total_years * 12 + (end_date.month - start_date.month)
@@ -424,23 +455,23 @@ def check_telemeter():
                 max_day = monthrange(year, month)[1]
                 day     = min(current.day, max_day)
                 current = current.replace(year=year, month=month, day=day)
-                jobs.append((
-                    station_code,
-                    current.strftime("%Y-%m-%d %H:%M:%S"),
-                    0,
-                    JobStatus.PENDING.value
-                ))
-        sql = f"""INSERT INTO {TABLE} (StationID, Date, Interval, Status) VALUES (?, ?, ?, ?)"""
-        insert_jobs(jobs, siql)
+                jobs.append({
+                    'StationID': station_code,
+                    'Date':      current.strftime("%Y-%m-%d %H:%M:%S"),
+                    'Interval':  0,
+                    'Status':    JobStatus.PENDING.value
+                })
+        sql = text(f"""INSERT INTO {TABLE} (StationID, Date, Interval, Status)"""
+                   """VALUES (:StationID, :Date, :Interval, :Status)""")
+        insert_jobs(jobs, sql)
         logger.info(f"Created {len(jobs)} jobs for Table {TABLE}")
+        check_telemeter()
     else:
         logger.debug("TODO: Update JOBS?")
-        jobs_db.cursor.execute(
-            "SELECT ID, StationID, Date, Interval "
-            f"FROM {TABLE} WHERE Status = {JobStatus.FAILED.value} "
-            f"OR                 Status = {JobStatus.PENDING.value}"
-        )
-        jobs = jobs_db.cursor.fetchall()
+        get_jobs_sql = text("""SELECT ID, StationID, Date, Interval """
+                            f"""FROM {TABLE} WHERE Status = {JobStatus.FAILED.value} """
+                            f"""OR                 Status = {JobStatus.PENDING.value}""")
+        jobs = jobs_session.execute(get_jobs_sql).fetchall()
         trigger_telemeter(jobs, TABLE)
 
 def trigger_telemeter(jobs, job_name):
