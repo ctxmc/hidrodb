@@ -22,8 +22,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import jaydebeapi
-import jpype
+import sqlite3
 import os
 
 import logging
@@ -34,13 +33,6 @@ from datetime import datetime
 
 from hidro_models import *
 
-jpype.startJVM()
-jpype.addClassPath('./UCanAccess-5.0.1.bin/ucanaccess-5.0.1.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-lang3-3.8.1.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/commons-logging-1.2.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/hsqldb-2.5.0.jar')
-jpype.addClassPath('./UCanAccess-5.0.1.bin/lib/jackcess-3.0.1.jar')
-
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
     CLIENT = "Client"
@@ -49,30 +41,18 @@ class DatabaseType(StrEnum):
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
-        self.connection = jaydebeapi.connect(
-            'net.ucanaccess.jdbc.UcanaccessDriver',
-            f'jdbc:ucanaccess://{dbq}',
-            ['', '']
-        )
-        self.cursor = self.connection.cursor()
-        self.type   = db_type
+        self.connection = sqlite3.connect(dbq)
+        self.cursor     = self.connection.cursor()
+        self.type       = db_type
 
     def close(self):
         self.cursor.close()
         self.connection.close()
 
-def create_db(db_path):
-    if not os.path.isfile(db_path):
-        logger.info(f"{db_path} does not exists. Creating.")
-        import msaccessdb;
-        msaccessdb.create(db_path)
-    else:
-        logger.debug(f"{db_path} exists.")
-
 def init_db(db):
-    meta   = db.connection.jconn.getMetaData()
-    tables = meta.getTables(None, None, None, ["TABLE"])
-    if not tables.next():
+    db.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = db.cursor.fetchall()
+    if not tables:
         logger.info(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
@@ -85,12 +65,13 @@ def init_db(db):
                 user_id  = input("Enter API username: ")
                 import getpass;
                 password = getpass.getpass("Enter API password: ")
-                db.cursor.execute("""INSERT INTO Credentials (ID, Password)"""
-                                   f"""VALUES ('{user_id}', '{password}');""")
+                sql = "INSERT INTO Credentials (ID, Password) VALUES (?, ?)"
+                db.cursor.execute(sql, (user_id, password))
                 logger.info(f"Initialized {db.type} Database.")
             case DatabaseType.JOBS:
                 execute_sql_file(db, "tables/jobs.sql")
                 logger.info(f"Initialized {db.type} Database.")
+        db.connection.commit()
     else:
         logger.debug(f"{db.type} Database is Initialized.")
 
@@ -102,7 +83,10 @@ def execute_sql_file(db, sql_file_path, parameters=None):
         sql_script = f.read()
     statements = [s.strip() for s in sql_script.split(';') if s.strip()]
     for stmt in statements:
-        db.cursor.execute(stmt, parameters)
+        if parameters and '?' in stmt:
+            db.cursor.execute(stmt, parameters)
+        else:
+            db.cursor.execute(stmt)
 
 def insert_hidro(hidro, table, collection, with_id=False):
     if not with_id:
@@ -115,13 +99,16 @@ def insert_hidro(hidro, table, collection, with_id=False):
     data = [entry.data() for entry in entries]
     insert_sql = f"INSERT INTO {table} ({entries[0].keys()}) VALUES ({entries[0].values()})"
     hidro.cursor.executemany(insert_sql, data)
+    hidro.connection.commit()
 
 def insert_jobs(jobs, sql):
     db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     db.cursor.executemany(sql, jobs)
+    db.connection.commit()
     db.close()
 
 def update_jobs(table, jobs):
     db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     db.cursor.executemany(f"UPDATE [{table}] SET [Status] = ? WHERE [ID] = ?", jobs)
+    db.connection.commit()
     db.close()

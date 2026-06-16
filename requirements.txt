@@ -1,2 +1,1 @@
-jpype1
 requests

@@ -49,8 +49,10 @@ def check_token(client):
     if (not client.cursor.fetchone()[0]):
         logger.info("No Token present, requesting.")
         token, expires = request_token(client)
-        insert_token = "INSERT INTO Token (Token, Expires) VALUES (?, ?)"
-        client.cursor.execute(insert_token, (token, expires))
+        expires = expires.strftime("%Y-%m-%d %H:%M:%S")
+        insert_token_sql = "INSERT INTO Token (Token, Expires) VALUES (?, ?)"
+        client.cursor.execute(insert_token_sql, (token, expires))
+        client.connection.commit()
         return True
     else:
         client.cursor.execute("SELECT Expires FROM Token")
@@ -62,11 +64,12 @@ def check_token(client):
         else:
             logger.info("Token expired, requesting new.")
             token, expires = request_token(client)
+            if not token:
+                return false
             logger.info("Aquired new token, updating.")
-            client.cursor.execute("""UPDATE [Token] SET"""
-                                  f"""[Token]   = '{token}',"""
-                                  f"""[Expires] = '{expires}'"""
-                                  f"""WHERE [Expires] = '{expires_ISOND}';""")
+            update_token_sql = "UPDATE [Token] SET [Token] = ?, [Expires] = ? WHERE [Expires] = ?"
+            client.cursor.execute(update_token_sql, (token, expires, expires_ISOND))
+            client.connection.commit()
             logger.info("Token updated.")
             return True
 
@@ -153,12 +156,12 @@ def check_job(job_name):
 def create_jobs(stations_data, table):
     jobs = []
     for station_code, start_date, end_date in stations_data:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+        start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S.%f")
         if end_date is None:
             end_date = datetime.today() - timedelta(days=1)
             end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+            end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f")
         if start_date > datetime.today():
             logger.warning(f"Corrupted start date {start_date} for station {station_code}")
             jobs.append((
@@ -190,23 +193,23 @@ def trigger_job(jobs, job_name):
     logger.info(f"Initiating jobs for {job_name}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
-    MAX_WORKERS=1
-    client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    MAX_WORKERS=10
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         for job in jobs:
-            executor.submit(handle_job, job, job_name, client_db)
+            executor.submit(handle_job, job, job_name)
         executor.shutdown(wait=True)
-    client_db.close()
     write_queue.put((job_name, None, None, None, True))
     writer.join()
 
 lock = Lock()
-def handle_job(job_data, job_name, client_db):
+def handle_job(job_data, job_name):
     job_id, station_code, initial_date, final_date = job_data
     with lock:
+        client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
         check_token(client_db)
         client_db.cursor.execute("SELECT Token FROM Token")
         token = client_db.cursor.fetchone()[0]
+        client_db.close()
     match job_name:
         case "Chuvas":
             status, data = request_serial_data(token, HidroEndpoint.RAIN,
@@ -215,6 +218,7 @@ def handle_job(job_data, job_name, client_db):
                 status = JobStatus.COMPLETED
                 for entrie in data:
                     if (len(entrie) != 76):
+                        data   = []
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
@@ -299,7 +303,7 @@ def handle_job(job_data, job_name, client_db):
 def db_writer():
     hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     batch_buffer = {"jobs": [], "data": []}
-    BATCH_SIZE   = 1000
+    BATCH_SIZE   = 10000
     total_data    = 0
     total_jobs    = 0
     total_elapsed = 0

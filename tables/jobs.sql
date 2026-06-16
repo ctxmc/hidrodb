@@ -1,6 +1,6 @@
 CREATE TABLE [Chuvas]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE [Chuvas]
 
 CREATE TABLE [ResumoDescarga]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE [ResumoDescarga]
 
 CREATE TABLE [Sedimentos]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE [Sedimentos]
 
 CREATE TABLE [QualAgua]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE [QualAgua]
 
 CREATE TABLE [Cotas]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE [Cotas]
 
 CREATE TABLE [CurvaDescarga]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE [CurvaDescarga]
 
 CREATE TABLE [Granulometria]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE [Granulometria]
 
 CREATE TABLE [PerfilTransversal]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [FromDate]  DateTime NOT NULL,
     [ToDate]    DateTime NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE [PerfilTransversal]
 
 CREATE TABLE [Telemeter]
 (
-    [ID]        AUTOINCREMENT,
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
     [StationID] Long NOT NULL,
     [Date]      DateTime NOT NULL,
     [Interval]  Byte NOT NULL,
