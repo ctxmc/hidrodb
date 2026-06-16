@@ -38,6 +38,16 @@ from sqlalchemy import text
 from database          import *
 from hidro_webservices import *
 
+class HidroJob(StrEnum):
+    RAIN              = "Chuvas"
+    DISCHARGE_SUMMARY = "ResumoDescarga"
+    DISCHARGE_FLOW    = "CurvaDescarga"
+    SEDIMENTS         = "Sedimentos"
+    WATER_QUALITY     = "QualAgua"
+    STAGE             = "Cotas"
+    GRANULOMETRY      = "Granulometria"
+    CROSS_SECTION     = "PerfilTransversal"
+
 class JobStatus(Enum):
     PENDING   = auto()
     FAILED    = auto()
@@ -241,6 +251,7 @@ def handle_job(job_data, job_name):
                 status = JobStatus.COMPLETED
                 for entrie in data:
                     if (len(entrie) != 10):
+                        data   = []
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
@@ -277,6 +288,7 @@ def handle_job(job_data, job_name):
                 status = JobStatus.COMPLETED
                 for entrie in data:
                     if (len(entrie) != 18):
+                        data   = []
                         status = JobStatus.INVALID
                         break
                 if status == JobStatus.COMPLETED:
