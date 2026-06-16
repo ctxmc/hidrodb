@@ -97,9 +97,10 @@ if __name__ == "__main__":
     parser.add_argument('--jobs',   type=str, default='db/jobs.db')
     args = parser.parse_args()
 
-    __builtins__.hidro_path  = args.hidro
-    __builtins__.client_path = args.client
-    __builtins__.jobs_path   = args.jobs
+    import builtins;
+    builtins.hidro_path  = args.hidro
+    builtins.client_path = args.client
+    builtins.jobs_path   = args.jobs
 
     logging.basicConfig(
         level=args.log_level,
