@@ -29,14 +29,13 @@ logger = logging.getLogger(__name__)
 
 from sqlalchemy import text
 
-def check_table(hidro, client, table):
+def check_table(hidro, table):
     session = hidro.get_session()
     result  = session.execute(text(f"SELECT COUNT(*) FROM {table}"))
     if (not result.fetchone()[0]):
         logger.info(f"{table} has no Entries, requesting data")
-        if (check_token(client)):
-            client.cursor.execute("SELECT Token FROM Token")
-            token = client.cursor.fetchone()[0]
+        token = get_token()
+        if (token):
             match table:
                 case HidroTable.BASIN:
                     data = [Basin(item)    for item in request_data(token, HidroEndpoint.BASIN)]
@@ -68,21 +67,23 @@ def check_table(hidro, client, table):
 
 def main():
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    jobs   = DatabaseConnection(jobs_path, DatabaseType.JOBS)
+
     init_db(client)
-    hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     init_db(hidro)
-    jobs = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     init_db(jobs)
+
+    client.close()
     jobs.close()
 
     for table in HidroTable:
-        check_table(hidro, client, table)
+        check_table(hidro, table)
     for job in HidroJob:
         check_job(job)
 
     check_telemeter()
 
-    client.close()
     hidro.close()
 
     import signal;

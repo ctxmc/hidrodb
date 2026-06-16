@@ -45,7 +45,7 @@ class JobStatus(Enum):
     CORRUPTED = auto()
     COMPLETED = auto()
 
-def check_token(client):
+def get_token():
     logger.debug("Cheking Token.")
     client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
     session = client.get_session()
@@ -61,7 +61,7 @@ def check_token(client):
         insert_token_sql = f"INSERT INTO Token (Token, Expires) VALUES ('{token}', '{expires}')"
         session.execute(text(insert_token_sql))
         session.commit()
-        return True
+        return token
     else:
         result = session.execute(text("SELECT Expires FROM Token"))
         expires_ISOND = result.fetchone()[0]
@@ -84,7 +84,7 @@ def check_token(client):
             session.execute(update_token_sql)
             session.commit()
             logger.info("Token updated.")
-            return True
+            return token
 
 def check_job(job_name):
     logger.info(f"Checking Job for {job_name}")
@@ -218,11 +218,7 @@ lock = Lock()
 def handle_job(job_data, job_name):
     job_id, station_code, initial_date, final_date = job_data
     with lock:
-        client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
-        check_token(client_db)
-        client_db.cursor.execute("SELECT Token FROM Token")
-        token = client_db.cursor.fetchone()[0]
-        client_db.close()
+        token = get_token()
     match job_name:
         case "Chuvas":
             status, data = request_serial_data(token, HidroEndpoint.RAIN,
@@ -476,12 +472,9 @@ def check_telemeter():
 
 def trigger_telemeter(jobs, job_name):
     logger.info(f"Initiating jobs for {job_name}")
-    client_db = DatabaseConnection(client_path, DatabaseType.CLIENT)
     for job in jobs:
         job_id, station_code, date, interval = job
-        check_token(client_db)
-        client_db.cursor.execute("SELECT Token FROM Token")
-        token = client_db.cursor.fetchone()[0]
+        token = get_token()
         status, data = request_telemeter_data(token, HidroEndpoint.TELEMETER, station_code, date)
         if status:
             status = JobStatus.COMPLETED
