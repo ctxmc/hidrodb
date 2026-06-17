@@ -32,7 +32,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from enum import StrEnum
 from datetime import datetime
 
-from hidro_models import *
+from models.hidro_models import *
 
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
