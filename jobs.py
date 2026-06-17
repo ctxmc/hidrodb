@@ -33,7 +33,7 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import text
+from sqlalchemy import text, update
 
 from database          import *
 from hidro_webservices import *
@@ -59,39 +59,29 @@ def get_token():
     logger.debug("Cheking Token.")
     client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
     session = client.get_session()
-    result  = session.execute(text("SELECT COUNT(*) FROM Token"))
-    if (not result.fetchone()[0]):
+    if (not session.query(Token).count()):
         logger.info("No Token present, requesting.")
-        result = session.execute(text("SELECT ID FROM Credentials"))
-        client_id = result.fetchone()[0]
-        result = session.execute(text("SELECT Password FROM Credentials"))
-        client_password = result.fetchone()[0]
+        client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
         token, expires = request_token(client_id, client_password)
-        expires = expires.strftime("%Y-%m-%d %H:%M:%S")
-        insert_token_sql = f"INSERT INTO Token (Token, Expires) VALUES ('{token}', '{expires}')"
-        session.execute(text(insert_token_sql))
+        session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
         session.commit()
         return token
     else:
-        result = session.execute(text("SELECT Expires FROM Token"))
-        expires_ISOND = result.fetchone()[0]
-        expires_datetime = datetime.strptime(expires_ISOND, "%Y-%m-%d %H:%M:%S")
-        if datetime.now() < expires_datetime:
-            logger.debug(f"Token is valid, continuing ({expires_datetime}).")
-            result = session.execute(text("SELECT Token FROM Token"))
-            return result.fetchone()[0]
+        (expires,) = session.query(Token.Expires).first()
+        if datetime.now() < expires:
+            logger.debug(f"Token is valid, continuing ({expires}).")
+            (token,) = session.query(Token.Token).first()
+            return token
         else:
             logger.info("Token expired, requesting new.")
-            result = session.execute(text("SELECT ID FROM Credentials"))
-            client_id = result.fetchone()[0]
-            result = session.execute(text("SELECT Password FROM Credentials"))
-            client_password = result.fetchone()[0]
-            token, expires = request_token(client_id, client_password)
+            client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
+            token, new_expires = request_token(client_id, client_password)
             logger.info("Aquired new token, updating.")
-            update_token_sql = text(f"""UPDATE [Token] SET [Token] = '{token}', """
-                                    f"""[Expires] = '{expires}' """
-                                    f"""WHERE [Expires] = '{expires_ISOND}'""")
-            session.execute(update_token_sql)
+            update_expression = (
+                update(Token).where(Token.Expires == expires)
+                .values(Token=token, Expires=new_expires)
+            )
+            session.execute(update_expression)
             session.commit()
             logger.info("Token updated.")
             return token

@@ -38,6 +38,7 @@ class Token(ClientBase):
     __tablename__ = 'Token'
 
     RegistroID   = Column(Integer, primary_key=True, autoincrement=True)
+    CredentialID = Column(Integer, ForeignKey('Credentials.ID'), nullable=False)
     Token        = Column(String)
     Expires      = Column(DateTime)
 
