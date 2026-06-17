@@ -39,23 +39,6 @@ class DatabaseType(StrEnum):
     CLIENT = "Client"
     JOBS   = "Jobs"
 
-class HidroTable(StrEnum):
-    BASIN             = "Bacia"
-    SUB_BASIN         = "SubBacia"
-    ENTITY            = "Entidade"
-    TOWNSHIP          = "Municipio"
-    RIVER             = "Rio"
-    STATE             = "Estado"
-    STATION           = "Estacao"
-    # RAIN              = "Chuvas"
-    # DISCHARGE_SUMMARY = "ResumoDescarga"
-    # DISCHARGE_FLOW    = "CurvaDescarga"
-    # SEDIMENTS         = "Sedimentos"
-    # WATER_QUALITY     = "QualAgua"
-    # STAGE             = "Cotas"
-    # GRANULOMETRY      = "Granulometria"
-    # CROSS_SECTION     = "PerfilTransversal"
-
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
         self.engine  = create_engine(f"sqlite:///{dbq}", echo=False)

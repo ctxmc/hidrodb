@@ -28,42 +28,67 @@ import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import text
+from enum import StrEnum
 
-def check_table(hidro, table):
-    session = hidro.get_session()
-    result  = session.execute(text(f"SELECT COUNT(*) FROM {table}"))
-    if (not result.fetchone()[0]):
-        logger.info(f"{table} has no Entries, requesting data")
+class HidroResource(StrEnum):
+    BASIN             = "Bacia"
+    SUB_BASIN         = "SubBacia"
+    ENTITY            = "Entidade"
+    TOWNSHIP          = "Municipio"
+    RIVER             = "Rio"
+    STATE             = "Estado"
+    STATION           = "Estacao"
+
+    def get_model(self):
+        mapping = {
+            HidroResource.BASIN:     Basin,
+            HidroResource.SUB_BASIN: SubBasin,
+            HidroResource.ENTITY:    Entity,
+            HidroResource.TOWNSHIP:  Township,
+            HidroResource.RIVER:     River,
+            HidroResource.STATE:     State,
+            HidroResource.STATION:   Station,
+        }
+        return mapping[self]
+
+    def get_endpoint(self):
+        mapping = {
+            HidroResource.BASIN:     HidroEndpoint.BASIN,
+            HidroResource.SUB_BASIN: HidroEndpoint.SUB_BASIN,
+            HidroResource.ENTITY:    HidroEndpoint.ENTITY,
+            HidroResource.TOWNSHIP:  HidroEndpoint.TOWNSHIP,
+            HidroResource.RIVER:     HidroEndpoint.RIVER,
+            HidroResource.STATE:     HidroEndpoint.STATE,
+            HidroResource.STATION:   HidroEndpoint.STATION,
+        }
+        return mapping[self]
+
+def check_resource(resource):
+    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    session  = hidro_db.get_session()
+    model    = resource.get_model()
+    endpoint = resource.get_endpoint()
+    if (not session.query(model).count()):
+        logger.info(f"{resource} has no Entries, requesting data")
         token = get_token()
         if (token):
-            match table:
-                case HidroTable.BASIN:
-                    entries = [Basin.from_json(item) for item in request_data(token, HidroEndpoint.BASIN)]
-                case HidroTable.SUB_BASIN:
-                    entries = [SubBasin.from_json(item) for item in request_data(token, HidroEndpoint.SUB_BASIN)]
-                case HidroTable.ENTITY:
-                    entries = [Entity.from_json(item) for item in request_data(token, HidroEndpoint.ENTITY)]
-                case HidroTable.TOWNSHIP:
-                    entries = [Township.from_json(item) for item in request_data(token, HidroEndpoint.TOWNSHIP)]
-                case HidroTable.RIVER:
-                    entries = [River.from_json(item) for item in request_data(token, HidroEndpoint.RIVER)]
-                case HidroTable.STATE:
-                    entries = [State.from_json(item) for item in request_data(token, HidroEndpoint.STATE)]
-                case HidroTable.STATION:
+            match resource:
+                case HidroResource.STATION:
                     entries = []
-                    result = session.execute(text("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL"))
-                    for (UF,) in result.fetchall():
+                    states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
+                    for (UF,) in states_uf:
                         token = get_token()
                         if (token):
                             params = {"Unidade Federativa": f"{UF}"}
-                            entries.extend([Station.from_json(item) for item in
-                                            request_data(token, HidroEndpoint.STATION, params)])
+                            items = request_data(token, endpoint, params)
+                            entries.extend([model.from_json(item) for item in items])
                 case _:
-                    logger.debug(f"TODO: {table}")
-                    return
-            insert_hidro(hidro, entries)
+                    entries = [model.from_json(item) for item in request_data(token, endpoint)]
+            insert_hidro(hidro_db, entries)
     else:
-        logger.debug(f"{table} has Entries; TODO")
+        logger.debug(f"{resource} has Entries; TODO")
+    session.close()
+    hidro_db.close()
 
 def main():
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
@@ -75,16 +100,16 @@ def main():
     init_db(jobs)
 
     client.close()
+    hidro.close()
     jobs.close()
 
-    for table in HidroTable:
-        check_table(hidro, table)
+    for resource in HidroResource:
+        check_resource(resource)
     for job in HidroJob:
         check_job(job)
 
     check_telemeter()
 
-    hidro.close()
 
     import signal;
     os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
