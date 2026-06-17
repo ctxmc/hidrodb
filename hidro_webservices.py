@@ -95,22 +95,7 @@ def request_data(token, endpoint, params=None):
         "Authorization": f"Bearer {token}"
     }
     try:
-        match endpoint:
-            case HidroEndpoint.BASIN:
-                file_path = f"./json/Bacia.json"
-            case HidroEndpoint.SUB_BASIN:
-                file_path = f"./json/SubBacia.json"
-            case HidroEndpoint.ENTITY:
-                file_path = f"./json/Entidade.json"
-            case HidroEndpoint.TOWNSHIP:
-                file_path = f"./json/Municipio.json"
-            case HidroEndpoint.RIVER:
-                file_path = f"./json/Rio.json"
-            case HidroEndpoint.STATE:
-                file_path = f"./json/Estado.json"
-            case HidroEndpoint.STATION:
-                UF = params["Unidade Federativa"]
-                file_path = f"./json/stations/Estacao_{UF}.json"
+        file_path = get_file_path(endpoint, params)
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 items = json.load(f)
@@ -137,23 +122,7 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
         "Data Final (yyyy-MM-dd)": f"{ymd_end}"
     }
     try:
-        match endpoint:
-            case HidroEndpoint.RAIN:
-                dir_path = "rain"
-            case HidroEndpoint.DISCHARGE_SUMMARY:
-                dir_path = "liquid_desc"
-            case HidroEndpoint.SEDIMENTS:
-                dir_path = "sediments"
-            case HidroEndpoint.STAGE:
-                dir_path = "stage"
-            case HidroEndpoint.DISCHARGE_FLOW:
-                dir_path = "discharge"
-            case HidroEndpoint.WATER_QUALITY:
-                dir_path = "qa"
-            case HidroEndpoint.GRANULOMETRY:
-                dir_path = "granulometry"
-            case HidroEndpoint.CROSS_SECTION:
-                dir_path = "profile"
+        dir_path  = get_dir_path(endpoint)
         file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
         items = []
         if os.path.exists(file_path):
@@ -195,3 +164,40 @@ def request_telemeter_data(token, endpoint, station_code, date):
     except Exception as e:
             logger.error(f"(exception): {e}")
             return (False, [])
+
+def get_file_path(endpoint, params):
+    match endpoint:
+        case HidroEndpoint.BASIN:
+            return "./json/Bacia.json"
+        case HidroEndpoint.SUB_BASIN:
+            return "./json/SubBacia.json"
+        case HidroEndpoint.ENTITY:
+            return "./json/Entidade.json"
+        case HidroEndpoint.TOWNSHIP:
+            return "./json/Municipio.json"
+        case HidroEndpoint.RIVER:
+            return "./json/Rio.json"
+        case HidroEndpoint.STATE:
+            return "./json/Estado.json"
+        case HidroEndpoint.STATION:
+            UF = params["Unidade Federativa"]
+            return f"./json/stations/Estacao_{UF}.json"
+
+def get_dir_path(endpoint):
+    match endpoint:
+        case HidroEndpoint.RAIN:
+            return "rain"
+        case HidroEndpoint.DISCHARGE_SUMMARY:
+            return "liquid_desc"
+        case HidroEndpoint.SEDIMENTS:
+            return "sediments"
+        case HidroEndpoint.STAGE:
+            return "stage"
+        case HidroEndpoint.DISCHARGE_FLOW:
+            return "discharge"
+        case HidroEndpoint.WATER_QUALITY:
+            return "qa"
+        case HidroEndpoint.GRANULOMETRY:
+            return "granulometry"
+        case HidroEndpoint.CROSS_SECTION:
+            return "profile"
