@@ -27,76 +27,98 @@ import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-def check_table(hidro, client, table):
-    hidro.cursor.execute(f"SELECT COUNT(*) FROM {table}")
-    if (not hidro.cursor.fetchone()[0]):
-        logger.info(f"{table} has no Entries, requesting data")
-        if (check_token(client)):
-            client.cursor.execute("SELECT Token FROM Token")
-            token = client.cursor.fetchone()[0]
-            match table:
-                case HidroTable.BASIN:
-                    data = [Basin(item)    for item in request_data(token, HidroEndpoint.BASIN)]
-                case HidroTable.SUB_BASIN:
-                    data = [SubBasin(item) for item in request_data(token, HidroEndpoint.SUB_BASIN)]
-                case HidroTable.ENTITY:
-                    data = [Entity(item)   for item in request_data(token, HidroEndpoint.ENTITY)]
-                case HidroTable.TOWNSHIP:
-                    data = [Township(item) for item in request_data(token, HidroEndpoint.TOWNSHIP)]
-                case HidroTable.RIVER:
-                    data = [River(item)    for item in request_data(token, HidroEndpoint.RIVER)]
-                case HidroTable.STATE:
-                    data = [State(item)    for item in request_data(token, HidroEndpoint.STATE)]
-                case HidroTable.STATION:
-                    data = []
-                    hidro.cursor.execute("SELECT Sigla FROM Estado WHERE CodigoIBGE IS NOT NULL")
-                    for (UF,) in hidro.cursor.fetchall():
-                        if (check_token(client)):
-                            client.cursor.execute("SELECT Token FROM Token")
-                            token = client.cursor.fetchone()[0]
+from sqlalchemy import text
+from enum import StrEnum
+
+class HidroResource(StrEnum):
+    BASIN             = "Bacia"
+    SUB_BASIN         = "SubBacia"
+    ENTITY            = "Entidade"
+    TOWNSHIP          = "Municipio"
+    RIVER             = "Rio"
+    STATE             = "Estado"
+    STATION           = "Estacao"
+
+    def get_model(self):
+        mapping = {
+            HidroResource.BASIN:     Basin,
+            HidroResource.SUB_BASIN: SubBasin,
+            HidroResource.ENTITY:    Entity,
+            HidroResource.TOWNSHIP:  Township,
+            HidroResource.RIVER:     River,
+            HidroResource.STATE:     State,
+            HidroResource.STATION:   Station,
+        }
+        return mapping[self]
+
+    def get_endpoint(self):
+        mapping = {
+            HidroResource.BASIN:     HidroEndpoint.BASIN,
+            HidroResource.SUB_BASIN: HidroEndpoint.SUB_BASIN,
+            HidroResource.ENTITY:    HidroEndpoint.ENTITY,
+            HidroResource.TOWNSHIP:  HidroEndpoint.TOWNSHIP,
+            HidroResource.RIVER:     HidroEndpoint.RIVER,
+            HidroResource.STATE:     HidroEndpoint.STATE,
+            HidroResource.STATION:   HidroEndpoint.STATION,
+        }
+        return mapping[self]
+
+def check_resource(resource):
+    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    session  = hidro_db.get_session()
+    model    = resource.get_model()
+    endpoint = resource.get_endpoint()
+    if (not session.query(model).count()):
+        logger.info(f"{resource} has no Entries, requesting data")
+        token = get_token()
+        if (token):
+            match resource:
+                case HidroResource.STATION:
+                    entries = []
+                    states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
+                    for (UF,) in states_uf:
+                        token = get_token()
+                        if (token):
                             params = {"Unidade Federativa": f"{UF}"}
-                            data.extend([Station(item) for item in
-                                         request_data(token, HidroEndpoint.STATION, params)])
+                            items = request_data(token, endpoint, params)
+                            entries.extend([model.from_json(item) for item in items])
                 case _:
-                    logger.debug(f"TODO: {table}")
-                    return
-            insert_hidro(hidro, table, data)
+                    entries = [model.from_json(item) for item in request_data(token, endpoint)]
+            insert_hidro(hidro_db, entries)
     else:
-        logger.debug(f"{table} has Entries; TODO")
+        logger.debug(f"{resource} has Entries; TODO")
+    session.close()
+    hidro_db.close()
 
 def main():
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+
     init_db(client)
-    hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     init_db(hidro)
-    jobs = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    init_db(jobs)
-    jobs.close()
-
-    for table in HidroTable:
-        check_table(hidro, client, table)
-    for job in HidroJob:
-        check_job(job)
-
-    check_telemeter()
 
     client.close()
     hidro.close()
 
-    import signal;
-    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
+    for resource in HidroResource:
+        check_resource(resource)
+    for job in HidroJob:
+        check_job(job)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--hidro',  type=str, default='db/hidro.db')
     parser.add_argument('--client', type=str, default='db/client.db')
-    parser.add_argument('--jobs',   type=str, default='db/jobs.db')
+    parser.add_argument('--max-workers', type=int, default=10)
+    parser.add_argument('--batch-size', type=int, default=1000)
     args = parser.parse_args()
 
-    __builtins__.hidro_path  = args.hidro
-    __builtins__.client_path = args.client
-    __builtins__.jobs_path   = args.jobs
+    import builtins;
+    builtins.hidro_path  = args.hidro
+    builtins.client_path = args.client
+    builtins.MAX_WORKERS = args.max_workers
+    builtins.BATCH_SIZE  = args.batch_size
 
     logging.basicConfig(
         level=args.log_level,
@@ -106,6 +128,6 @@ if __name__ == "__main__":
     from database          import *
     from hidro_webservices import *
     from jobs              import *
-    from hidro_models      import *
+    from models            import *
 
     main()

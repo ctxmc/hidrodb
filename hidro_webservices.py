@@ -25,6 +25,7 @@
 import os
 import requests
 import json
+import time
 
 from datetime import datetime
 from enum     import StrEnum
@@ -49,7 +50,6 @@ class HidroEndpoint(StrEnum):
     WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
     GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
     CROSS_SECTION     = "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1"
-    TELEMETER         = "/EstacoesTelemetricas/HidroinfoanaSerieTelemetricaAdotada/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url      = "https://www.ana.gov.br/hidrowebservice"
@@ -67,27 +67,26 @@ def request_hidro_ws(endpoint, headers, params={}):
             logger.error(f"(response): {response} (status: {response.status_code})")
         match response.status_code:
             case 503 | 504:
-                import time;
                 time.sleep(1)
 
-def request_token(client):
-    client.cursor.execute("SELECT ID FROM Credentials")
-    client_id = client.cursor.fetchone()[0]
-    client.cursor.execute("SELECT Password FROM Credentials")
-    client_password = client.cursor.fetchone()[0]
+def request_token(client_id, client_password, max_retries=3, retry_delay=2):
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
-    try:
-        data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
-        token           = data.get("items", {}).get("tokenautenticacao")
-        expires_RFC2822 = data.get("items", {}).get("validade")
-        expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
-        return [token, expires_ISOND]
-    except Exception as e:
-        logger.error(f"(exception): {e}")
+    for attempt in range(max_retries):
+        try:
+            data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
+            token           = data.get("items", {}).get("tokenautenticacao")
+            expires_RFC2822 = data.get("items", {}).get("validade")
+            expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
+            return [token, expires_ISOND]
+        except Exception as e:
+            logger.error(f"(attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+    raise
 
 def request_data(token, endpoint, params=None):
     headers = {
@@ -95,22 +94,7 @@ def request_data(token, endpoint, params=None):
         "Authorization": f"Bearer {token}"
     }
     try:
-        match endpoint:
-            case HidroEndpoint.BASIN:
-                file_path = f"./json/Bacia.json"
-            case HidroEndpoint.SUB_BASIN:
-                file_path = f"./json/SubBacia.json"
-            case HidroEndpoint.ENTITY:
-                file_path = f"./json/Entidade.json"
-            case HidroEndpoint.TOWNSHIP:
-                file_path = f"./json/Municipio.json"
-            case HidroEndpoint.RIVER:
-                file_path = f"./json/Rio.json"
-            case HidroEndpoint.STATE:
-                file_path = f"./json/Estado.json"
-            case HidroEndpoint.STATION:
-                UF = params["Unidade Federativa"]
-                file_path = f"./json/stations/Estacao_{UF}.json"
+        file_path = get_file_path(endpoint, params)
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 items = json.load(f)
@@ -128,8 +112,8 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end, _] = final_date.split()
+    ymd_start = initial_date.strftime('%Y-%m-%d')
+    ymd_end   = final_date.strftime('%Y-%m-%d')
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
@@ -137,23 +121,7 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
         "Data Final (yyyy-MM-dd)": f"{ymd_end}"
     }
     try:
-        match endpoint:
-            case HidroEndpoint.RAIN:
-                dir_path = "rain"
-            case HidroEndpoint.DISCHARGE_SUMMARY:
-                dir_path = "liquid_desc"
-            case HidroEndpoint.SEDIMENTS:
-                dir_path = "sediments"
-            case HidroEndpoint.STAGE:
-                dir_path = "stage"
-            case HidroEndpoint.DISCHARGE_FLOW:
-                dir_path = "discharge"
-            case HidroEndpoint.WATER_QUALITY:
-                dir_path = "qa"
-            case HidroEndpoint.GRANULOMETRY:
-                dir_path = "granulometry"
-            case HidroEndpoint.CROSS_SECTION:
-                dir_path = "profile"
+        dir_path  = get_dir_path(endpoint)
         file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
         items = []
         if os.path.exists(file_path):
@@ -168,30 +136,39 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
             logger.error(f"(exception): {e}")
             return (False, [])
 
-def request_telemeter_data(token, endpoint, station_code, date):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    [ymd_interval, _] = date.split()
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data de Busca (yyyy-MM-dd)": f"{ymd_interval}",
-        "Range Intervalo de busca": "DIAS_30"  # MINUTO_5, MINUTO_10, MINUTO_15, MINUTO_30, HORA_1, HORA_2, HORA_3, HORA_4, HORA_5, HORA_6, HORA_7, HORA_8, HORA_9, HORA_10, HORA_11, HORA_12, HORA_13, HORA_14, HORA_15, HORA_16, HORA_17, HORA_18, HORA_19, HORA_20, HORA_21, HORA_22, HORA_23, HORA_24, DIAS_2, DIAS_7, DIAS_14, DIAS_21, DIAS_30
-    }
-    try:
-        dir_path  = get_dir_path(endpoint)
-        file_path = f"./json/telemeter/station_{station_code}_{ymd_interval}.json"
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return (True, items)
-    except Exception as e:
-            logger.error(f"(exception): {e}")
-            return (False, [])
+def get_file_path(endpoint, params):
+    match endpoint:
+        case HidroEndpoint.BASIN:
+            return "./json/Bacia.json"
+        case HidroEndpoint.SUB_BASIN:
+            return "./json/SubBacia.json"
+        case HidroEndpoint.ENTITY:
+            return "./json/Entidade.json"
+        case HidroEndpoint.TOWNSHIP:
+            return "./json/Municipio.json"
+        case HidroEndpoint.RIVER:
+            return "./json/Rio.json"
+        case HidroEndpoint.STATE:
+            return "./json/Estado.json"
+        case HidroEndpoint.STATION:
+            UF = params["Unidade Federativa"]
+            return f"./json/stations/Estacao_{UF}.json"
+
+def get_dir_path(endpoint):
+    match endpoint:
+        case HidroEndpoint.RAIN:
+            return "rain"
+        case HidroEndpoint.DISCHARGE_SUMMARY:
+            return "liquid_desc"
+        case HidroEndpoint.SEDIMENTS:
+            return "sediments"
+        case HidroEndpoint.STAGE:
+            return "stage"
+        case HidroEndpoint.DISCHARGE_FLOW:
+            return "discharge"
+        case HidroEndpoint.WATER_QUALITY:
+            return "qa"
+        case HidroEndpoint.GRANULOMETRY:
+            return "granulometry"
+        case HidroEndpoint.CROSS_SECTION:
+            return "profile"
