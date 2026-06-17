@@ -86,35 +86,41 @@ def get_token():
             logger.info("Token updated.")
             return token
 
-def check_job(job_name):
-    logger.info(f"Checking Job for {job_name}")
+def check_job(hidro_job):
+    logger.info(f"Checking Job for {hidro_job}")
     jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
     jobs_session = jobs_db.get_session()
-    count_jobs_sql = text(f"SELECT COUNT(*) FROM {job_name}")
+    count_jobs_sql = text(f"SELECT COUNT(*) FROM {hidro_job}")
     jobs_count = jobs_session.execute(count_jobs_sql).fetchone()[0]
     if (not jobs_count):
-        logger.info(f"Creating jobs for {job_name}")
-        match job_name:
+        logger.info(f"Creating jobs for {hidro_job}")
+        hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+        hidro_session = hidro_db.get_session()
+        match hidro_job:
             case "Chuvas":
-                sql = text(
-                    "SELECT Codigo, PeriodoRegistradorChuvaInicio, PeriodoRegistradorChuvaFim "
-                    "FROM Estacao WHERE PeriodoRegistradorChuvaInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoRegistradorChuvaInicio,
+                    Station.PeriodoRegistradorChuvaFim
+                ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
             case "ResumoDescarga" | "CurvaDescarga":
-                sql = text(
-                    "SELECT Codigo, PeriodoDescLiquidaInicio, PeriodoDescLiquidaFim "
-                    "FROM Estacao WHERE PeriodoDescLiquidaInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoDescLiquidaInicio,
+                    Station.PeriodoDescLiquidaFim
+                ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
             case "Sedimentos":
-                sql = text(
-                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
-                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoSedimentosInicio,
+                    Station.PeriodoSedimentosFim
+                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
             case "QualAgua":
-                sql = text(
-                    "SELECT Codigo, PeriodoQualAguaInicio, PeriodoQualAguaFim "
-                    "FROM Estacao WHERE PeriodoQualAguaInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoQualAguaInicio,
+                    Station.PeriodoQualAguaFim
+                ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
             case "Cotas":
                 sql = text("""
                 SELECT 
@@ -134,36 +140,37 @@ def check_job(job_name):
                 ) combined 
                 GROUP BY Codigo 
                 """)
+                stations_data = hidro_session.execute(sql).fetchall()
             case "Granulometria":
-                sql = text(
-                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
-                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoSedimentosInicio,
+                    Station.PeriodoSedimentosFim
+                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
             case "PerfilTransversal":
-                sql = text(
-                    "SELECT Codigo, PeriodoSedimentosInicio, PeriodoSedimentosFim "
-                    "FROM Estacao WHERE PeriodoSedimentosInicio IS NOT NULL"
-                )
+                stations_data =  hidro_session.query(
+                    Station.Codigo,
+                    Station.PeriodoSedimentosInico,
+                    Station.PeriodoSedimentosFim
+                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
             case _:
-                logger.debug(f"TODO: {job_name}")
+                logger.debug(f"TODO: {hidro_job}")
                 return
-        hidro = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro_session = hidro.get_session()
-        stations_data = hidro_session.execute(sql).fetchall()
-        hidro.close()
-        create_jobs(stations_data, job_name)
+        hidro_session.close()
+        hidro_db.close()
+        create_jobs(stations_data, hidro_job)
         jobs_db.close()
-        check_job(job_name)
+        check_job(hidro_job)
     else:
         logger.debug("TODO: Update JOBS?")
         get_jobs_sql = text("""SELECT ID, StationID, FromDate, ToDate """
-                            f"""FROM {job_name} WHERE Status = {JobStatus.FAILED.value} """
+                            f"""FROM {hidro_job} WHERE Status = {JobStatus.FAILED.value} """
                             f"""OR                    Status = {JobStatus.PENDING.value}""")
         jobs = jobs_session.execute(get_jobs_sql).fetchall()
         if (len(jobs) > 1):
-            trigger_job(jobs, job_name)
+            trigger_job(jobs, hidro_job)
         else:
-            logger.info(f"No pending jobs for {job_name}")
+            logger.info(f"No pending jobs for {hidro_job}")
 
 def create_jobs(stations_data, table):
     jobs = []
@@ -173,7 +180,7 @@ def create_jobs(stations_data, table):
             try:
                 start_date = datetime.strptime(start_date, fmt)
                 break
-            except ValueError:
+            except Exception as e:
                 continue
         if end_date is None:
             end_date = datetime.today() - timedelta(days=1)
@@ -183,7 +190,7 @@ def create_jobs(stations_data, table):
                 try:
                     end_date = datetime.strptime(end_date, fmt)
                     break
-                except ValueError:
+                except Exception as e:
                     continue
         if start_date > datetime.today():
             logger.warning(f"Corrupted start date {start_date} for station {station_code}")
