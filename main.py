@@ -93,23 +93,18 @@ def check_resource(resource):
 def main():
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-    jobs   = DatabaseConnection(jobs_path, DatabaseType.JOBS)
 
     init_db(client)
     init_db(hidro)
-    init_db(jobs)
 
     client.close()
     hidro.close()
-    jobs.close()
 
     for resource in HidroResource:
         check_resource(resource)
     for job in HidroJob:
         check_job(job)
-
-    check_telemeter()
-
+    # check_telemeter()
 
     import signal;
     os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
@@ -119,13 +114,15 @@ if __name__ == "__main__":
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--hidro',  type=str, default='db/hidro.db')
     parser.add_argument('--client', type=str, default='db/client.db')
-    parser.add_argument('--jobs',   type=str, default='db/jobs.db')
+    parser.add_argument('--max-workers', type=int, default=100)
+    parser.add_argument('--batch-size', type=int, default=10000)
     args = parser.parse_args()
 
     import builtins;
     builtins.hidro_path  = args.hidro
     builtins.client_path = args.client
-    builtins.jobs_path   = args.jobs
+    builtins.MAX_WORKERS = args.max_workers
+    builtins.BATCH_SIZE  = args.batch_size
 
     logging.basicConfig(
         level=args.log_level,

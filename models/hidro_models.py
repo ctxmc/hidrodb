@@ -25,7 +25,6 @@
 from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 
-from typing import Dict
 from datetime import datetime
 
 def str_to_datetime(date_str):

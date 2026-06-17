@@ -25,6 +25,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from queue              import Queue
 from threading          import Thread, Lock
+
 from datetime import datetime, timedelta
 from calendar import monthrange
 from enum     import Enum, auto, StrEnum
@@ -47,6 +48,32 @@ class HidroJob(StrEnum):
     STAGE             = "Cotas"
     GRANULOMETRY      = "Granulometria"
     CROSS_SECTION     = "PerfilTransversal"
+
+    def get_model(self):
+        mapping = {
+            HidroJob.RAIN:              Rain,
+            HidroJob.DISCHARGE_SUMMARY: DischargeSummary,
+            HidroJob.DISCHARGE_FLOW:    DischargeFlow,
+            HidroJob.SEDIMENTS:         Sediments,
+            HidroJob.WATER_QUALITY:     WaterQuality,
+            HidroJob.STAGE:             Stage,
+            HidroJob.GRANULOMETRY:      Granulometry,
+            HidroJob.CROSS_SECTION:     CrossSection,
+        }
+        return mapping[self]
+
+    def get_endpoint(self):
+        mapping = {
+            HidroJob.RAIN:              HidroEndpoint.RAIN,
+            HidroJob.DISCHARGE_SUMMARY: HidroEndpoint.DISCHARGE_SUMMARY,
+            HidroJob.DISCHARGE_FLOW:    HidroEndpoint.DISCHARGE_FLOW,
+            HidroJob.SEDIMENTS:         HidroEndpoint.SEDIMENTS,
+            HidroJob.WATER_QUALITY:     HidroEndpoint.WATER_QUALITY,
+            HidroJob.STAGE:             HidroEndpoint.STAGE,
+            HidroJob.GRANULOMETRY:      HidroEndpoint.GRANULOMETRY,
+            HidroJob.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
+        }
+        return mapping[self]
 
 class JobStatus(Enum):
     PENDING   = auto()
@@ -88,40 +115,39 @@ def get_token():
 
 def check_job(hidro_job):
     logger.info(f"Checking Job for {hidro_job}")
-    jobs_db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    jobs_session = jobs_db.get_session()
-    count_jobs_sql = text(f"SELECT COUNT(*) FROM {hidro_job}")
-    jobs_count = jobs_session.execute(count_jobs_sql).fetchone()[0]
-    if (not jobs_count):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    jobs_count = client_session.query(SeriesJobs).where(SeriesJobs.HidroTable == hidro_job).count()
+    if not jobs_count:
         logger.info(f"Creating jobs for {hidro_job}")
         hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
         hidro_session = hidro_db.get_session()
         match hidro_job:
-            case "Chuvas":
+            case HidroJob.RAIN:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoRegistradorChuvaInicio,
                     Station.PeriodoRegistradorChuvaFim
                 ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
-            case "ResumoDescarga" | "CurvaDescarga":
+            case HidroJob.DISCHARGE_SUMMARY | HidroJob.DISCHARGE_FLOW:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoDescLiquidaInicio,
                     Station.PeriodoDescLiquidaFim
                 ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
-            case "Sedimentos":
+            case HidroJob.SEDIMENTS:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
                 ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
-            case "QualAgua":
+            case HidroJob.WATER_QUALITY:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoQualAguaInicio,
                     Station.PeriodoQualAguaFim
                 ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
-            case "Cotas":
+            case HidroJob.STAGE:
                 sql = text("""
                 SELECT 
                     Codigo, 
@@ -141,13 +167,13 @@ def check_job(hidro_job):
                 GROUP BY Codigo 
                 """)
                 stations_data = hidro_session.execute(sql).fetchall()
-            case "Granulometria":
+            case HidroJob.GRANULOMETRY:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
                 ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
-            case "PerfilTransversal":
+            case HidroJob.CROSS_SECTION:
                 stations_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInico,
@@ -158,21 +184,27 @@ def check_job(hidro_job):
                 return
         hidro_session.close()
         hidro_db.close()
+        client_db.close()
+        client_session.close()
         create_jobs(stations_data, hidro_job)
-        jobs_db.close()
         check_job(hidro_job)
     else:
         logger.debug("TODO: Update JOBS?")
-        get_jobs_sql = text("""SELECT ID, StationID, FromDate, ToDate """
-                            f"""FROM {hidro_job} WHERE Status = {JobStatus.FAILED.value} """
-                            f"""OR                    Status = {JobStatus.PENDING.value}""")
-        jobs = jobs_session.execute(get_jobs_sql).fetchall()
+        jobs = (client_session.query(
+                    SeriesJobs.ID,
+                    SeriesJobs.StationID,
+                    SeriesJobs.FromDate,
+                    SeriesJobs.ToDate
+                ).filter(
+                    SeriesJobs.Status.in_([JobStatus.FAILED.value, JobStatus.PENDING.value]),
+                    SeriesJobs.HidroTable == hidro_job)
+                .all())
         if (len(jobs) > 1):
             trigger_job(jobs, hidro_job)
         else:
             logger.info(f"No pending jobs for {hidro_job}")
 
-def create_jobs(stations_data, table):
+def create_jobs(stations_data, hidro_job):
     jobs = []
     for station_code, start_date, end_date in stations_data:
         formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
@@ -194,12 +226,13 @@ def create_jobs(stations_data, table):
                     continue
         if start_date > datetime.today():
             logger.warning(f"Corrupted start date {start_date} for station {station_code}")
-            jobs.append({
-                'StationID': station_code,
-                'FromDate':  start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                'ToDate':    end_date.strftime("%Y-%m-%d %H:%M:%S"),
-                'Status':    JobStatus.CORRUPTED.value
-            })
+            jobs.append(SeriesJobs(
+                StationID  = station_code,
+                FromDate   = start_date,
+                ToDate     = end_date,
+                Status     = JobStatus.CORRUPTED.value,
+                HidroTable = hidro_job
+            ))
             continue
         total_years  = end_date.year - start_date.year
         current_year = start_date
@@ -207,117 +240,69 @@ def create_jobs(stations_data, table):
             next_year = current_year.replace(year=current_year.year+1)
             if next_year > end_date:
                 next_year = end_date
-            jobs.append({
-                'StationID': station_code,
-                'FromDate':  current_year.strftime("%Y-%m-%d %H:%M:%S"),
-                'ToDate':    next_year.strftime("%Y-%m-%d %H:%M:%S"),
-                'Status':    JobStatus.PENDING.value
-            })
+            jobs.append(SeriesJobs(
+                StationID  = station_code,
+                FromDate   = current_year,
+                ToDate     = next_year,
+                Status     = JobStatus.PENDING.value,
+                HidroTable = hidro_job
+            ))
             current_year = next_year
-    sql = text(f"""INSERT INTO {table} (StationID, FromDate, ToDate, Status)"""
-               """VALUES (:StationID, :FromDate, :ToDate, :Status)""")
-    insert_jobs(jobs, sql)
-    logger.info(f"Created {len(jobs)} jobs for Table {table}")
+    insert_jobs(jobs)
+    logger.info(f"Created {len(jobs)} jobs for Hidro_Job {hidro_job}")
 
 write_queue = Queue()
-def trigger_job(jobs, job_name):
-    logger.info(f"Initiating jobs for {job_name}")
+def trigger_job(jobs, hidro_job):
+    logger.info(f"Initiating jobs for {hidro_job}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
-    MAX_WORKERS=10
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         for job in jobs:
-            executor.submit(handle_job, job, job_name)
+            # handle_job(job, hidro_job)
+            executor.submit(handle_job, job, hidro_job)
         executor.shutdown(wait=True)
-    write_queue.put((job_name, None, None, None, True))
+    write_queue.put((hidro_job, None, None, None, True))
     writer.join()
 
 lock = Lock()
-def handle_job(job_data, job_name):
+def handle_job(job_data, hidro_job):
+    # TODO, jobs creates it own params?
     job_id, station_code, initial_date, final_date = job_data
     with lock:
         token = get_token()
-    match job_name:
-        case "Chuvas":
-            status, data = request_serial_data(token, HidroEndpoint.RAIN,
-                                                station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                for entrie in data:
-                    if (len(entrie) != 76):
+    status, data = request_serial_data(token, hidro_job.get_endpoint(),
+                                       station_code, initial_date, final_date)
+    if status:
+        status = JobStatus.COMPLETED
+    else:
+        status = JobStatus.FAILED
+
+    match hidro_job:
+        case HidroJob.RAIN:
+            if status == JobStatus.COMPLETED:
+                for index, entrie in enumerate(data):
+                    if len(entrie) != 76:
                         data   = []
                         status = JobStatus.INVALID
+                        logger.warning(f"Invalid entry at index {index}: {entrie}")
                         break
-                if status == JobStatus.COMPLETED:
-                    data = [Rain.from_json(entrie) for entrie in data]
-            else:
-                status = JobStatus.FAILED
-        case "ResumoDescarga":
-            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_SUMMARY,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                for entrie in data:
+        case HidroJob.DISCHARGE_SUMMARY:
+            if status == JobStatus.COMPLETED:
+                for index, entrie in enumerate(data):
                     if (len(entrie) != 10):
                         data   = []
                         status = JobStatus.INVALID
+                        logger.warning(f"Invalid entry at index {index}: {entrie}, status={status}")
                         break
-                if status == JobStatus.COMPLETED:
-                    data = [DischargeSummary.from_json(entrie) for entrie in data]
-            else:
-                status = JobStatus.FAILED
-        case "Sedimentos":
-            status, data = request_serial_data(token, HidroEndpoint.SEDIMENTS,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                data = [Sediments.from_json(item) for item in data]
-            else:
-                status = JobStatus.FAILED
-        case "QualAgua":
-            status, data = request_serial_data(token, HidroEndpoint.WATER_QUALITY,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-            else:
-                status = JobStatus.FAILED
-        case "Cotas":
-            status, data = request_serial_data(token, HidroEndpoint.STAGE,
-                                            station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                data = [Stage.from_json(item) for item in data]
-            else:
-                status = JobStatus.FAILED
-        case "CurvaDescarga":
-            status, data = request_serial_data(token, HidroEndpoint.DISCHARGE_FLOW,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                for entrie in data:
+        case HidroJob.DISCHARGE_FLOW:
+            if status == JobStatus.COMPLETED:
+                for index, entrie in enumerate(data):
                     if (len(entrie) != 18):
                         data   = []
                         status = JobStatus.INVALID
+                        logger.warning(f"Invalid entry at index {index}: {entrie}, status={status}")
                         break
-                if status == JobStatus.COMPLETED:
-                    data = [DischargeFlow.from_json(item) for item in data]
-            else:
-                status = JobStatus.FAILED
-        case "Granulometria":
-            status, data = request_serial_data(token, HidroEndpoint.GRANULOMETRY,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-                data = [Granulometry.from_json(item) for item in data]
-            else:
-                status = JobStatus.FAILED
-        case "PerfilTransversal":
-            status, data = request_serial_data(token, HidroEndpoint.CROSS_SECTION,
-                                               station_code, initial_date, final_date)
-            if status:
-                status = JobStatus.COMPLETED
-            else:
-                status = JobStatus.FAILED
+
     match status:
         case JobStatus.COMPLETED:
             status_label = "Completed"
@@ -325,14 +310,13 @@ def handle_job(job_data, job_name):
             status_label = "Failed"
         case JobStatus.INVALID:
             status_label = "Invalid"
-    logger.debug(f"""[JOB {job_name} {job_id}]: {status_label} request for station {station_code} """
+    logger.debug(f"""[JOB {hidro_job} {job_id}]: {status_label} request for station {station_code} """
                  f"""on period ({initial_date})-({final_date})""")
-    write_queue.put((job_name, job_id, status.value, data, False))
+    write_queue.put((hidro_job, job_id, status.value, data, False))
 
 def db_writer():
     hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     batch_buffer = {"jobs": [], "data": []}
-    BATCH_SIZE   = 10000
     total_data    = 0
     total_jobs    = 0
     total_elapsed = 0
@@ -341,14 +325,14 @@ def db_writer():
             if write_queue.empty():
                 time.sleep(0.1)
                 continue
-            job_name, job_id, status, data, stop_signal = write_queue.get()
+            hidro_job, job_id, status, data, stop_signal = write_queue.get()
             if stop_signal:
-                total_elapsed += write_data(hidro_db, job_name,
+                total_elapsed += write_data(hidro_db, hidro_job,
                                             batch_buffer["jobs"], batch_buffer["data"])
-                logger.info(f"""[WRITER {job_name}]: Total Data: {total_data}, """
+                logger.info(f"""[WRITER {hidro_job}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
                             f"""Total thread elapsed: {total_elapsed}"""
-                            f"""Finished jobs for {job_name}""")
+                            f"""Finished jobs for {hidro_job}""")
                 break;
             batch_buffer["jobs"].append({'status': status, 'job_id': job_id})
             if len(data) > 0:
@@ -356,33 +340,22 @@ def db_writer():
             if len(batch_buffer["data"]) >= BATCH_SIZE:
                 total_data    += len(batch_buffer["data"])
                 total_jobs    += len(batch_buffer["jobs"])
-                total_elapsed += write_data(hidro_db, job_name,
+                total_elapsed += write_data(hidro_db, hidro_job,
                                             batch_buffer["jobs"], batch_buffer["data"])
-                logger.info(f"""[WRITER {job_name}]: Total Data: {total_data}, """
+                logger.info(f"""[WRITER {hidro_job}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
                             f"""Total thread elapsed: {total_elapsed}""")
                 batch_buffer = {"jobs": [], "data": []}
         except Exception as e:
             logger.error(f"[WRITER]: db_writer exception: {e}")
+            raise
 
-def write_data(hidro_db, job_name, job_data, hidro_data):
+def write_data(hidro_db, hidro_job, job_data, hidro_data):
     start_time = time.perf_counter()
-    if len(hidro_data) > 0:
-        logger.info(f"[WRITER {job_name}]: Inserting {len(hidro_data)} entries")
-        match job_name:
-            case "Chuvas":
-                insert_hidro(hidro_db, hidro_data)
-            case "ResumoDescarga":
-                insert_hidro(hidro_db, hidro_data)
-            case "Sedimentos":
-                insert_hidro(hidro_db, hidro_data)
-            case "Cotas":
-                insert_hidro(hidro_db, hidro_data)
-            case "CurvaDescarga":
-                insert_hidro(hidro_db, hidro_data)
-            case "Granulometria":
-                insert_hidro(hidro_db, hidro_data)
-            case "QualAgua":
+    if len(hidro_data) > 1:
+        logger.info(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
+        match hidro_job:
+            case HidroJob.WATER_QUALITY:
                 water_quality = []
                 water_status  = []
                 for item in hidro_data:
@@ -390,7 +363,7 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                     water_status.append(WaterQualityStatus.from_json(item))
                 insert_hidro(hidro_db, water_quality)
                 insert_hidro(hidro_db, water_status)
-            case "PerfilTransversal":
+            case HidroJob.CROSS_SECTION:
                 cross_section   = []
                 v_cross_section = []
                 current_id      = None
@@ -406,11 +379,14 @@ def write_data(hidro_db, job_name, job_data, hidro_data):
                     v_cross_section.extend([VerticalCrossSection.from_json(v, current_id) for v in verticals])
                 insert_hidro(hidro_db, cross_section,   True)
                 insert_hidro(hidro_db, v_cross_section, True)
+            case _:
+                model_data = [hidro_job.get_model().from_json(entrie) for entrie in hidro_data]
+                insert_hidro(hidro_db, model_data)
     if len(job_data) > 0:
-        update_jobs(job_name, job_data)
-        logger.info(f"[WRITER {job_name}]: Updated {len(job_data)} jobs")
+        update_jobs(job_data)
+        logger.info(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.info(f"[WRITER {job_name}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
+    logger.info(f"[WRITER {hidro_job}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 def check_telemeter():

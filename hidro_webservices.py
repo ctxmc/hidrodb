@@ -113,8 +113,8 @@ def request_serial_data(token, endpoint, station_code, initial_date, final_date)
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    [ymd_start, _] = initial_date.split()
-    [ymd_end, _] = final_date.split()
+    ymd_start = initial_date.strftime('%Y-%m-%d')
+    ymd_end   = final_date.strftime('%Y-%m-%d')
     params    = {
         "Código da Estação": station_code,
         "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"

@@ -26,18 +26,18 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import create_engine, text, func
+from sqlalchemy import create_engine, text, func, update
 from sqlalchemy.orm import sessionmaker, Session
 
 from enum import StrEnum
 from datetime import datetime
 
 from models.hidro_models import *
+from models.client       import *
 
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
     CLIENT = "Client"
-    JOBS   = "Jobs"
 
 class DatabaseConnection:
     def __init__(self, dbq: str, db_type: DatabaseType):
@@ -70,9 +70,6 @@ def init_db(db):
                 credentials = Credentials(ID=user_id, Password=password)
                 session.add(credentials)
                 session.commit()
-            case DatabaseType.JOBS:
-                execute_sql_file(db, "tables/jobs.sql")
-                logger.info(f"Initialized {db.type} Database.")
         session.commit()
 
 def execute_sql_file(db, sql_file_path, parameters=None):
@@ -100,16 +97,19 @@ def insert_hidro(hidro, collection, has_id=False):
     session.add_all(collection)
     session.commit()
 
-def insert_jobs(jobs, sql):
-    db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    session = db.get_session()
-    session.execute(sql, jobs)
-    session.commit()
-    db.close()
+def insert_jobs(jobs):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    client_session.add_all(jobs)
+    client_session.commit()
+    client_session.close()
+    client_db.close()
 
-def update_jobs(table, jobs):
-    db = DatabaseConnection(jobs_path, DatabaseType.JOBS)
-    session = db.get_session()
-    session.execute(text(f"UPDATE [{table}] SET [Status] = :status WHERE [ID] = :job_id"), jobs)
-    session.commit()
-    db.close()
+def update_jobs(jobs):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    update_sql = text(f"UPDATE [SeriesJobs] SET [Status] = :status WHERE [ID] = :job_id")
+    client_session.execute(update_sql, jobs)
+    client_session.commit()
+    client_session.close()
+    client_db.close()

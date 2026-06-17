@@ -42,3 +42,13 @@ class Token(ClientBase):
     Token        = Column(String)
     Expires      = Column(DateTime)
 
+class SeriesJobs(ClientBase):
+    __tablename__ = 'SeriesJobs'
+
+    ID         = Column(Integer, primary_key=True, autoincrement=True)
+    StationID  = Column(BigInteger, nullable=False)
+    FromDate   = Column(DateTime, nullable=False)
+    ToDate     = Column(DateTime, nullable=False)
+    Status     = Column(SmallInteger, nullable=False)
+    HidroTable = Column(String, nullable=False)
+
