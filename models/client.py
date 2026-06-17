@@ -22,3 +22,22 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, SmallInteger
+from sqlalchemy.ext.declarative import declarative_base
+
+ClientBase = declarative_base()
+
+class Credentials(ClientBase):
+    __tablename__ = 'Credentials'
+
+    RegistroID = Column(Integer, primary_key=True, autoincrement=True)
+    ID         = Column(String, nullable=False)
+    Password   = Column(String, nullable=False)
+
+class Token(ClientBase):
+    __tablename__ = 'Token'
+
+    RegistroID   = Column(Integer, primary_key=True, autoincrement=True)
+    Token        = Column(String)
+    Expires      = Column(DateTime)
+

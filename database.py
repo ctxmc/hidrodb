@@ -63,13 +63,13 @@ def init_db(db):
                 session.execute(text(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}')"))
                 logger.info(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
-                execute_sql_file(db, "tables/client.sql")
+                ClientBase.metadata.create_all(db.engine)
                 user_id = input("Enter API username: ")
                 import getpass
                 password = getpass.getpass("Enter API password: ")
-                insert_user_sql = f"INSERT INTO Credentials (ID, Password) VALUES ('{user_id}', '{password}')"
-                session.execute(text(insert_user_sql))
-                logger.info(f"Initialized {db.type} Database.")
+                credentials = Credentials(ID=user_id, Password=password)
+                session.add(credentials)
+                session.commit()
             case DatabaseType.JOBS:
                 execute_sql_file(db, "tables/jobs.sql")
                 logger.info(f"Initialized {db.type} Database.")
