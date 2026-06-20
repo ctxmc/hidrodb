@@ -64,11 +64,11 @@ class SerieStationData:
     end_date:     DateTime
 
 def get_token() -> bool:
-    logger.debug("Cheking Token.")
+    logger.verbose("Cheking Token.")
     client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
     session = client.get_session()
     if (not session.query(Token).count()):
-        logger.info("No Token present, requesting.")
+        logger.verbose("No Token present, requesting.")
         client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
         token, expires = request_token(client_id, client_password)
         session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
@@ -77,21 +77,21 @@ def get_token() -> bool:
     else:
         (expires,) = session.query(Token.Expires).first()
         if datetime.now() < expires:
-            logger.debug(f"Token is valid, continuing ({expires}).")
+            logger.verbose(f"Token is valid, continuing ({expires}).")
             (token,) = session.query(Token.Token).first()
             return token
         else:
-            logger.info("Token expired, requesting new.")
+            logger.verbose("Token expired, requesting new.")
             client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
             token, new_expires = request_token(client_id, client_password)
-            logger.info("Aquired new token, updating.")
+            logger.verbose("Aquired new token, updating.")
             update_expression = (
                 update(Token).where(Token.Expires == expires)
                 .values(Token=token, Expires=new_expires)
             )
             session.execute(update_expression)
             session.commit()
-            logger.info("Token updated.")
+            logger.verbose("Token updated.")
             return token
 
 
@@ -306,8 +306,8 @@ def db_writer() -> None:
                                             batch_buffer["jobs"], batch_buffer["data"])
                 logger.info(f"""[WRITER {hidro_job}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
-                            f"""Total thread elapsed: {total_elapsed}"""
-                            f"""Finished jobs for {hidro_job}""")
+                            f"""Total thread elapsed: {total_elapsed}""")
+                logger.info(f"""Finished jobs for {hidro_job}""")
                 break;
             batch_buffer["jobs"].append({'Status': status, 'ID': job_id})
             if len(data) > 0:
