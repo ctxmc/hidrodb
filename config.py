@@ -60,7 +60,7 @@ class HidroResource(StrEnum):
         }
         return mapping[self]
 
-class HidroJob(StrEnum):
+class JobConfig(StrEnum):
     RAIN              = "Chuvas"
     DISCHARGE_SUMMARY = "ResumoDescarga"
     DISCHARGE_FLOW    = "CurvaDescarga"
