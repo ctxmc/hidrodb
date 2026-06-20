@@ -94,6 +94,10 @@ def insert_hidro(hidro: DatabaseConnection, collection: List[HidroBase], has_id=
         reg_id  = (session.query(func.max(model_class.RegistroID)).scalar() or 0) + 1
         for i, entry in enumerate(collection):
             entry.RegistroID = reg_id + i
+    else:
+        import warnings;
+        from sqlalchemy import exc as sa_exc;
+        warnings.filterwarnings('ignore', '.*Identity map already had an identity.*', sa_exc.SAWarning)
     session.add_all(collection)
     session.commit()
 

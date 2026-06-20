@@ -332,7 +332,8 @@ def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data: dic
     if len(hidro_data) > 1:
         logger.info(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
         model_data = data_to_model_orm(hidro_job, hidro_data)
-        insert_hidro(hidro_db, model_data)
+        has_id = True if hidro_job == JobConfig.CROSS_SECTION else False
+        insert_hidro(hidro_db, model_data, has_id)
     if len(job_data) > 0:
         update_jobs(job_data)
         logger.info(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
