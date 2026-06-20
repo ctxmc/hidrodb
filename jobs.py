@@ -309,7 +309,7 @@ def db_writer() -> None:
                             f"""Total thread elapsed: {total_elapsed}"""
                             f"""Finished jobs for {hidro_job}""")
                 break;
-            batch_buffer["jobs"].append({'status': status, 'job_id': job_id})
+            batch_buffer["jobs"].append({'Status': status, 'ID': job_id})
             if len(data) > 0:
                 batch_buffer["data"].extend(data)
             if len(batch_buffer["data"]) >= BATCH_SIZE:
@@ -341,6 +341,7 @@ def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data: dic
 
 
 def validate_data(hidro_job: JobConfig, items: dict) -> (JobStatus, dict):
+    #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
     status = JobStatus.COMPLETED
 
     match hidro_job:
@@ -350,7 +351,10 @@ def validate_data(hidro_job: JobConfig, items: dict) -> (JobStatus, dict):
             dict_len = 10
         case JobConfig.DISCHARGE_FLOW:
             dict_len = 18
+        case JobConfig.STAGE:
+            dict_len = 78
         case _:
+            #TODO: CHECK LEN FOR EVERY TABLE?
             return (status, data)
 
     for item in items:

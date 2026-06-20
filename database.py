@@ -108,8 +108,7 @@ def insert_jobs(jobs: SeriesJobs) -> None:
 def update_jobs(jobs: dict) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    update_sql = text(f"UPDATE [SeriesJobs] SET [Status] = :status WHERE [ID] = :job_id")
-    client_session.execute(update_sql, jobs)
+    client_session.bulk_update_mappings(SeriesJobs, jobs)
     client_session.commit()
     client_session.close()
     client_db.close()
