@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 from config import *
 
-def check_resource(resource):
+def check_resource(resource: HidroResource) -> None:
     hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     session  = hidro_db.get_session()
     model    = resource.get_model()
@@ -56,7 +56,7 @@ def check_resource(resource):
     session.close()
     hidro_db.close()
 
-def main():
+def main() -> None:
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
 
