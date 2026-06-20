@@ -289,38 +289,12 @@ def db_writer() -> None:
             raise
 
 
-def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data, hidro_data):
+def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data, hidro_data) -> float:
     start_time = time.perf_counter()
     if len(hidro_data) > 1:
         logger.info(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
-        match hidro_job:
-            case JobConfig.WATER_QUALITY:
-                water_quality = []
-                water_status  = []
-                for item in hidro_data:
-                    water_quality.append(WaterQuality.from_json(item))
-                    water_status.append(WaterQualityStatus.from_json(item))
-                insert_hidro(hidro_db, water_quality)
-                insert_hidro(hidro_db, water_status)
-            case JobConfig.CROSS_SECTION:
-                cross_section   = []
-                v_cross_section = []
-                current_id      = None
-                for data in hidro_data:
-                    data_id = data.get("Registro_ID")
-                    if current_id == data_id:
-                        continue
-                    current_id = data_id
-                    cross_section.append(CrossSection.from_json(data))
-                    import re, ast;
-                    verticals_str = re.sub(r'(\w+)=', r'"\1":', data.get("verticais"))
-                    verticals     = ast.literal_eval(verticals_str)
-                    v_cross_section.extend([VerticalCrossSection.from_json(v, current_id) for v in verticals])
-                insert_hidro(hidro_db, cross_section,   True)
-                insert_hidro(hidro_db, v_cross_section, True)
-            case _:
-                model_data = [hidro_job.get_model().from_json(entrie) for entrie in hidro_data]
-                insert_hidro(hidro_db, model_data)
+        model_data = data_to_model_orm(hidro_job, hidro_data)
+        insert_hidro(hidro_db, model_data)
     if len(job_data) > 0:
         update_jobs(job_data)
         logger.info(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
@@ -350,3 +324,28 @@ def validate_data(hidro_job, data) -> (JobStatus, dict):
             break
 
     return (status, data)
+
+
+def data_to_model_orm(hidro_job: JobConfig, hidro_data: dict):
+    model_data = []
+    match hidro_job:
+        case JobConfig.WATER_QUALITY:
+            for item in hidro_data:
+                model_data.append(WaterQuality.from_json(item))
+                model_data.append(WaterQualityStatus.from_json(item))
+        case JobConfig.CROSS_SECTION:
+            current_id      = None
+            for data in hidro_data:
+                data_id = data.get("Registro_ID")
+                if current_id == data_id:
+                    continue
+                current_id = data_id
+                model_data.append(hidro_job.get_model().from_json(data))
+                verticals_str = re.sub(r'(\w+)=', r'"\1":', data.get("verticais"))
+                verticals     = ast.literal_eval(verticals_str)
+                model_data.extend([VerticalCrossSection.from_json(v, current_id) for v in verticals])
+
+        case _:
+            for data in hidro_data:
+                model_data.append(hidro_job.get_model().from_json(data))
+    return model_data
