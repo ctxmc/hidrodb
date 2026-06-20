@@ -38,42 +38,8 @@ from sqlalchemy import text, update
 
 from database          import *
 from hidro_webservices import *
+from config            import *
 
-class HidroJob(StrEnum):
-    RAIN              = "Chuvas"
-    DISCHARGE_SUMMARY = "ResumoDescarga"
-    DISCHARGE_FLOW    = "CurvaDescarga"
-    SEDIMENTS         = "Sedimentos"
-    WATER_QUALITY     = "QualAgua"
-    STAGE             = "Cotas"
-    GRANULOMETRY      = "Granulometria"
-    CROSS_SECTION     = "PerfilTransversal"
-
-    def get_model(self):
-        mapping = {
-            HidroJob.RAIN:              Rain,
-            HidroJob.DISCHARGE_SUMMARY: DischargeSummary,
-            HidroJob.DISCHARGE_FLOW:    DischargeFlow,
-            HidroJob.SEDIMENTS:         Sediments,
-            HidroJob.WATER_QUALITY:     WaterQuality,
-            HidroJob.STAGE:             Stage,
-            HidroJob.GRANULOMETRY:      Granulometry,
-            HidroJob.CROSS_SECTION:     CrossSection,
-        }
-        return mapping[self]
-
-    def get_endpoint(self):
-        mapping = {
-            HidroJob.RAIN:              HidroEndpoint.RAIN,
-            HidroJob.DISCHARGE_SUMMARY: HidroEndpoint.DISCHARGE_SUMMARY,
-            HidroJob.DISCHARGE_FLOW:    HidroEndpoint.DISCHARGE_FLOW,
-            HidroJob.SEDIMENTS:         HidroEndpoint.SEDIMENTS,
-            HidroJob.WATER_QUALITY:     HidroEndpoint.WATER_QUALITY,
-            HidroJob.STAGE:             HidroEndpoint.STAGE,
-            HidroJob.GRANULOMETRY:      HidroEndpoint.GRANULOMETRY,
-            HidroJob.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
-        }
-        return mapping[self]
 
 class JobStatus(Enum):
     PENDING   = auto()

@@ -21,6 +21,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from enum import StrEnum
 
 from hidro_webservices   import *
@@ -56,5 +57,41 @@ class HidroResource(StrEnum):
             HidroResource.RIVER:     HidroEndpoint.RIVER,
             HidroResource.STATE:     HidroEndpoint.STATE,
             HidroResource.STATION:   HidroEndpoint.STATION,
+        }
+        return mapping[self]
+
+class HidroJob(StrEnum):
+    RAIN              = "Chuvas"
+    DISCHARGE_SUMMARY = "ResumoDescarga"
+    DISCHARGE_FLOW    = "CurvaDescarga"
+    SEDIMENTS         = "Sedimentos"
+    WATER_QUALITY     = "QualAgua"
+    STAGE             = "Cotas"
+    GRANULOMETRY      = "Granulometria"
+    CROSS_SECTION     = "PerfilTransversal"
+
+    def get_model(self):
+        mapping = {
+            JobConfig.RAIN:              Rain,
+            JobConfig.DISCHARGE_SUMMARY: DischargeSummary,
+            JobConfig.DISCHARGE_FLOW:    DischargeFlow,
+            JobConfig.SEDIMENTS:         Sediments,
+            JobConfig.WATER_QUALITY:     WaterQuality,
+            JobConfig.STAGE:             Stage,
+            JobConfig.GRANULOMETRY:      Granulometry,
+            JobConfig.CROSS_SECTION:     CrossSection,
+        }
+        return mapping[self]
+
+    def get_endpoint(self):
+        mapping = {
+            JobConfig.RAIN:              HidroEndpoint.RAIN,
+            JobConfig.DISCHARGE_SUMMARY: HidroEndpoint.DISCHARGE_SUMMARY,
+            JobConfig.DISCHARGE_FLOW:    HidroEndpoint.DISCHARGE_FLOW,
+            JobConfig.SEDIMENTS:         HidroEndpoint.SEDIMENTS,
+            JobConfig.WATER_QUALITY:     HidroEndpoint.WATER_QUALITY,
+            JobConfig.STAGE:             HidroEndpoint.STAGE,
+            JobConfig.GRANULOMETRY:      HidroEndpoint.GRANULOMETRY,
+            JobConfig.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
         }
         return mapping[self]
