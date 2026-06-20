@@ -81,6 +81,34 @@ def get_token() -> bool:
             return token
 
 
+def check_resource(resource: HidroResource) -> None:
+    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    session  = hidro_db.get_session()
+    model    = resource.get_model()
+    endpoint = resource.get_endpoint()
+    if (not session.query(model).count()):
+        logger.info(f"{resource} has no Entries, requesting data")
+        token = get_token()
+        if (token):
+            match resource:
+                case HidroResource.STATION:
+                    entries = []
+                    states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
+                    for (UF,) in states_uf:
+                        token = get_token()
+                        if (token):
+                            params = {"Unidade Federativa": f"{UF}"}
+                            items = request_data(token, endpoint, params)
+                            entries.extend([model.from_json(item) for item in items])
+                case _:
+                    entries = [model.from_json(item) for item in request_data(token, endpoint)]
+            insert_hidro(hidro_db, entries)
+    else:
+        logger.debug(f"{resource} has Entries; TODO")
+    session.close()
+    hidro_db.close()
+
+
 def check_job(hidro_job: JobConfig) -> None:
     logger.info(f"Checking Job for {hidro_job}")
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
@@ -218,7 +246,7 @@ def create_series_jobs(stations_data, hidro_job: JobConfig) -> None:
 
 
 write_queue = Queue()
-def trigger_job(jobs, hidro_job) -> None:
+def trigger_job(jobs: SeriesJobs, hidro_job: JobConfig) -> None:
     logger.info(f"Initiating jobs for {hidro_job}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()

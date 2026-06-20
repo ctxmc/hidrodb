@@ -29,33 +29,6 @@ logger = logging.getLogger(__name__)
 
 from config import *
 
-def check_resource(resource: HidroResource) -> None:
-    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-    session  = hidro_db.get_session()
-    model    = resource.get_model()
-    endpoint = resource.get_endpoint()
-    if (not session.query(model).count()):
-        logger.info(f"{resource} has no Entries, requesting data")
-        token = get_token()
-        if (token):
-            match resource:
-                case HidroResource.STATION:
-                    entries = []
-                    states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
-                    for (UF,) in states_uf:
-                        token = get_token()
-                        if (token):
-                            params = {"Unidade Federativa": f"{UF}"}
-                            items = request_data(token, endpoint, params)
-                            entries.extend([model.from_json(item) for item in items])
-                case _:
-                    entries = [model.from_json(item) for item in request_data(token, endpoint)]
-            insert_hidro(hidro_db, entries)
-    else:
-        logger.debug(f"{resource} has Entries; TODO")
-    session.close()
-    hidro_db.close()
-
 def main() -> None:
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
