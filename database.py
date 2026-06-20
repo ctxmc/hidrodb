@@ -26,11 +26,11 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import create_engine, text, func, update
+from sqlalchemy     import create_engine, text, func
 from sqlalchemy.orm import sessionmaker, Session
 
-from enum import StrEnum
-from datetime import datetime
+from enum   import StrEnum
+from typing import List
 
 from models.hidro_models import *
 from models.client       import *
@@ -49,7 +49,7 @@ class DatabaseConnection:
     def close(self):
         self.engine.dispose()
 
-def init_db(db):
+def init_db(db: DatabaseConnection) -> None:
     session = db.get_session()
     check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
     result = session.execute(check_tables_sql)
@@ -72,7 +72,7 @@ def init_db(db):
                 session.commit()
         session.commit()
 
-def execute_sql_file(db, sql_file_path, parameters=None):
+def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None) -> None:
     if not os.path.isfile(sql_file_path):
         logger.error(f"{sql_file_path} does not exist")
         return
@@ -87,7 +87,7 @@ def execute_sql_file(db, sql_file_path, parameters=None):
                 conn.exec_driver_sql(stmt)
         conn.commit()
         
-def insert_hidro(hidro, collection, has_id=False):
+def insert_hidro(hidro: DatabaseConnection, collection: List[HidroBase], has_id=False) -> None:
     session = hidro.get_session()
     if not has_id:
         model_class = type(collection[0])
@@ -97,7 +97,7 @@ def insert_hidro(hidro, collection, has_id=False):
     session.add_all(collection)
     session.commit()
 
-def insert_jobs(jobs):
+def insert_jobs(jobs: SeriesJobs) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.add_all(jobs)
@@ -105,7 +105,7 @@ def insert_jobs(jobs):
     client_session.close()
     client_db.close()
 
-def update_jobs(jobs):
+def update_jobs(jobs: dict) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     update_sql = text(f"UPDATE [SeriesJobs] SET [Status] = :status WHERE [ID] = :job_id")
