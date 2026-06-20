@@ -63,6 +63,9 @@ class SerieStationData:
     start_date:   DateTime
     end_date:     DateTime
 
+    def __iter__(self):
+        return iter((self.station_code, self.start_date, self.end_date))
+
 def get_token() -> bool:
     logger.verbose("Cheking Token.")
     client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
