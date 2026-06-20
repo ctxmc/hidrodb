@@ -106,19 +106,20 @@ def check_resource(resource: HidroResource) -> None:
         if (token):
             match resource:
                 case HidroResource.STATION:
-                    entries = []
+                    items = []
                     states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
                     for (UF,) in states_uf:
                         token = get_token()
                         if (token):
                             params = {"Unidade Federativa": f"{UF}"}
-                            items = request_data(token, endpoint, params)
-                            entries.extend([model.from_json(item) for item in items])
+                            success, items_uf = request_data(token, endpoint, params)
+                            items.extend(items_uf)
                 case _:
-                    entries = [model.from_json(item) for item in request_data(token, endpoint)]
+                    success, items = request_data(token, endpoint, {})
+            entries = [model.from_json(item) for item in items]
             insert_hidro(hidro_db, entries)
     else:
-        logger.debug(f"{resource} has Entries; TODO")
+        logger.verbose(f"[TODO] {resource} has Entries")
     session.close()
     hidro_db.close()
 
@@ -277,7 +278,7 @@ lock = Lock()
 def handle_job(job: SeriesJobs, hidro_job: JobConfig) -> None:
     with lock:
         token = get_token()
-    success, data = request_serial_data(token, hidro_job.get_endpoint(), job.to_params())
+    success, data = request_data(token, hidro_job.get_endpoint(), job.to_params())
     if success:
         status, data = validate_data(hidro_job, data)
     else:

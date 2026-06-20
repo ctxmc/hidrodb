@@ -70,7 +70,7 @@ def request_hidro_ws(endpoint, headers, params={}):
         except:
             logger.trace(f"[REQUEST]: (response): {response} (status: {response.status_code})")
 
-def request_token(client_id, client_password, max_retries=3, retry_delay=2):
+def request_token(client_id: str, client_password: str, max_retries=3, retry_delay=2):
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",
@@ -89,26 +89,7 @@ def request_token(client_id, client_password, max_retries=3, retry_delay=2):
                 time.sleep(retry_delay)
     raise
 
-def request_data(token, endpoint, params=None):
-    headers = {
-        "accept":        "*/*",
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        file_path = get_file_path(endpoint, params)
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
-        return items
-    except Exception as e:
-            logger.error(f"[WEBSERVICE]: (exception): {e}")
-            return []
-
-def request_serial_data(token, endpoint, params):
+def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, dict):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -129,7 +110,7 @@ def request_serial_data(token, endpoint, params):
             return (False, [])
 
 
-def get_file_path(endpoint, params):
+def get_file_path(endpoint: HidroEndpoint, params: dict) -> str:
     match endpoint:
         case HidroEndpoint.BASIN:
             return "./json/Bacia.json"
