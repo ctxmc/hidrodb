@@ -193,9 +193,6 @@ def check_job(hidro_job: JobConfig) -> None:
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
                 ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
-            case _:
-                logger.debug(f"TODO: {hidro_job}")
-                return
         hidro_session.close()
         hidro_db.close()
         client_db.close()
@@ -204,7 +201,7 @@ def check_job(hidro_job: JobConfig) -> None:
         create_series_jobs(stations_data, hidro_job)
         check_job(hidro_job)
     else:
-        logger.debug("TODO: Update JOBS?")
+        logger.verbose("[TODO]: Update JOBS")
         jobs = (client_session.query(SeriesJobs)
                 .filter(
                     SeriesJobs.Status.in_([JobStatus.FAILED.value, JobStatus.PENDING.value]),
@@ -216,7 +213,7 @@ def check_job(hidro_job: JobConfig) -> None:
             logger.info(f"No pending jobs for {hidro_job}")
 
 
-def create_series_jobs(stations_data: SerieStationData, hidro_job: JobConfig) -> None:
+def create_series_jobs(stations_data: List[SerieStationData], hidro_job: JobConfig) -> None:
     jobs = []
     for station_code, start_date, end_date in stations_data:
         formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
@@ -287,7 +284,7 @@ def handle_job(job: SeriesJobs, hidro_job: JobConfig) -> None:
     else:
         status = JobStatus.FAILED
 
-    logger.debug(f"""[JOB {hidro_job} {job.ID}]: {status.get_label()} """
+    logger.trace(f"""[JOB {hidro_job} {job.ID}]: {status.get_label()} """
                  f"""request for station {job.StationID} """
                  f"""on period ({job.FromDate})-({job.ToDate})""")
     write_queue.put((hidro_job, job.ID, status.value, data, False))
