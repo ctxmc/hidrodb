@@ -46,11 +46,11 @@ def main() -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
-    parser.add_argument('--hidro',  type=str, default='db/hidro.db')
-    parser.add_argument('--client', type=str, default='db/client.db')
-    parser.add_argument('--max-workers', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=1000)
+    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'])
+    parser.add_argument('--hidro',       type=str, default='db/hidro.db')
+    parser.add_argument('--client',      type=str, default='db/client.db')
+    parser.add_argument('--max-workers', type=int, default=100)
+    parser.add_argument('--batch-size',  type=int, default=10000)
     args = parser.parse_args()
 
     import builtins;
@@ -58,6 +58,22 @@ if __name__ == "__main__":
     builtins.client_path = args.client
     builtins.MAX_WORKERS = args.max_workers
     builtins.BATCH_SIZE  = args.batch_size
+
+    builtins.TRACE = 15
+    logging.addLevelName(TRACE, "TRACE")
+    setattr(
+        logging.Logger, 'trace',
+        lambda self, msg, *args, **kwargs:
+        self._log(TRACE, msg, args, **kwargs) if self.isEnabledFor(TRACE) else None
+    )
+
+    builtins.VERBOSE = 5
+    logging.addLevelName(VERBOSE, "VERBOSE")
+    setattr(
+        logging.Logger, 'verbose',
+        lambda self, msg, *args, **kwargs:
+        self._log(VERBOSE, msg, args, **kwargs) if self.isEnabledFor(VERBOSE) else None
+    )
 
     logging.basicConfig(
         level=args.log_level,
