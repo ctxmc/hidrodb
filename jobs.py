@@ -381,16 +381,12 @@ def data_to_model_orm(hidro_job: JobConfig, hidro_data: dict):
                 model_data.append(WaterQualityStatus.from_json(item))
         case JobConfig.CROSS_SECTION:
             current_id      = None
-            for data in hidro_data:
-                data_id = data.get("Registro_ID")
-                if current_id == data_id:
-                    continue
-                current_id = data_id
-                model_data.append(hidro_job.get_model().from_json(data))
-                verticals_str = re.sub(r'(\w+)=', r'"\1":', data.get("verticais"))
-                verticals     = ast.literal_eval(verticals_str)
-                model_data.extend([VerticalCrossSection.from_json(v, current_id) for v in verticals])
-
+            for item in hidro_data:
+                item_id = item.get("Registro_ID")
+                if current_id != item_id:
+                    current_id = item_id
+                    model_data.append(hidro_job.get_model().from_json(item))
+                model_data.append(VerticalCrossSection.from_json(item, current_id))
         case _:
             for data in hidro_data:
                 model_data.append(hidro_job.get_model().from_json(data))
