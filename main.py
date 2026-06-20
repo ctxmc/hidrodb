@@ -65,7 +65,6 @@ if __name__ == "__main__":
     )
 
     from database          import *
-    from hidro_webservices import *
     from jobs              import *
 
     main()

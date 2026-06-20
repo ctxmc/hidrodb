@@ -22,13 +22,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from queue              import Queue
 from threading          import Thread, Lock
 
 from datetime import datetime, timedelta
-from calendar import monthrange
-from enum     import Enum, auto, StrEnum
+from enum     import Enum, auto
 
 import time
 import logging
@@ -39,7 +38,7 @@ from sqlalchemy import text, update
 from database          import *
 from hidro_webservices import *
 from config            import *
-
+from dataclasses       import dataclass
 
 class JobStatus(Enum):
     PENDING   = auto()
@@ -48,6 +47,21 @@ class JobStatus(Enum):
     CORRUPTED = auto()
     COMPLETED = auto()
 
+    def get_label(self):
+        mapping = {
+            JobStatus.PENDING:   "Pending",
+            JobStatus.FAILED:    "Failed",
+            JobStatus.INVALID:   "Invalid",
+            JobStatus.CORRUPTED: "Corrupted",
+            JobStatus.COMPLETED: "Completed"
+        }
+        return mapping[self]
+
+@dataclass
+class SerieStationData:
+    station_code: int
+    start_date:   DateTime
+    end_date:     DateTime
 
 def get_token() -> bool:
     logger.debug("Cheking Token.")
@@ -120,25 +134,25 @@ def check_job(hidro_job: JobConfig) -> None:
         hidro_session = hidro_db.get_session()
         match hidro_job:
             case JobConfig.RAIN:
-                stations_data =  hidro_session.query(
+                db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoRegistradorChuvaInicio,
                     Station.PeriodoRegistradorChuvaFim
                 ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
             case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW:
-                stations_data =  hidro_session.query(
+                db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoDescLiquidaInicio,
                     Station.PeriodoDescLiquidaFim
                 ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
             case JobConfig.SEDIMENTS:
-                stations_data =  hidro_session.query(
+                db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
                 ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
             case JobConfig.WATER_QUALITY:
-                stations_data =  hidro_session.query(
+                db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoQualAguaInicio,
                     Station.PeriodoQualAguaFim
@@ -162,15 +176,15 @@ def check_job(hidro_job: JobConfig) -> None:
                 ) combined 
                 GROUP BY Codigo 
                 """)
-                stations_data = hidro_session.execute(sql).fetchall()
+                db_data = hidro_session.execute(sql).fetchall()
             case JobConfig.GRANULOMETRY:
-                stations_data =  hidro_session.query(
+                db_data = hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
                 ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
             case JobConfig.CROSS_SECTION:
-                stations_data =  hidro_session.query(
+                db_data = hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
                     Station.PeriodoSedimentosFim
@@ -182,6 +196,7 @@ def check_job(hidro_job: JobConfig) -> None:
         hidro_db.close()
         client_db.close()
         client_session.close()
+        stations_data = [SerieStationData(code, start, end) for code, start, end in db_data]
         create_series_jobs(stations_data, hidro_job)
         check_job(hidro_job)
     else:
@@ -197,7 +212,7 @@ def check_job(hidro_job: JobConfig) -> None:
             logger.info(f"No pending jobs for {hidro_job}")
 
 
-def create_series_jobs(stations_data, hidro_job: JobConfig) -> None:
+def create_series_jobs(stations_data: SerieStationData, hidro_job: JobConfig) -> None:
     jobs = []
     for station_code, start_date, end_date in stations_data:
         formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
@@ -247,7 +262,7 @@ def create_series_jobs(stations_data, hidro_job: JobConfig) -> None:
 
 write_queue = Queue()
 def trigger_job(jobs: SeriesJobs, hidro_job: JobConfig) -> None:
-    logger.info(f"Initiating jobs for {hidro_job}")
+    logger.info(f"Initiating {len(jobs)} jobs for {hidro_job}")
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -268,14 +283,8 @@ def handle_job(job: SeriesJobs, hidro_job: JobConfig) -> None:
     else:
         status = JobStatus.FAILED
 
-    match status:
-        case JobStatus.COMPLETED:
-            status_label = "Completed"
-        case JobStatus.FAILED:
-            status_label = "Failed"
-        case JobStatus.INVALID:
-            status_label = "Invalid"
-    logger.debug(f"""[JOB {hidro_job} {job.ID}]: {status_label} request for station {job.StationID} """
+    logger.debug(f"""[JOB {hidro_job} {job.ID}]: {status.get_label()} """
+                 f"""request for station {job.StationID} """
                  f"""on period ({job.FromDate})-({job.ToDate})""")
     write_queue.put((hidro_job, job.ID, status.value, data, False))
 
@@ -317,7 +326,7 @@ def db_writer() -> None:
             raise
 
 
-def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data, hidro_data) -> float:
+def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data: dict, hidro_data: dict) -> float:
     start_time = time.perf_counter()
     if len(hidro_data) > 1:
         logger.info(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
@@ -331,7 +340,7 @@ def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data, hid
     return elapsed_time
 
 
-def validate_data(hidro_job, data) -> (JobStatus, dict):
+def validate_data(hidro_job: JobConfig, items: dict) -> (JobStatus, dict):
     status = JobStatus.COMPLETED
 
     match hidro_job:
@@ -344,14 +353,14 @@ def validate_data(hidro_job, data) -> (JobStatus, dict):
         case _:
             return (status, data)
 
-    for entrie in data:
-        if (len(entrie) != dict_len):
-            data   = []
+    for item in items:
+        if (len(item) != dict_len):
+            items   = []
             status = JobStatus.INVALID
-            logger.warning(f"[VALIDATE] Invalid entry: {entrie}")
+            logger.warning(f"[VALIDATE] Invalid item: {item}")
             break
 
-    return (status, data)
+    return (status, items)
 
 
 def data_to_model_orm(hidro_job: JobConfig, hidro_data: dict):
