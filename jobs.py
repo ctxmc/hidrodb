@@ -280,7 +280,7 @@ def handle_job(job: SeriesJobs, hidro_job: JobConfig) -> None:
         token = get_token()
     success, data = request_data(token, hidro_job.get_endpoint(), job.to_params())
     if success:
-        status, data = validate_data(hidro_job, data)
+        status, data = validate_data(hidro_job, data, job.ID)
     else:
         status = JobStatus.FAILED
 
@@ -341,7 +341,7 @@ def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data: dic
     return elapsed_time
 
 
-def validate_data(hidro_job: JobConfig, items: dict) -> (JobStatus, dict):
+def validate_data(hidro_job: JobConfig, items: dict, job_id: int) -> (JobStatus, dict):
     #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
     status = JobStatus.COMPLETED
 
@@ -354,15 +354,19 @@ def validate_data(hidro_job: JobConfig, items: dict) -> (JobStatus, dict):
             dict_len = 18
         case JobConfig.STAGE:
             dict_len = 78
+        case JobConfig.GRANULOMETRY:
+            dict_len = 117
+        case JobConfig.CROSS_SECTION:
+            dict_len = 18
         case _:
             #TODO: CHECK LEN FOR EVERY TABLE?
-            return (status, data)
+            return (status, items)
 
     for item in items:
         if (len(item) != dict_len):
             items   = []
             status = JobStatus.INVALID
-            logger.warning(f"[VALIDATE] Invalid item: {item}")
+            logger.verbose(f"[VALIDATE JOB {job_id}] Invalid item: {item}")
             break
 
     return (status, items)
