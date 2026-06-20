@@ -107,22 +107,13 @@ def request_data(token, endpoint, params=None):
             logger.error(f"(exception): {e}")
             return []
 
-def request_serial_data(token, endpoint, station_code, initial_date, final_date):
+def request_serial_data(token, endpoint, params):
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
-    ymd_start = initial_date.strftime('%Y-%m-%d')
-    ymd_end   = final_date.strftime('%Y-%m-%d')
-    params    = {
-        "Código da Estação": station_code,
-        "Tipo Filtro Data": "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
-        "Data Inicial (yyyy-MM-dd)": f"{ymd_start}",
-        "Data Final (yyyy-MM-dd)": f"{ymd_end}"
-    }
     try:
-        dir_path  = get_dir_path(endpoint)
-        file_path = f"./json/{dir_path}/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        file_path = get_file_path(endpoint, params)
         items = []
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
@@ -153,22 +144,27 @@ def get_file_path(endpoint, params):
         case HidroEndpoint.STATION:
             UF = params["Unidade Federativa"]
             return f"./json/stations/Estacao_{UF}.json"
-
-def get_dir_path(endpoint):
-    match endpoint:
         case HidroEndpoint.RAIN:
-            return "rain"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/rain/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.DISCHARGE_SUMMARY:
-            return "liquid_desc"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/liquid_desc/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.SEDIMENTS:
-            return "sediments"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/sediments/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.STAGE:
-            return "stage"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/stage/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.DISCHARGE_FLOW:
-            return "discharge"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/discharge/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.WATER_QUALITY:
-            return "qa"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/qa/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.GRANULOMETRY:
-            return "granulometry"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/granulometry/station_{station_code}_{ymd_start}_{ymd_end}.json"
         case HidroEndpoint.CROSS_SECTION:
-            return "profile"
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/profile/station_{station_code}_{ymd_start}_{ymd_end}.json"

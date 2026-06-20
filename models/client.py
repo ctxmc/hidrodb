@@ -52,3 +52,10 @@ class SeriesJobs(ClientBase):
     Status     = Column(SmallInteger, nullable=False)
     HidroTable = Column(String, nullable=False)
 
+    def to_params(self):
+        return {
+            "Código da Estação":         self.StationID,
+            "Tipo Filtro Data":          "DATA_LEITURA", # "DATA_ULTIMA_ATUALIZACAO"
+            "Data Inicial (yyyy-MM-dd)": f"{self.FromDate.strftime('%Y-%m-%d')}",
+            "Data Final (yyyy-MM-dd)":   f"{self.ToDate.strftime('%Y-%m-%d')}"
+        }

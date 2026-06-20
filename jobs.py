@@ -158,12 +158,8 @@ def check_job(hidro_job: JobConfig) -> None:
         check_job(hidro_job)
     else:
         logger.debug("TODO: Update JOBS?")
-        jobs = (client_session.query(
-                    SeriesJobs.ID,
-                    SeriesJobs.StationID,
-                    SeriesJobs.FromDate,
-                    SeriesJobs.ToDate
-                ).filter(
+        jobs = (client_session.query(SeriesJobs)
+                .filter(
                     SeriesJobs.Status.in_([JobStatus.FAILED.value, JobStatus.PENDING.value]),
                     SeriesJobs.HidroTable == hidro_job)
                 .all())
@@ -235,19 +231,14 @@ def trigger_job(jobs, hidro_job) -> None:
 
 
 lock = Lock()
-def handle_job(job_data, hidro_job: JobConfig) -> None:
-    # TODO, jobs creates it own params?
-    job_id, station_code, initial_date, final_date = job_data
+def handle_job(job: SeriesJobs, hidro_job: JobConfig) -> None:
     with lock:
         token = get_token()
-    status, data = request_serial_data(token, hidro_job.get_endpoint(),
-                                       station_code, initial_date, final_date)
-    if status:
-        status = JobStatus.COMPLETED
+    success, data = request_serial_data(token, hidro_job.get_endpoint(), job.to_params())
+    if success:
+        status, data = validate_data(hidro_job, data)
     else:
         status = JobStatus.FAILED
-
-    status, data = validate_data(hidro_job, status, data)
 
     match status:
         case JobStatus.COMPLETED:
@@ -256,9 +247,9 @@ def handle_job(job_data, hidro_job: JobConfig) -> None:
             status_label = "Failed"
         case JobStatus.INVALID:
             status_label = "Invalid"
-    logger.debug(f"""[JOB {hidro_job} {job_id}]: {status_label} request for station {station_code} """
-                 f"""on period ({initial_date})-({final_date})""")
-    write_queue.put((hidro_job, job_id, status.value, data, False))
+    logger.debug(f"""[JOB {hidro_job} {job.ID}]: {status_label} request for station {job.StationID} """
+                 f"""on period ({job.FromDate})-({job.ToDate})""")
+    write_queue.put((hidro_job, job.ID, status.value, data, False))
 
 
 def db_writer() -> None:
@@ -338,30 +329,24 @@ def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data, hid
     return elapsed_time
 
 
-def validate_data(hidro_job: JobConfig, status, data):
+def validate_data(hidro_job, data) -> (JobStatus, dict):
+    status = JobStatus.COMPLETED
+
     match hidro_job:
         case JobConfig.RAIN:
-            if status == JobStatus.COMPLETED:
-                for index, entrie in enumerate(data):
-                    if len(entrie) != 76:
-                        data   = []
-                        status = JobStatus.INVALID
-                        logger.warning(f"Invalid entry at index {index}: {entrie}")
-                        break
+            dict_len = 76
         case JobConfig.DISCHARGE_SUMMARY:
-            if status == JobStatus.COMPLETED:
-                for index, entrie in enumerate(data):
-                    if (len(entrie) != 10):
-                        data   = []
-                        status = JobStatus.INVALID
-                        logger.warning(f"Invalid entry at index {index}: {entrie}, status={status}")
-                        break
+            dict_len = 10
         case JobConfig.DISCHARGE_FLOW:
-            if status == JobStatus.COMPLETED:
-                for index, entrie in enumerate(data):
-                    if (len(entrie) != 18):
-                        data   = []
-                        status = JobStatus.INVALID
-                        logger.warning(f"Invalid entry at index {index}: {entrie}, status={status}")
-                        break
+            dict_len = 18
+        case _:
+            return (status, data)
+
+    for entrie in data:
+        if (len(entrie) != dict_len):
+            data   = []
+            status = JobStatus.INVALID
+            logger.warning(f"[VALIDATE] Invalid entry: {entrie}")
+            break
+
     return (status, data)
