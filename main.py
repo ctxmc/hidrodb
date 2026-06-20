@@ -27,41 +27,7 @@ import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import text
-from enum import StrEnum
-
-class HidroResource(StrEnum):
-    BASIN             = "Bacia"
-    SUB_BASIN         = "SubBacia"
-    ENTITY            = "Entidade"
-    TOWNSHIP          = "Municipio"
-    RIVER             = "Rio"
-    STATE             = "Estado"
-    STATION           = "Estacao"
-
-    def get_model(self):
-        mapping = {
-            HidroResource.BASIN:     Basin,
-            HidroResource.SUB_BASIN: SubBasin,
-            HidroResource.ENTITY:    Entity,
-            HidroResource.TOWNSHIP:  Township,
-            HidroResource.RIVER:     River,
-            HidroResource.STATE:     State,
-            HidroResource.STATION:   Station,
-        }
-        return mapping[self]
-
-    def get_endpoint(self):
-        mapping = {
-            HidroResource.BASIN:     HidroEndpoint.BASIN,
-            HidroResource.SUB_BASIN: HidroEndpoint.SUB_BASIN,
-            HidroResource.ENTITY:    HidroEndpoint.ENTITY,
-            HidroResource.TOWNSHIP:  HidroEndpoint.TOWNSHIP,
-            HidroResource.RIVER:     HidroEndpoint.RIVER,
-            HidroResource.STATE:     HidroEndpoint.STATE,
-            HidroResource.STATION:   HidroEndpoint.STATION,
-        }
-        return mapping[self]
+from config import *
 
 def check_resource(resource):
     hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
@@ -128,6 +94,5 @@ if __name__ == "__main__":
     from database          import *
     from hidro_webservices import *
     from jobs              import *
-    from models            import *
 
     main()
