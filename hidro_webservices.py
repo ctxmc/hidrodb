@@ -58,15 +58,15 @@ def request_hidro_ws(endpoint, headers, params={}):
         try:
             return response.json()
         except Exception as e:
-            logger.error(f"(exception): {e}")
+            logger.error(f"[WEBSERVICE]: (exception): {e}")
     else:
-        logger.debug(f"Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
+        logger.debug(f"[WEBSERVICE]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
         try:
-            logger.error(f"(json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+            logger.error(f"[WEBSERVICE]: (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
-            logger.error(f"(response): {response} (status: {response.status_code})")
+            logger.error(f"[WEBSERVICE]: (response): {response} (status: {response.status_code})")
         match response.status_code:
-            case 503 | 504:
+            case 401 | 503 | 504:
                 time.sleep(1)
 
 def request_token(client_id, client_password, max_retries=3, retry_delay=2):
@@ -83,7 +83,7 @@ def request_token(client_id, client_password, max_retries=3, retry_delay=2):
             expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
             return [token, expires_ISOND]
         except Exception as e:
-            logger.error(f"(attempt {attempt+1}/{max_retries}): {e}")
+            logger.warning(f"[WEBSERVICE]: (attempt {attempt+1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
     raise
@@ -104,7 +104,7 @@ def request_data(token, endpoint, params=None):
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return items
     except Exception as e:
-            logger.error(f"(exception): {e}")
+            logger.error(f"[WEBSERVICE]: (exception): {e}")
             return []
 
 def request_serial_data(token, endpoint, params):
@@ -124,8 +124,9 @@ def request_serial_data(token, endpoint, params):
                 json.dump(items, f, indent=2, ensure_ascii=False)
         return (True, items)
     except Exception as e:
-            logger.error(f"(exception): {e}")
+            logger.error(f"[WEBSERVICE]: (exception): {e}")
             return (False, [])
+
 
 def get_file_path(endpoint, params):
     match endpoint:
