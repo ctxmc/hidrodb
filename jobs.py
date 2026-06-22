@@ -170,19 +170,15 @@ def check_series_job(hidro_job: JobConfig) -> None:
                 SELECT 
                     Codigo, 
                     MIN(PeriodoInicio) AS PeriodoInicio, 
-                    CASE 
-                        WHEN MAX(CASE WHEN PeriodoFim IS NULL THEN 1 ELSE 0 END) = 1 
-                        THEN NULL 
-                        ELSE MAX(PeriodoFim) 
-                    END AS PeriodoFim 
-                FROM ( 
-                    SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim 
-                    FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL 
-                    UNION 
-                    SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim 
-                    FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL 
-                ) combined 
-                GROUP BY Codigo 
+                    MIN(PeriodoFim)    AS PeriodoFim
+                FROM (
+                    SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
+                    FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
+                    UNION
+                    SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
+                    FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
+                ) combined
+                GROUP BY Codigo;
                 """)
                 db_data = hidro_session.execute(sql).fetchall()
         hidro_session.close()
