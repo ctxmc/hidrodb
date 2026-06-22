@@ -261,7 +261,7 @@ def trigger_job(jobs: HidroJob, job_config: JobConfig) -> None:
         for job in jobs:
             executor.submit(handle_job, job, job_config)
         executor.shutdown(wait=True)
-    write_queue.put((job_config, None, None, None, True))
+    write_queue.put((job_config, None, None, True))
     writer.join()
 
 
@@ -273,14 +273,14 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
                                  save_response, load_response)
 
     if success:
-        status, data = validate_data(hidro_job, data, job.ID)
+        job, data = validate_data(job_config, data, job)
     else:
-        status = JobStatus.FAILED
+        job.Status = JobStatus.FAILED
 
-    logger.trace(f"""[JOB {job_config} {job.ID}]: {status.get_label()} """
+    logger.trace(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
                  f"""request for station {job.StationID} """
                  f"""on period ({job.FromDate})-({job.ToDate})""")
-    write_queue.put((job_config, job.ID, status.value, data, False))
+    write_queue.put((job_config, job, data, False))
 
 
 def db_writer() -> None:
@@ -294,9 +294,11 @@ def db_writer() -> None:
             if write_queue.empty():
                 time.sleep(0.1)
                 continue
-            hidro_job, job_id, status, data, stop_signal = write_queue.get()
 
-            batch_buffer["jobs"].append({'Status': status, 'ID': job_id})
+            job_config, job, data, stop_signal = write_queue.get()
+
+            if job:
+                batch_buffer["jobs"].append(job)
             if data and len(data) > 0:
                 batch_buffer["data"].extend(data)
 
@@ -318,25 +320,24 @@ def db_writer() -> None:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
-
-def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, job_data: dict, hidro_data: dict) -> float:
+def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:        
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
         model_data = data_to_model_orm(job_config, hidro_data)
         has_id = True if job_config == JobConfig.CROSS_SECTION else False
         insert_hidro(hidro_db, model_data, has_id)
-    if len(job_data) > 0:
-        update_jobs(job_data)
-        logger.trace(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
+    if len(jobs) > 0:
+        update_jobs(jobs)
+        logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
     logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
-def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (JobStatus, dict):
+def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
     #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
-    status = JobStatus.COMPLETED
+    job.Status = JobStatus.COMPLETED
 
     match job_config:
         case JobConfig.RAIN:
@@ -358,11 +359,11 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (JobStat
     for item in items:
         if (len(item) != dict_len):
             items   = []
-            status = JobStatus.INVALID
+            job.Status = JobStatus.INVALID
             logger.verbose(f"[VALIDATE JOB {job_id}] Invalid item: {item}")
             break
 
-    return (status, items)
+    return (job, items)
 
 
 def data_to_model_orm(job_config: JobConfig, hidro_data: dict):

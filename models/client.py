@@ -42,15 +42,34 @@ class Token(ClientBase):
     Token        = Column(String)
     Expires      = Column(DateTime)
 
-class SeriesJobs(ClientBase):
-    __tablename__ = 'SeriesJobs'
+class HidroJob(ClientBase):
+    __abstract__ = True
 
     ID         = Column(Integer, primary_key=True, autoincrement=True)
+    HidroTable = Column(String, nullable=False)
+    Status     = Column(SmallInteger, nullable=False)
+
+    def __iter__(self):
+        yield from {
+            "ID":         self.ID,
+            "HidroTable": self.HidroTable,
+            "Status":     self.Status.value
+        }.items()
+
+class SeriesJobs(HidroJob):
+    __tablename__ = 'SeriesJobs'
+
     StationID  = Column(BigInteger, nullable=False)
     FromDate   = Column(DateTime, nullable=False)
     ToDate     = Column(DateTime, nullable=False)
-    Status     = Column(SmallInteger, nullable=False)
-    HidroTable = Column(String, nullable=False)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield from {
+            "StationID": self.StationID,
+            "FromDate":  self.FromDate,
+            "ToDate":    self.ToDate
+        }.items()
 
     def to_params(self):
         return {

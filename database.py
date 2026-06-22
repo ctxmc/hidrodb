@@ -101,7 +101,7 @@ def insert_hidro(hidro: DatabaseConnection, collection: List[HidroBase], has_id=
     session.add_all(collection)
     session.commit()
 
-def insert_jobs(jobs: List[SeriesJobs]) -> None:
+def insert_jobs(jobs: List[HidroJob]) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.add_all(jobs)
@@ -109,7 +109,7 @@ def insert_jobs(jobs: List[SeriesJobs]) -> None:
     client_session.close()
     client_db.close()
 
-def update_jobs(jobs: List[dict]) -> None:
+def update_jobs(jobs: List[HidroJob]) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.bulk_update_mappings(SeriesJobs, jobs)
