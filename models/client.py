@@ -56,6 +56,22 @@ class HidroJob(ClientBase):
             "Status":     self.Status.value
         }.items()
 
+class StationJobs(HidroJob):
+    __tablename__ = 'StationJobs'
+
+    UF         = Column(String, nullable=False)
+    LastCheck  = Column(DateTime)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield from {
+            "UF":        self.UF,
+            "LastCheck": self.LastCheck
+        }.items()
+
+    def to_params(self):
+        return {"Unidade Federativa": f"{self.UF}"}
+
 class SeriesJobs(HidroJob):
     __tablename__ = 'SeriesJobs'
 

@@ -26,6 +26,7 @@ from enum import StrEnum
 
 from hidro_webservices   import *
 from models.hidro_models import *
+from models.client       import *
 
 class HidroResource(StrEnum):
     BASIN             = "Bacia"
@@ -34,7 +35,6 @@ class HidroResource(StrEnum):
     TOWNSHIP          = "Municipio"
     RIVER             = "Rio"
     STATE             = "Estado"
-    STATION           = "Estacao"
 
     def get_model(self):
         mapping = {
@@ -44,7 +44,6 @@ class HidroResource(StrEnum):
             HidroResource.TOWNSHIP:  Township,
             HidroResource.RIVER:     River,
             HidroResource.STATE:     State,
-            HidroResource.STATION:   Station,
         }
         return mapping[self]
 
@@ -56,11 +55,11 @@ class HidroResource(StrEnum):
             HidroResource.TOWNSHIP:  HidroEndpoint.TOWNSHIP,
             HidroResource.RIVER:     HidroEndpoint.RIVER,
             HidroResource.STATE:     HidroEndpoint.STATE,
-            HidroResource.STATION:   HidroEndpoint.STATION,
         }
         return mapping[self]
 
 class JobConfig(StrEnum):
+    STATION           = "Estacao"
     RAIN              = "Chuvas"
     DISCHARGE_SUMMARY = "ResumoDescarga"
     DISCHARGE_FLOW    = "CurvaDescarga"
@@ -70,8 +69,15 @@ class JobConfig(StrEnum):
     GRANULOMETRY      = "Granulometria"
     CROSS_SECTION     = "PerfilTransversal"
 
+    def get_job_model(self):
+        if self == JobConfig.STATION:
+            return StationJobs
+        else:
+            return SeriesJobs
+
     def get_hidro_model(self):
         mapping = {
+            JobConfig.STATION:           Station,
             JobConfig.RAIN:              Rain,
             JobConfig.DISCHARGE_SUMMARY: DischargeSummary,
             JobConfig.DISCHARGE_FLOW:    DischargeFlow,
@@ -85,6 +91,7 @@ class JobConfig(StrEnum):
 
     def get_endpoint(self):
         mapping = {
+            JobConfig.STATION:           HidroEndpoint.STATION,
             JobConfig.RAIN:              HidroEndpoint.RAIN,
             JobConfig.DISCHARGE_SUMMARY: HidroEndpoint.DISCHARGE_SUMMARY,
             JobConfig.DISCHARGE_FLOW:    HidroEndpoint.DISCHARGE_FLOW,

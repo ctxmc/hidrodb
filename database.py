@@ -34,6 +34,7 @@ from typing import List
 
 from models.hidro_models import *
 from models.client       import *
+from config              import *
 
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"
@@ -109,10 +110,10 @@ def insert_jobs(jobs: List[HidroJob]) -> None:
     client_session.close()
     client_db.close()
 
-def update_jobs(jobs: List[HidroJob]) -> None:
+def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    client_session.bulk_update_mappings(SeriesJobs, jobs)
+    client_session.bulk_update_mappings(job_config.get_job_model(), jobs)
     client_session.commit()
     client_session.close()
     client_db.close()

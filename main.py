@@ -41,8 +41,13 @@ def main() -> None:
 
     for resource in HidroResource:
         check_resource(resource)
-    for job in JobConfig:
-        check_series_job(job)
+
+    for job_config in JobConfig:
+        match job_config:
+            case JobConfig.STATION:
+                check_stations_jobs()
+            case _:
+                check_series_job(job_config)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

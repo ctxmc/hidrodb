@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue              import Queue
 from threading          import Thread, Lock
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from enum     import Enum, auto
 
 import time
@@ -108,30 +108,47 @@ def check_resource(resource: HidroResource) -> None:
     logger.verbose(f"Checking {resource}.")
     if (not session.query(model).count()):
         logger.info(f"{resource} has no Entries, requesting data.")
-        match resource:
-            case HidroResource.STATION:
-                items = []
-                states = session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
-                for state in states:
-                    token = get_token()
-                    if (token):
-                        params = {"Unidade Federativa": f"{state.Sigla}"}
-                        success, items_uf = request_data(token, endpoint, params,
-                                                         save_response, load_response)
-                        items.extend(items_uf)
-                entries = [model.from_json(item) for item in items]
-                entries.EstadoCodigo = state.Codigo
-            case _:
-                token = get_token()
-                if (token):
-                    success, items = request_data(token, endpoint, {}, save_response, load_response)
-                    entries = [model.from_json(item) for item in items]
-        insert_hidro(hidro_db, entries)
+        token = get_token()
+        if (token):
+            success, items = request_data(token, endpoint, {})
+            entries = [model.from_json(item) for item in items]
+            insert_hidro(hidro_db, entries)
     else:
-        logger.verbose(f"[TODO] {resource} has Entries")
+        logger.info(f"Checking updates for {resource}.")
     session.close()
     hidro_db.close()
 
+def check_stations_jobs() -> None:
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    jobs_count     = client_session.query(StationJobs).count()
+    if not jobs_count:
+        logger.info(f"Creating jobs for Stations.")
+        hidro_db       = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+        hidro_session  = hidro_db.get_session()
+        states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
+        hidro_session.close()
+        hidro_db.close()
+        stations_jobs = []
+        for state in states:
+            station_job = StationJobs(
+                HidroTable = "Estacao",
+                Status     = JobStatus.PENDING.value,
+                UF         = state.Sigla
+            )
+            stations_jobs.append(station_job)
+        insert_jobs(stations_jobs)
+        check_stations_jobs()
+    else:
+        logger.trace(f"Stations has jobs.")
+        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        jobs = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
+        if (len(jobs) > 1):
+            trigger_job(jobs, JobConfig.STATION)
+        else:
+            logger.info(f"No pending jobs for Stations")
+    client_db.close()
+    client_session.close()
 
 def check_series_job(job_config: JobConfig) -> None:
     logger.trace(f"Checking Job for {job_config}")
@@ -269,17 +286,22 @@ lock = Lock()
 def handle_job(job: HidroJob, job_config: JobConfig) -> None:
     with lock:
         token = get_token()
-    success, data = request_data(token, job_config.get_endpoint(), job.to_params(),
-                                 save_response, load_response)
+    success, data = request_data(token, job_config.get_endpoint(), job.to_params())
 
     if success:
-        job, data = validate_data(job_config, data, job)
+        match job_config:
+            case JobConfig.STATION:
+                job.Status    = JobStatus.COMPLETED
+                job.LastCheck = datetime.now()
+            case _:
+                job, data = validate_data(job_config, data, job)
     else:
         job.Status = JobStatus.FAILED
 
-    logger.trace(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
-                 f"""request for station {job.StationID} """
-                 f"""on period ({job.FromDate})-({job.ToDate})""")
+    if isinstance(job, SeriesJobs):
+        logger.trace(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
+                     f"""request for station {job.StationID} """
+                     f"""on period ({job.FromDate})-({job.ToDate})""")
     write_queue.put((job_config, job, data, False))
 
 
@@ -328,7 +350,7 @@ def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, jobs: List[H
         has_id = True if job_config == JobConfig.CROSS_SECTION else False
         insert_hidro(hidro_db, model_data, has_id)
     if len(jobs) > 0:
-        update_jobs(jobs)
+        update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
     logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
