@@ -30,14 +30,9 @@ logger = logging.getLogger(__name__)
 from config import *
 
 def main() -> None:
-    client = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
 
-    init_db(client)
-    init_db(hidro)
-
-    client.close()
-    hidro.close()
+    init_db(client_db)
+    init_db(hidro_db)
 
     for resource in HidroResource:
         check_resource(resource)
@@ -49,6 +44,8 @@ def main() -> None:
             case _:
                 check_series_job(job_config)
 
+    client_db.close()
+    hidro_db.close()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'])
@@ -59,10 +56,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     import builtins;
-    builtins.hidro_path  = args.hidro
-    builtins.client_path = args.client
+    from database import DatabaseConnection, DatabaseType
     builtins.MAX_WORKERS = args.max_workers
     builtins.BATCH_SIZE  = args.batch_size
+    builtins.save_response = args.save_response
+    builtins.load_response = args.load_response
 
     from config import _make_logger
     builtins.TRACE = 15
