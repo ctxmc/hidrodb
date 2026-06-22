@@ -22,7 +22,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime
+from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 
 from datetime import datetime
@@ -38,10 +38,11 @@ class HidroBaseModel(HidroBase):
     __abstract__ = True
 
     RegistroID        = Column(Float, primary_key=True)
-    Importado         = Column(SmallInteger)
-    Temporario        = Column(SmallInteger)
-    Removido          = Column(SmallInteger)
-    ImportadoRepetido = Column(SmallInteger)
+    Importado         = Column(SmallInteger, default=0)
+    Temporario        = Column(SmallInteger, default=0)
+    Removido          = Column(SmallInteger, default=0)
+    ImportadoRepetido = Column(SmallInteger, default=0)
+    DataIns           = Column(DateTime, default=func.now())
 
     def __init__(self, **kwargs):
         kwargs.setdefault('Importado',         0)
@@ -851,7 +852,7 @@ class WaterQualityStatus(HidroBase):
     __tablename__ = 'QualAguaStatus'
 
     RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger)
+    Removido   = Column(SmallInteger, default=0)
     locals().update({
         f'QualAgua{i:03d}Status': Column(f'QualAgua{i:03d}Status', SmallInteger)
         for i in range(1, 148)
@@ -1150,7 +1151,7 @@ class VerticalCrossSection(HidroBase):
     __tablename__ = 'PerfilTransversalVert'
 
     RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger)
+    Removido   = Column(SmallInteger, default=0)
     Cota       = Column(Float)
     Distancia  = Column(Float)
 
