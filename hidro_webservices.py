@@ -61,14 +61,14 @@ def request_hidro_ws(endpoint, headers, params={}):
         except Exception as e:
             logger.error(f"[REQUEST]: (exception): {e}")
     else:
+        try:
+            logger.error(f"[REQUEST]: (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+        except:
+            logger.trace(f"[REQUEST]: (response): {response} (status: {response.status_code})")
         match response.status_code:
             case 401 | 503 | 504:
                 time.sleep(1)
                 return
-        try:
-            logger.trace(f"[REQUEST]: (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
-        except:
-            logger.trace(f"[REQUEST]: (response): {response} (status: {response.status_code})")
 
 def request_token(client_id: str, client_password: str, max_retries=3, retry_delay=2):
     headers = {

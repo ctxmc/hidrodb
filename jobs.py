@@ -66,7 +66,10 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
-def get_token() -> bool:
+def get_token() -> str:
+    """Authenticate and return access token.
+    Returns: Valid token for requesition
+    """
     logger.verbose("Cheking Token.")
     client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
     session = client.get_session()
@@ -103,6 +106,7 @@ def check_resource(resource: HidroResource) -> None:
     session  = hidro_db.get_session()
     model    = resource.get_model()
     endpoint = resource.get_endpoint()
+    logger.verbose(f"Checking {resource}.")
     if (not session.query(model).count()):
         logger.info(f"{resource} has no Entries, requesting data")
         token = get_token()
@@ -127,8 +131,8 @@ def check_resource(resource: HidroResource) -> None:
     hidro_db.close()
 
 
-def check_job(hidro_job: JobConfig) -> None:
-    logger.info(f"Checking Job for {hidro_job}")
+def check_series_job(hidro_job: JobConfig) -> None:
+    logger.trace(f"Checking Job for {hidro_job}")
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     jobs_count = client_session.query(SeriesJobs).where(SeriesJobs.HidroTable == hidro_job).count()
@@ -199,7 +203,7 @@ def check_job(hidro_job: JobConfig) -> None:
         client_session.close()
         stations_data = [SerieStationData(code, start, end) for code, start, end in db_data]
         create_series_jobs(stations_data, hidro_job)
-        check_job(hidro_job)
+        check_series_job(hidro_job)
     else:
         logger.verbose("[TODO]: Update JOBS")
         jobs = (client_session.query(SeriesJobs)
@@ -330,15 +334,15 @@ def db_writer() -> None:
 def write_data(hidro_db: DatabaseConnection, hidro_job: JobConfig, job_data: dict, hidro_data: dict) -> float:
     start_time = time.perf_counter()
     if len(hidro_data) > 1:
-        logger.info(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
+        logger.trace(f"[WRITER {hidro_job}]: Inserting {len(hidro_data)} entries")
         model_data = data_to_model_orm(hidro_job, hidro_data)
         has_id = True if hidro_job == JobConfig.CROSS_SECTION else False
         insert_hidro(hidro_db, model_data, has_id)
     if len(job_data) > 0:
         update_jobs(job_data)
-        logger.info(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
+        logger.trace(f"[WRITER {hidro_job}]: Updated {len(job_data)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.info(f"[WRITER {hidro_job}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
+    logger.trace(f"[WRITER {hidro_job}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
