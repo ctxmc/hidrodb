@@ -108,23 +108,26 @@ def check_resource(resource: HidroResource) -> None:
     endpoint = resource.get_endpoint()
     logger.verbose(f"Checking {resource}.")
     if (not session.query(model).count()):
-        logger.info(f"{resource} has no Entries, requesting data")
-        token = get_token()
-        if (token):
-            match resource:
-                case HidroResource.STATION:
-                    items = []
-                    states_uf = session.query(State.Sigla).filter(State.CodigoIBGE.isnot(None)).all()
-                    for (UF,) in states_uf:
-                        token = get_token()
-                        if (token):
-                            params = {"Unidade Federativa": f"{UF}"}
-                            success, items_uf = request_data(token, endpoint, params)
-                            items.extend(items_uf)
-                case _:
-                    success, items = request_data(token, endpoint, {})
-            entries = [model.from_json(item) for item in items]
-            insert_hidro(hidro_db, entries)
+        logger.info(f"{resource} has no Entries, requesting data.")
+        match resource:
+            case HidroResource.STATION:
+                items = []
+                states = session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
+                for state in states:
+                    token = get_token()
+                    if (token):
+                        params = {"Unidade Federativa": f"{state.Sigla}"}
+                        success, items_uf = request_data(token, endpoint, params,
+                                                         save_response, load_response)
+                        items.extend(items_uf)
+                entries = [model.from_json(item) for item in items]
+                entries.EstadoCodigo = state.Codigo
+            case _:
+                token = get_token()
+                if (token):
+                    success, items = request_data(token, endpoint, {}, save_response, load_response)
+                    entries = [model.from_json(item) for item in items]
+        insert_hidro(hidro_db, entries)
     else:
         logger.verbose(f"[TODO] {resource} has Entries")
     session.close()

@@ -194,6 +194,7 @@ class Station(HidroBaseModel):
     Latitude                      = Column(Float)
     Longitude                     = Column(Float)
     MunicipioCodigo               = Column(Integer)
+    EstadoCodigo                  = Column(Integer)
     OperadoraCodigo               = Column(BigInteger)
     OperadoraSubUnidade           = Column(Integer)
     Operando                      = Column(SmallInteger)
