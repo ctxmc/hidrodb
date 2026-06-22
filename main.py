@@ -59,22 +59,13 @@ if __name__ == "__main__":
     builtins.MAX_WORKERS = args.max_workers
     builtins.BATCH_SIZE  = args.batch_size
 
+    from config import _make_logger
     builtins.TRACE = 15
-    logging.addLevelName(TRACE, "TRACE")
-    setattr(
-        logging.Logger, 'trace',
-        lambda self, msg, *args, **kwargs:
-        self._log(TRACE, msg, args, **kwargs) if self.isEnabledFor(TRACE) else None
-    )
-
+    setattr(logging.Logger, 'trace', _make_logger(TRACE))
+    logging.addLevelName(TRACE, 'TRACE')
     builtins.VERBOSE = 5
-    logging.addLevelName(VERBOSE, "VERBOSE")
-    setattr(
-        logging.Logger, 'verbose',
-        lambda self, msg, *args, **kwargs:
-        self._log(VERBOSE, msg, args, **kwargs) if self.isEnabledFor(VERBOSE) else None
-    )
-
+    setattr(logging.Logger, 'verbose', _make_logger(VERBOSE))
+    logging.addLevelName(VERBOSE, 'VERBOSE')
     logging.basicConfig(
         level=args.log_level,
         format='[%(levelname)s]: %(message)s'

@@ -95,3 +95,10 @@ class JobConfig(StrEnum):
             JobConfig.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
         }
         return mapping[self]
+
+
+def _make_logger(level):
+    def logger(self, msg, *args, **kwargs):
+        if self.isEnabledFor(level):
+            self._log(level, msg, args, **kwargs)
+    return logger
