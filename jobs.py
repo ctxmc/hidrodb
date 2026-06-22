@@ -147,13 +147,13 @@ def check_series_job(hidro_job: JobConfig) -> None:
                     Station.PeriodoRegistradorChuvaInicio,
                     Station.PeriodoRegistradorChuvaFim
                 ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
-            case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW:
+            case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW | JobConfig.CROSS_SECTION:
                 db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoDescLiquidaInicio,
                     Station.PeriodoDescLiquidaFim
                 ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
-            case JobConfig.SEDIMENTS:
+            case JobConfig.SEDIMENTS | JobConfig.GRANULOMETRY:
                 db_data =  hidro_session.query(
                     Station.Codigo,
                     Station.PeriodoSedimentosInicio,
@@ -185,18 +185,6 @@ def check_series_job(hidro_job: JobConfig) -> None:
                 GROUP BY Codigo 
                 """)
                 db_data = hidro_session.execute(sql).fetchall()
-            case JobConfig.GRANULOMETRY:
-                db_data = hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoSedimentosInicio,
-                    Station.PeriodoSedimentosFim
-                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
-            case JobConfig.CROSS_SECTION:
-                db_data = hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoSedimentosInicio,
-                    Station.PeriodoSedimentosFim
-                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
         hidro_session.close()
         hidro_db.close()
         client_db.close()
