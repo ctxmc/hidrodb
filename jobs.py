@@ -379,9 +379,9 @@ def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
                 item_id = item.get("Registro_ID")
                 if current_id != item_id:
                     current_id = item_id
-                    model_data.append(job_config.get_model().from_json(item))
+                    model_data.append(job_config.get_hidro_model().from_json(item))
                 model_data.append(VerticalCrossSection.from_json(item, current_id))
         case _:
             for data in hidro_data:
-                model_data.append(job_config.get_model().from_json(data))
+                model_data.append(job_config.get_hidro_model().from_json(data))
     return model_data

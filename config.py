@@ -70,7 +70,7 @@ class JobConfig(StrEnum):
     GRANULOMETRY      = "Granulometria"
     CROSS_SECTION     = "PerfilTransversal"
 
-    def get_model(self):
+    def get_hidro_model(self):
         mapping = {
             JobConfig.RAIN:              Rain,
             JobConfig.DISCHARGE_SUMMARY: DischargeSummary,
