@@ -22,7 +22,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
 import argparse
 import logging
 logger = logging.getLogger(__name__)
@@ -32,10 +31,8 @@ from config import *
 def main() -> None:
     client = DatabaseConnection(client_path, DatabaseType.CLIENT)
     hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-
     init_db(client)
     init_db(hidro)
-
     client.close()
     hidro.close()
 

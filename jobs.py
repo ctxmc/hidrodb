@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue              import Queue
 from threading          import Thread, Lock
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from enum     import Enum, auto
 
 import time
@@ -69,68 +69,47 @@ def get_token() -> str:
     Returns: Valid token for requesition
     """
     logger.verbose("Cheking Token.")
-    client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    session = client.get_session()
-    if (not session.query(Token).count()):
+    if (not count_client(Token)):
         logger.verbose("No Token present, requesting.")
-        client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
-        token, expires = request_token(client_id, client_password)
-        session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
-        session.commit()
+        credentials = get_credentials()
+        token, expires = request_token(credentials.ID, credentials.Password)
+        add_token(credentials.ID, token, expires)
         return token
     else:
-        (expires,) = session.query(Token.Expires).first()
-        if datetime.now() < expires:
-            logger.verbose(f"Token is valid, continuing ({expires}).")
-            (token,) = session.query(Token.Token).first()
-            return token
+        token_model = get_token_model()
+        if datetime.now() < token_model.Expires:
+            logger.verbose(f"Token is valid, continuing ({token_model.Expires}).")
+            return token_model.Token
         else:
             logger.verbose("Token expired, requesting new.")
-            client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
-            token, new_expires = request_token(client_id, client_password)
+            credentials = get_credentials()
+            token, expires = request_token(credentials.ID, credentials.Password)
             logger.verbose("Aquired new token, updating.")
-            from sqlalchemy import update;
-            update_expression = (
-                update(Token).where(Token.Expires == expires)
-                .values(Token=token, Expires=new_expires)
-            )
-            session.execute(update_expression)
-            session.commit()
+            update_token(Token.RegistroID, token, expires)
             logger.verbose("Token updated.")
             return token
 
 
 def check_resource(resource: HidroResource) -> None:
-    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-    session  = hidro_db.get_session()
     model    = resource.get_model()
     endpoint = resource.get_endpoint()
     logger.verbose(f"Checking {resource}.")
-    if (not session.query(model).count()):
+    if not count_hidro(model):
         logger.info(f"{resource} has no Entries, requesting data.")
         token = get_token()
         if (token):
             success, items = request_data(token, endpoint, {})
             entries = [model.from_json(item) for item in items]
-            insert_hidro(hidro_db, entries)
+            insert_hidro(entries)
     else:
         logger.info(f"Checking updates for {resource}.")
-    session.close()
-    hidro_db.close()
 
+        
 def check_stations_jobs() -> None:
-    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    jobs_count     = client_session.query(StationJobs).count()
-    if not jobs_count:
+    if not count_client(StationJobs):
         logger.info(f"Creating jobs for Stations.")
-        hidro_db       = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro_session  = hidro_db.get_session()
-        states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
-        hidro_session.close()
-        hidro_db.close()
         stations_jobs = []
-        for state in states:
+        for state in get_states():
             station_job = StationJobs(
                 HidroTable = "Estacao",
                 Status     = JobStatus.PENDING.value,
@@ -142,79 +121,34 @@ def check_stations_jobs() -> None:
     else:
         logger.trace(f"Stations has jobs.")
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        jobs = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
+        jobs = get_station_jobs(status)
         if (len(jobs) > 1):
             trigger_job(jobs, JobConfig.STATION)
         else:
             logger.info(f"No pending jobs for Stations")
-    client_db.close()
-    client_session.close()
+
 
 def check_series_job(job_config: JobConfig) -> None:
     logger.trace(f"Checking Job for {job_config}")
-    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    jobs_count = client_session.query(SeriesJobs).where(SeriesJobs.HidroTable == job_config).count()
-    if not jobs_count:
+    if not count_job(job_config):
         logger.info(f"Creating jobs for {job_config}")
-        hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro_session = hidro_db.get_session()
         match job_config:
             case JobConfig.RAIN:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoRegistradorChuvaInicio,
-                    Station.PeriodoRegistradorChuvaFim
-                ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
+                db_data = get_rain_period()
             case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW | JobConfig.CROSS_SECTION:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoDescLiquidaInicio,
-                    Station.PeriodoDescLiquidaFim
-                ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
+                db_data = get_discharge_period()
             case JobConfig.SEDIMENTS | JobConfig.GRANULOMETRY:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoSedimentosInicio,
-                    Station.PeriodoSedimentosFim
-                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
+                db_data = get_sediments_period()
             case JobConfig.WATER_QUALITY:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoQualAguaInicio,
-                    Station.PeriodoQualAguaFim
-                ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
+                db_data = get_water_period()
             case JobConfig.STAGE:
-                from sqlalchemy import text
-                sql = text("""
-                SELECT 
-                    Codigo, 
-                    MIN(PeriodoInicio) AS PeriodoInicio, 
-                    MIN(PeriodoFim)    AS PeriodoFim
-                FROM (
-                    SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
-                    FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
-                    UNION
-                    SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
-                    FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
-                ) combined
-                GROUP BY Codigo;
-                """)
-                db_data = hidro_session.execute(sql).fetchall()
-        hidro_session.close()
-        hidro_db.close()
-        client_db.close()
-        client_session.close()
+                db_data = get_stage_period()
         stations_data = [SerieStationData(code, start, end) for code, start, end in db_data]
         create_series_jobs(stations_data, job_config)
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
-        jobs = (client_session.query(SeriesJobs)
-                .filter(
-                    SeriesJobs.Status.in_([JobStatus.FAILED.value, JobStatus.PENDING.value]),
-                    SeriesJobs.HidroTable == job_config)
-                .all())
+        jobs = get_series_jobs(job_config, [JobStatus.FAILED.value, JobStatus.PENDING.value])
         if (len(jobs) > 1):
             trigger_job(jobs, job_config)
         else:
@@ -306,7 +240,6 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
 
 
 def db_writer() -> None:
-    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     batch_buffer = {"jobs": [], "data": []}
     total_data    = 0
     total_jobs    = 0
@@ -327,8 +260,7 @@ def db_writer() -> None:
             if len(batch_buffer["data"]) >= BATCH_SIZE or stop_signal:
                 total_data    += len(batch_buffer["data"])
                 total_jobs    += len(batch_buffer["jobs"])
-                total_elapsed += write_data(hidro_db, job_config,
-                                            batch_buffer["jobs"], batch_buffer["data"])
+                total_elapsed += write_data(job_config, batch_buffer["jobs"], batch_buffer["data"])
                 logger.info(f"""[WRITER {job_config}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
                             f"""Total thread elapsed: {total_elapsed}""")
@@ -342,13 +274,13 @@ def db_writer() -> None:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
-def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:        
+def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
         model_data = data_to_model_orm(job_config, hidro_data)
         has_id = True if job_config == JobConfig.CROSS_SECTION else False
-        insert_hidro(hidro_db, model_data, has_id)
+        insert_hidro(model_data, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
