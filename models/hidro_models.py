@@ -43,6 +43,7 @@ class HidroBaseModel(HidroBase):
     Removido          = Column(SmallInteger, default=0)
     ImportadoRepetido = Column(SmallInteger, default=0)
     DataIns           = Column(DateTime, default=func.now())
+    DataAlt           = Column(DateTime)
 
     def __init__(self, **kwargs):
         kwargs.setdefault('Importado',         0)
@@ -56,7 +57,6 @@ class Basin(HidroBaseModel):
 
     Nome    = Column(String)
     Codigo  = Column(Integer, unique=True)
-    DataAlt = Column(DateTime)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -72,7 +72,6 @@ class SubBasin(HidroBaseModel):
     Nome        = Column(String)
     Codigo      = Column(Integer, unique=True)
     BaciaCodigo = Column(Integer)
-    DataAlt     = Column(DateTime)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -90,7 +89,6 @@ class Entity(HidroBaseModel):
     Nome    = Column(String)
     Sigla   = Column(String)
     Codigo  = Column(Integer, unique=True)
-    DataAlt = Column(DateTime)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -108,7 +106,6 @@ class Township(HidroBaseModel):
     Nome       = Column(String)
     Codigo     = Column(Integer, unique=True)
     CodigoIBGE = Column(Integer)
-    DataAlt    = Column(DateTime)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -125,7 +122,6 @@ class River(HidroBaseModel):
 
     Nome              = Column(String)
     Codigo            = Column(Integer, unique=True)
-    DataAlt           = Column(DateTime)
     Jurisdicao        = Column(SmallInteger)
     BaciaCodigo       = Column(Integer)
     SubBaciaCodigo    = Column(Integer)
@@ -148,7 +144,6 @@ class State(HidroBaseModel):
     Nome       = Column(String)
     Sigla      = Column(String)
     Codigo     = Column(Integer, unique=True)
-    DataAlt    = Column(DateTime)
     CodigoIBGE = Column(Integer)
 
     @classmethod
@@ -306,7 +301,6 @@ class Rain(HidroBaseModel):
     __tablename__ = 'Chuvas'
 
     Data                 = Column(DateTime)
-    DataAlt              = Column(DateTime)
     DiaMaxima            = Column(SmallInteger)
     Maxima               = Column(Float)
     MaximaStatus         = Column(SmallInteger)
@@ -360,7 +354,6 @@ class DischargeSummary(HidroBaseModel):
     AreaMolhada       = Column(Float)
     Cota              = Column(Float)
     Data              = Column(DateTime)
-    DataAlt           = Column(DateTime)
     Largura           = Column(Float)
     NivelConsistencia = Column(SmallInteger)
     Profundidade      = Column(Float)
@@ -395,7 +388,6 @@ class Sediments(HidroBaseModel):
     CotaDeMedicao              = Column(Float)
     Data                       = Column(DateTime)
     DataLiq                    = Column(DateTime)
-    DataAlt                    = Column(DateTime)
     Largura                    = Column(Float)
     NivelConsistencia          = Column(SmallInteger)
     NumMedicao                 = Column(BigInteger)
@@ -434,7 +426,6 @@ class Stage(HidroBaseModel):
     __tablename__ = 'Cotas'
 
     Data              = Column(DateTime)
-    DataAlt           = Column(DateTime)
     DiaMaxima         = Column(SmallInteger)
     DiaMinima         = Column(SmallInteger)
     Maxima            = Column(Float)
@@ -497,7 +488,6 @@ class DischargeFlow(HidroBaseModel):
     CoefA3                = Column(Float)
     CotaMaxima            = Column(Float)
     CotaMinima            = Column(Float)
-    DataAlt               = Column(DateTime)
     NivelConsistencia     = Column(SmallInteger)
     NumeroCurva           = Column(String(5))
     PeriodoValidadeFim    = Column(DateTime)
@@ -681,7 +671,6 @@ class WaterQuality(HidroBaseModel):
     DQO                         = Column(Float)
     Choveu                      = Column(SmallInteger)
     Data                        = Column(DateTime)
-    DataAlt                     = Column(DateTime)
     NivelConsistencia           = Column(SmallInteger)
     NumMedicao                  = Column(BigInteger)
     PosHorizColeta              = Column(SmallInteger)
@@ -987,7 +976,6 @@ class Granulometry(HidroBaseModel):
     MatSuspD65                = Column(Float)
     MatSuspD84                = Column(Float)
     MatSuspD90                = Column(Float)
-    DataAlt                   = Column(DateTime)
 
     @classmethod
     def from_json(cls, json_data: dict):
