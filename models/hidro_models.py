@@ -314,14 +314,9 @@ class Rain(HidroBaseModel):
     TotalStatus          = Column(SmallInteger)
     EstacaoCodigo        = Column(BigInteger)
 
-    locals().update({
-        f'Chuva{i:02d}': Column(f'Chuva{i:02d}', Float)
-        for i in range(1, 32)
-    })
-    locals().update({
-        f'Chuva{i:02d}Status': Column(f'Chuva{i:02d}Status', SmallInteger)
-        for i in range(1, 32)
-    })
+    for i in range(1, 32):
+        locals()[f'Chuva{i:02d}'] = Column(f'Chuva{i:02d}', Float)
+        locals()[f'Chuva{i:02d}Status'] = Column(f'Chuva{i:02d}Status', SmallInteger)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -441,14 +436,9 @@ class Stage(HidroBaseModel):
     EstacaoCodigo     = Column(BigInteger)
     NivelConsistencia = Column(SmallInteger)
 
-    locals().update({
-        f'Cota{i:02d}': Column(f'Cota{i:02d}', Float)
-        for i in range(1, 32)
-    })
-    locals().update({
-        f'Cota{i:02d}Status': Column(f'Cota{i:02d}Status', SmallInteger)
-        for i in range(1, 32)
-    })
+    for i in range(1, 32):
+        locals()[f'Cota{i:02d}'] = Column(f'Cota{i:02d}', Float)
+        locals()[f'Cota{i:02d}Status'] = Column(f'Cota{i:02d}Status', SmallInteger)
 
     @classmethod
     def from_json(cls, json_data: dict):
