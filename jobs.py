@@ -22,6 +22,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Provides routines to request and sync data on database.
+"""
+
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue              import Queue
 from threading          import Thread, Lock
@@ -33,21 +37,31 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
-import sys
-
 from database          import *
 from hidro_webservices import *
 from config            import *
 from dataclasses       import dataclass
 
 class JobStatus(Enum):
-    PENDING   = auto()
-    FAILED    = auto()
-    INVALID   = auto()
-    CORRUPTED = auto()
-    COMPLETED = auto()
+    """ Enum to control job status."""
 
-    def get_label(self):
+    PENDING   = auto()
+    """Job is queued and waiting to be processed."""
+
+    FAILED    = auto()
+    """Job request failed."""
+
+    INVALID   = auto()
+    """Job request returned item had incorrect fields."""
+
+    CORRUPTED = auto()
+    """Job with incorrect start date."""
+
+    COMPLETED = auto()
+    """Job successfully completed."""
+
+    def get_label(self) -> str:
+        """ :returns: a string label for each status."""
         mapping = {
             JobStatus.PENDING:   "Pending",
             JobStatus.FAILED:    "Failed",
@@ -59,18 +73,28 @@ class JobStatus(Enum):
 
 @dataclass
 class SerieStationData:
+    """ Data class to receive Series Job data when starting a job."""
+
     station_code: int
+    """ Station code which data will be requested."""
+
     start_date:   DateTime
+    """ Start date which data will be requested"""
+
     end_date:     DateTime
+    """ End date which data will be requested"""
 
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
 from typing import Optional
 _token_cache: Optional[Token] = None
-def get_token() -> str:
+"""Private Token global to control expiration time."""
+
+def get_token() -> Token.Token:
     """Authenticate and return access token.
-    Returns: Valid token for requesition
+    
+    :returns: Valid token for requesition
     """
     global _token_cache
     logger.verbose("Cheking Token.")
@@ -100,6 +124,11 @@ def get_token() -> str:
 
 
 def check_resource(resource: HidroResource) -> None:
+    """Checks each HidroResource and request/update them.
+
+    :param resource: Current Resource to check, insert and update.
+    :returns: Nothing.
+    """
     model    = resource.get_model()
     endpoint = resource.get_endpoint()
     logger.verbose(f"Checking {resource}.")
@@ -115,6 +144,9 @@ def check_resource(resource: HidroResource) -> None:
 
         
 def check_stations_jobs() -> None:
+    """Checks if there is Stations entries on database.
+    Request all national stations by UF if there isnt.
+    """
     if not count_client(StationJobs):
         logger.info(f"Creating jobs for Stations.")
         stations_jobs = []
@@ -139,6 +171,10 @@ def check_stations_jobs() -> None:
 
 
 def check_series_job(job_config: JobConfig) -> None:
+    """Checks an JobConfig.
+    Create jobs if there is no entries and start pending jobs requisition.
+    """
+
     logger.trace(f"Checking Job for {job_config}")
     if not count_job(job_config):
         logger.info(f"Creating jobs for {job_config}")
@@ -177,6 +213,9 @@ def check_series_job(job_config: JobConfig) -> None:
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
+    """ Creates Series Jobs for each SerieStationData received for a given JobConfig.
+    Preprocess all years from "Start Date" to "End Date" that will become a job request.
+    """
     total_jobs_count = 0
     for station_code, start_date, end_date in stations_data:
         jobs = []
@@ -230,6 +269,8 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
 write_queue      = Queue()
 queue_data_size  = 0
 def trigger_job(job_config: JobConfig) -> None:
+    """ Triggers an Thread Worker for each pending or falied job entrie in DB for a given JobConfig."""
+
     global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
@@ -283,6 +324,10 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
 
 
 def db_writer() -> None:
+    """ Single Writer Thread running during an Job.
+    Consumes an Queue writen by each worker and write data in batches.
+    """
+
     global queue_data_size
     batch_buffer = {"jobs": [], "data": []}
     total_data    = 0
@@ -322,6 +367,8 @@ def db_writer() -> None:
             raise
 
 def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
+    """Insert data into DB and update the jobs as well. """
+
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
@@ -341,6 +388,8 @@ def get_queue_data_size(data):
     return size
 
 def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
+    """Validate returned data by the API. """
+
     #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
     job.Status = JobStatus.COMPLETED
 
@@ -374,6 +423,12 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
 
 
 def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
+    """Convert returned data by the API into the correspondent ORM Model of the job. """
+
+    if DEBUG_MODE and LOG_LEVEL == VERBOSE:
+        import tracemalloc
+        current, peak = tracemalloc.get_traced_memory()
+        logger.warning(f"Before ORM conversion: {current/1024/1024:.1f} MiB, data len: {len(hidro_data)}")
     model_data = []
     match job_config:
         case JobConfig.WATER_QUALITY:
