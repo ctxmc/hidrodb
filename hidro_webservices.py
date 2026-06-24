@@ -50,6 +50,7 @@ class HidroEndpoint(StrEnum):
     WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
     GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
     CROSS_SECTION     = "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1"
+    FLOW_RATE         = "/EstacoesTelemetricas/HidroSerieVazao/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
     url = "https://www.ana.gov.br/hidrowebservice"
@@ -151,3 +152,6 @@ def get_file_path(endpoint: HidroEndpoint, params: dict) -> str:
         case HidroEndpoint.CROSS_SECTION:
             station_code, _, ymd_start, ymd_end = params.values()
             return f"./json/profile/station_{station_code}_{ymd_start}_{ymd_end}.json"
+        case HidroEndpoint.FLOW_RATE:
+            station_code, _, ymd_start, ymd_end = params.values()
+            return f"./json/flow/station_{station_code}_{ymd_start}_{ymd_end}.json"

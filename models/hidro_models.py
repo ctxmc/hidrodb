@@ -1142,3 +1142,54 @@ class VerticalCrossSection(HidroBase):
             Cota       = json_data.get("Cota"),
             Distancia  = json_data.get("Distancia")
         )
+
+class FlowRate(HidroBaseModel):
+    __tablename__ = 'Vazoes'
+
+    EstacaoCodigo        = Column(BigInteger)
+    NivelConsistencia    = Column(SmallInteger)
+    Data                 = Column(DateTime)
+    # Hora                 = Column(DateTime)
+    MediaDiaria          = Column(SmallInteger)
+    MetodoObtencaoVazoes = Column(SmallInteger)
+    Maxima               = Column(Float)
+    Minima               = Column(Float)
+    Media                = Column(Float)
+    DiaMaxima            = Column(SmallInteger)
+    DiaMinima            = Column(SmallInteger)
+    MaximaStatus         = Column(SmallInteger)
+    MinimaStatus         = Column(SmallInteger)
+    MediaStatus          = Column(SmallInteger)
+    MediaAnual           = Column(Float)
+    MediaAnualStatus     = Column(SmallInteger)
+
+
+    for i in range(1, 32):
+        locals()[f'Vazao{i:02d}'] = Column(f'Vazao{i:02d}', Float)
+        locals()[f'Vazao{i:02d}Status'] = Column(f'Vazao{i:02d}Status', SmallInteger)
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        kwargs = {
+            "EstacaoCodigo":        json_data.get("codigoestacao"),
+            "NivelConsistencia":    json_data.get("Nivel_Consistencia"),
+            "Data":                 str_to_datetime(json_data.get("Data_Hora_Dado")),
+            # "Hora":                 
+            "MediaDiaria":          json_data.get("Mediadiaria"),
+            "MetodoObtencaoVazoes": json_data.get("Metodo_Obtencao_Vazoes"),
+            "Maxima":               json_data.get("Maxima"),
+            "Minima":               json_data.get("Minima"),
+            "Media":                json_data.get("Media"),
+            "DiaMaxima":            json_data.get("Dia_Maxima"),
+            "DiaMinima":            json_data.get("Dia_Minima"),
+            "MaximaStatus":         json_data.get("Maxima_Status"),
+            "MinimaStatus":         json_data.get("Minima_Status"),
+            "MediaStatus":          json_data.get("Media_Status"),
+            "MediaAnual":           json_data.get("Media_Anual"),
+            "MediaAnualStatus":     json_data.get("Media_Anual_Status"),
+            "DataAlt":              str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+        }
+        for i in range(1, 32):
+            kwargs[f'Vazao{i:02d}']       = json_data.get(f"Vazao_{i:02d}")
+            kwargs[f'Vazao{i:02d}Status'] = json_data.get(f"Vazao_{i:02d}_Status")
+        return cls(**kwargs)

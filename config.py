@@ -68,6 +68,7 @@ class JobConfig(StrEnum):
     STAGE             = "Cotas"
     GRANULOMETRY      = "Granulometria"
     CROSS_SECTION     = "PerfilTransversal"
+    FLOW_RATE         = "Vazoes"
 
     def get_job_model(self):
         if self == JobConfig.STATION:
@@ -86,6 +87,7 @@ class JobConfig(StrEnum):
             JobConfig.STAGE:             Stage,
             JobConfig.GRANULOMETRY:      Granulometry,
             JobConfig.CROSS_SECTION:     CrossSection,
+            JobConfig.FLOW_RATE:         FlowRate,
         }
         return mapping[self]
 
@@ -100,6 +102,7 @@ class JobConfig(StrEnum):
             JobConfig.STAGE:             HidroEndpoint.STAGE,
             JobConfig.GRANULOMETRY:      HidroEndpoint.GRANULOMETRY,
             JobConfig.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
+            JobConfig.FLOW_RATE:         HidroEndpoint.FLOW_RATE,
         }
         return mapping[self]
 

@@ -149,6 +149,7 @@ def check_series_job(job_config: JobConfig) -> None:
             case (JobConfig.DISCHARGE_SUMMARY
                   | JobConfig.DISCHARGE_FLOW
                   | JobConfig.CROSS_SECTION
+                  | JobConfig.FLOW_RATE
             ):
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_discharge_period()]
