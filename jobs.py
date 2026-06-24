@@ -144,17 +144,25 @@ def check_series_job(job_config: JobConfig) -> None:
         logger.info(f"Creating jobs for {job_config}")
         match job_config:
             case JobConfig.RAIN:
-                db_data = get_rain_period()
-            case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW | JobConfig.CROSS_SECTION:
-                db_data = get_discharge_period()
+                stations_data = [SerieStationData(code, start, end)
+                                 for code, start, end in get_rain_period()]
+            case (JobConfig.DISCHARGE_SUMMARY
+                  | JobConfig.DISCHARGE_FLOW
+                  | JobConfig.CROSS_SECTION
+            ):
+                stations_data = [SerieStationData(code, start, end)
+                                 for code, start, end in get_discharge_period()]
             case JobConfig.SEDIMENTS | JobConfig.GRANULOMETRY:
-                db_data = get_sediments_period()
+                stations_data = [SerieStationData(code, start, end)
+                                 for code, start, end in get_sediments_period()]
             case JobConfig.WATER_QUALITY:
-                db_data = get_water_period()
+                stations_data = [SerieStationData(code, start, end)
+                                 for code, start, end in get_water_period()]
             case JobConfig.STAGE:
-                db_data = get_stage_period()
-        stations_data = [SerieStationData(code, start, end) for code, start, end in db_data]
+                stations_data = [SerieStationData(code, start, end)
+                                 for code, start, end in get_stage_period()]
         create_series_jobs(stations_data, job_config)
+        del stations_data
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
