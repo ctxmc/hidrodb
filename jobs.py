@@ -274,7 +274,8 @@ def db_writer() -> None:
                 logger.info(f"""[WRITER {job_config}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
                             f"""Total thread elapsed: {total_elapsed}""")
-                batch_buffer = {"jobs": [], "data": []}
+                batch_buffer["jobs"].clear()
+                batch_buffer["data"].clear()
 
             if stop_signal:
                 logger.info(f"""Finished jobs for {job_config}""")
