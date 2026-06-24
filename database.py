@@ -88,19 +88,22 @@ def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None
                 conn.exec_driver_sql(stmt)
         conn.commit()
         
-def insert_hidro(hidro: DatabaseConnection, collection: List[HidroBase], has_id=False) -> None:
-    session = hidro.get_session()
+def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
     if not has_id:
         model_class = type(collection[0])
-        reg_id  = (session.query(func.max(model_class.RegistroID)).scalar() or 0) + 1
+        reg_id  = (hidro_session.query(func.max(model_class.RegistroID)).scalar() or 0) + 1
         for i, entry in enumerate(collection):
             entry.RegistroID = reg_id + i
     else:
         import warnings;
         from sqlalchemy import exc as sa_exc;
         warnings.filterwarnings('ignore', '.*Identity map already had an identity.*', sa_exc.SAWarning)
-    session.add_all(collection)
-    session.commit()
+    hidro_session.add_all(collection)
+    hidro_session.commit()
+    hidro_session.close()
+    hidro_db.close()
 
 def insert_jobs(jobs: List[HidroJob]) -> None:
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
@@ -117,3 +120,177 @@ def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
     client_session.commit()
     client_session.close()
     client_db.close()
+
+def count_client(model: ClientBase):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    count_model    = client_session.query(model).count()
+    client_session.close()
+    client_db.close()
+    return count_model
+
+def get_credentials() -> Credentials:
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    credentials    = client_session.query(Credentials).first()
+    client_session.close()
+    client_db.close()
+    return credentials
+
+def add_token(client_id, token, expires):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    client_session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
+    client_session.commit()
+    client_session.close()
+    client_db.close()
+
+def get_token_model() -> Token:
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    token          = client_session.query(Token).first()
+    client_session.close()
+    client_db.close()
+    return token
+
+def update_token(RegistroID, new_token, new_expires):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    from sqlalchemy import update;
+    update_expression = (
+        update(Token).where(Token.RegistroID == RegistroID)
+        .values(Token=new_token, Expires=new_expires)
+    )
+    client_session.execute(update_expression)
+    client_session.commit()
+    client_session.close()
+    client_db.close()
+
+def get_station_jobs(status) -> StationJobs:
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    station_jobs   = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
+    client_session.close()
+    client_db.close()
+    return station_jobs
+
+def get_series_jobs(job_config, status):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    series_jobs = (client_session.query(SeriesJobs).filter(
+        SeriesJobs.Status.in_(status), SeriesJobs.HidroTable == job_config).all())
+    client_session.close()
+    client_db.close()
+    return series_jobs
+
+def get_jobs_yield(job_config, status):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    model = job_config.get_job_model()
+    try:
+        query = (client_session.query(model).filter(
+            model.Status.in_(status),
+            model.HidroTable == job_config))
+        for job in query.yield_per(100):
+            yield job
+    finally:
+        client_session.close()
+        client_db.close()
+
+def count_job(job_config: JobConfig, status = None):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    model          = job_config.get_job_model()
+    filters        = [model.HidroTable == job_config]
+    if status:
+        filters.append(model.Status.in_(status))
+    count_job = client_session.query(model).filter(*filters).count()
+    client_session.close()
+    client_db.close()
+    return count_job
+
+def count_hidro(model: HidroBase):
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    count_model   = hidro_session.query(model).count()
+    hidro_session.close()
+    hidro_db.close()
+    return count_model
+
+def get_states() -> State:
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
+    hidro_session.close()
+    hidro_db.close()
+    return states
+
+def get_rain_period():
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    rain_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoRegistradorChuvaInicio,
+        Station.PeriodoRegistradorChuvaFim
+    ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
+    hidro_session.close()
+    hidro_db.close()
+    return rain_period
+
+def get_discharge_period():
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    discharge_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoDescLiquidaInicio,
+        Station.PeriodoDescLiquidaFim
+    ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
+    hidro_session.close()
+    hidro_db.close()
+    return discharge_period
+
+def get_sediments_period():
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    sediments_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoSedimentosInicio,
+        Station.PeriodoSedimentosFim
+    ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
+    hidro_session.close()
+    hidro_db.close()
+    return sediments_period
+
+def get_water_period():
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    water_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoQualAguaInicio,
+        Station.PeriodoQualAguaFim
+    ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
+    hidro_session.close()
+    hidro_db.close()
+    return water_period
+
+def get_stage_period():
+    hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_session()
+    sql = text("""
+    SELECT 
+        Codigo, 
+        MIN(PeriodoInicio) AS PeriodoInicio, 
+        MIN(PeriodoFim)    AS PeriodoFim
+    FROM (
+        SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
+        FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
+        UNION
+        SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
+        FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
+    ) combined
+    GROUP BY Codigo;
+    """)
+    stage_period = hidro_session.execute(sql).fetchall()
+    hidro_session.close()
+    hidro_db.close()
+    return stage_period

@@ -22,16 +22,18 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue              import Queue
 from threading          import Thread, Lock
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from enum     import Enum, auto
 
 import time
 import logging
 logger = logging.getLogger(__name__)
+
+import sys
 
 from database          import *
 from hidro_webservices import *
@@ -64,73 +66,59 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+from typing import Optional
+_token_cache: Optional[Token] = None
 def get_token() -> str:
     """Authenticate and return access token.
     Returns: Valid token for requesition
     """
+    global _token_cache
     logger.verbose("Cheking Token.")
-    client  = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    session = client.get_session()
-    if (not session.query(Token).count()):
-        logger.verbose("No Token present, requesting.")
-        client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
-        token, expires = request_token(client_id, client_password)
-        session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
-        session.commit()
-        return token
+
+    if _token_cache is None:
+        _token_cache = get_token_model()
+
+    if _token_cache is not None and datetime.now() < _token_cache.Expires:
+        logger.verbose(f"Token is valid. ({_token_cache.Expires})")
+        return _token_cache.Token
+
+    logger.info("No valid token present, requesting.")
+    credentials = get_credentials()
+    token, expires = request_token(credentials.ID, credentials.Password)
+    if _token_cache is None:
+        _token_cache = Token()
+    _token_cache.Token   = token
+    _token_cache.Expires = expires
+
+    if count_client(Token):
+        update_token(_token_cache.RegistroID, token, expires)
     else:
-        (expires,) = session.query(Token.Expires).first()
-        if datetime.now() < expires:
-            logger.verbose(f"Token is valid, continuing ({expires}).")
-            (token,) = session.query(Token.Token).first()
-            return token
-        else:
-            logger.verbose("Token expired, requesting new.")
-            client_id, client_password = session.query(Credentials.ID, Credentials.Password).first()
-            token, new_expires = request_token(client_id, client_password)
-            logger.verbose("Aquired new token, updating.")
-            from sqlalchemy import update;
-            update_expression = (
-                update(Token).where(Token.Expires == expires)
-                .values(Token=token, Expires=new_expires)
-            )
-            session.execute(update_expression)
-            session.commit()
-            logger.verbose("Token updated.")
-            return token
+        add_token(credentials.ID, token, expires)
+
+    logger.info("Token acquired and cached.")
+    return token
 
 
 def check_resource(resource: HidroResource) -> None:
-    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-    session  = hidro_db.get_session()
     model    = resource.get_model()
     endpoint = resource.get_endpoint()
     logger.verbose(f"Checking {resource}.")
-    if (not session.query(model).count()):
+    if not count_hidro(model):
         logger.info(f"{resource} has no Entries, requesting data.")
         token = get_token()
         if (token):
             success, items = request_data(token, endpoint, {})
             entries = [model.from_json(item) for item in items]
-            insert_hidro(hidro_db, entries)
+            insert_hidro(entries)
     else:
         logger.info(f"Checking updates for {resource}.")
-    session.close()
-    hidro_db.close()
 
+        
 def check_stations_jobs() -> None:
-    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    jobs_count     = client_session.query(StationJobs).count()
-    if not jobs_count:
+    if not count_client(StationJobs):
         logger.info(f"Creating jobs for Stations.")
-        hidro_db       = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro_session  = hidro_db.get_session()
-        states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
-        hidro_session.close()
-        hidro_db.close()
         stations_jobs = []
-        for state in states:
+        for state in get_states():
             station_job = StationJobs(
                 HidroTable = "Estacao",
                 Status     = JobStatus.PENDING.value,
@@ -142,88 +130,47 @@ def check_stations_jobs() -> None:
     else:
         logger.trace(f"Stations has jobs.")
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        jobs = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
-        if (len(jobs) > 1):
-            trigger_job(jobs, JobConfig.STATION)
+        count = count_job(JobConfig.STATION, status)
+        if count:
+            logger.info(f"Initiating {count} jobs for {JobConfig.STATION}")
+            trigger_job(JobConfig.STATION)
         else:
             logger.info(f"No pending jobs for Stations")
-    client_db.close()
-    client_session.close()
+
 
 def check_series_job(job_config: JobConfig) -> None:
     logger.trace(f"Checking Job for {job_config}")
-    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    jobs_count = client_session.query(SeriesJobs).where(SeriesJobs.HidroTable == job_config).count()
-    if not jobs_count:
+    if not count_job(job_config):
         logger.info(f"Creating jobs for {job_config}")
-        hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
-        hidro_session = hidro_db.get_session()
         match job_config:
             case JobConfig.RAIN:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoRegistradorChuvaInicio,
-                    Station.PeriodoRegistradorChuvaFim
-                ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
+                db_data = get_rain_period()
             case JobConfig.DISCHARGE_SUMMARY | JobConfig.DISCHARGE_FLOW | JobConfig.CROSS_SECTION:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoDescLiquidaInicio,
-                    Station.PeriodoDescLiquidaFim
-                ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
+                db_data = get_discharge_period()
             case JobConfig.SEDIMENTS | JobConfig.GRANULOMETRY:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoSedimentosInicio,
-                    Station.PeriodoSedimentosFim
-                ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
+                db_data = get_sediments_period()
             case JobConfig.WATER_QUALITY:
-                db_data =  hidro_session.query(
-                    Station.Codigo,
-                    Station.PeriodoQualAguaInicio,
-                    Station.PeriodoQualAguaFim
-                ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
+                db_data = get_water_period()
             case JobConfig.STAGE:
-                from sqlalchemy import text
-                sql = text("""
-                SELECT 
-                    Codigo, 
-                    MIN(PeriodoInicio) AS PeriodoInicio, 
-                    MIN(PeriodoFim)    AS PeriodoFim
-                FROM (
-                    SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
-                    FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
-                    UNION
-                    SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
-                    FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
-                ) combined
-                GROUP BY Codigo;
-                """)
-                db_data = hidro_session.execute(sql).fetchall()
-        hidro_session.close()
-        hidro_db.close()
-        client_db.close()
-        client_session.close()
+                db_data = get_stage_period()
         stations_data = [SerieStationData(code, start, end) for code, start, end in db_data]
         create_series_jobs(stations_data, job_config)
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
-        jobs = (client_session.query(SeriesJobs)
-                .filter(
-                    SeriesJobs.Status.in_([JobStatus.FAILED.value, JobStatus.PENDING.value]),
-                    SeriesJobs.HidroTable == job_config)
-                .all())
-        if (len(jobs) > 1):
-            trigger_job(jobs, job_config)
+        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        count = count_job(job_config, status)
+        if count:
+            logger.info(f"Initiating {count} jobs for {job_config}")
+            trigger_job(job_config)
         else:
             logger.info(f"No pending jobs for {job_config}")
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
-    jobs = []
+    total_jobs_count = 0
     for station_code, start_date, end_date in stations_data:
+        jobs = []
         formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
         for fmt in formats:
             try:
@@ -265,28 +212,42 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
                 HidroTable = job_config
             ))
             current_year = next_year
-    insert_jobs(jobs)
-    logger.info(f"Created {len(jobs)} jobs for Job_Config {job_config}")
+        insert_jobs(jobs)
+        logger.verbose(f"Inserted {len(jobs)} jobs for station {station_code} over the period {start_date}-{end_date}")
+        total_jobs_count += len(jobs)
+    logger.info(f"Created {total_jobs_count} jobs for {job_config}")
 
 
-write_queue = Queue()
-def trigger_job(jobs: HidroJob, job_config: JobConfig) -> None:
-    logger.info(f"Initiating {len(jobs)} jobs for {job_config}")
+write_queue      = Queue()
+queue_data_size  = 0
+def trigger_job(job_config: JobConfig) -> None:
+    global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
+    futures = set()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for job in jobs:
-            executor.submit(handle_job, job, job_config)
-        executor.shutdown(wait=True)
+        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        for index, job in enumerate(get_jobs_yield(job_config, status)):
+            if queue_data_size > BATCH_SIZE * 2:
+                logger.warning(f"[WORKER {job_config}]: Queue data size limit reached on job {index}")
+                while queue_data_size  > BATCH_SIZE * 2:
+                    _, futures = wait(futures, return_when=FIRST_COMPLETED)
+                    time.sleep(0.01)
+
+            futures.add(executor.submit(handle_job, job, job_config))
+            if len(futures) >= MAX_WORKERS:
+                logger.info(f"Max futures reached on job {index}")
+                _, futures = wait(futures, return_when=FIRST_COMPLETED)
+            wait(futures)
     write_queue.put((job_config, None, None, True))
     writer.join()
 
-
-lock = Lock()
+token_lock = Lock()
 def handle_job(job: HidroJob, job_config: JobConfig) -> None:
-    with lock:
+    global queue_data_size
+    with token_lock:
         token = get_token()
-    success, data = request_data(token, job_config.get_endpoint(), job.to_params())
+    success, items = request_data(token, job_config.get_endpoint(), job.to_params())
 
     if success:
         match job_config:
@@ -294,19 +255,26 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
                 job.Status    = JobStatus.COMPLETED
                 job.LastCheck = datetime.now()
             case _:
-                job, data = validate_data(job_config, data, job)
+                job, items = validate_data(job_config, items, job)
     else:
         job.Status = JobStatus.FAILED
 
+    if job.Status == JobStatus.COMPLETED and len(items) > 0:
+        data = data_to_model_orm(job_config, items)
+    else:
+        data = []
+
     if isinstance(job, SeriesJobs):
-        logger.trace(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
-                     f"""request for station {job.StationID} """
-                     f"""on period ({job.FromDate})-({job.ToDate})""")
+        logger.verbose(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
+                       f"""request for station {job.StationID} """
+                       f"""on period ({job.FromDate})-({job.ToDate})""")
+
+    queue_data_size += get_queue_data_size(data)
     write_queue.put((job_config, job, data, False))
 
 
 def db_writer() -> None:
-    hidro_db = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    global queue_data_size
     batch_buffer = {"jobs": [], "data": []}
     total_data    = 0
     total_jobs    = 0
@@ -314,10 +282,11 @@ def db_writer() -> None:
     while True:
         try:
             if write_queue.empty():
-                time.sleep(0.1)
+                time.sleep(0.01)
                 continue
 
             job_config, job, data, stop_signal = write_queue.get()
+            queue_data_size -= get_queue_data_size(data)
 
             if job:
                 batch_buffer["jobs"].append(job)
@@ -327,14 +296,15 @@ def db_writer() -> None:
             if len(batch_buffer["data"]) >= BATCH_SIZE or stop_signal:
                 total_data    += len(batch_buffer["data"])
                 total_jobs    += len(batch_buffer["jobs"])
-                total_elapsed += write_data(hidro_db, job_config,
-                                            batch_buffer["jobs"], batch_buffer["data"])
+                total_elapsed += write_data(job_config, batch_buffer["jobs"], batch_buffer["data"])
                 logger.info(f"""[WRITER {job_config}]: Total Data: {total_data}, """
                             f"""Total Jobs: {total_jobs}, """
                             f"""Total thread elapsed: {total_elapsed}""")
-                batch_buffer = {"jobs": [], "data": []}
+                batch_buffer["jobs"].clear()
+                batch_buffer["data"].clear()
 
             if stop_signal:
+                write_queue.task_done()
                 logger.info(f"""Finished jobs for {job_config}""")
                 break;
 
@@ -342,13 +312,12 @@ def db_writer() -> None:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
-def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:        
+def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
-        model_data = data_to_model_orm(job_config, hidro_data)
         has_id = True if job_config == JobConfig.CROSS_SECTION else False
-        insert_hidro(hidro_db, model_data, has_id)
+        insert_hidro(hidro_data, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
@@ -356,6 +325,11 @@ def write_data(hidro_db: DatabaseConnection, job_config: JobConfig, jobs: List[H
     logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
+def get_queue_data_size(data):
+    size = 0
+    if data:
+        size = len(data)
+    return size
 
 def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
     #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
@@ -376,13 +350,13 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
             dict_len = 18
         case _:
             #TODO: CHECK LEN FOR EVERY TABLE?
-            return (status, items)
+            return (job, items)
 
     for item in items:
         if (len(item) != dict_len):
             items   = []
             job.Status = JobStatus.INVALID
-            logger.verbose(f"[VALIDATE JOB {job_id}] Invalid item: {item}")
+            logger.verbose(f"[VALIDATE JOB {job.ID}] Invalid item: {item}")
             break
 
     return (job, items)

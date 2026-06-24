@@ -53,7 +53,7 @@ class HidroEndpoint(StrEnum):
 
 def request_hidro_ws(endpoint, headers, params={}):
     url = "https://www.ana.gov.br/hidrowebservice"
-    logger.verbose(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
+    logger.trace(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
     response = requests.get(f"{url}{endpoint}", headers=headers, params=params)
     if response.ok:
         try:
@@ -64,7 +64,7 @@ def request_hidro_ws(endpoint, headers, params={}):
         try:
             logger.error(f"[REQUEST]: (json): {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
         except:
-            logger.trace(f"[REQUEST]: (response): {response} (status: {response.status_code})")
+            logger.debug(f"[REQUEST]: (response): {response} (status: {response.status_code})")
         match response.status_code:
             case 401 | 503 | 504:
                 time.sleep(1)
