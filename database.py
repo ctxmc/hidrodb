@@ -183,11 +183,28 @@ def get_series_jobs(job_config, status):
     client_db.close()
     return series_jobs
 
-def count_job(job_config: JobConfig):
+def get_jobs_yield(job_config, status):
+    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    model = job_config.get_job_model()
+    try:
+        query = (client_session.query(model).filter(
+            model.Status.in_(status),
+            model.HidroTable == job_config))
+        for job in query.yield_per(100):
+            yield job
+    finally:
+        client_session.close()
+        client_db.close()
+
+def count_job(job_config: JobConfig, status = None):
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     model          = job_config.get_job_model()
-    count_job = client_session.query(model).where(model.HidroTable == job_config).count()
+    filters        = [model.HidroTable == job_config]
+    if status:
+        filters.append(model.Status.in_(status))
+    count_job = client_session.query(model).filter(*filters).count()
     client_session.close()
     client_db.close()
     return count_job

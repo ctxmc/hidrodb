@@ -128,9 +128,10 @@ def check_stations_jobs() -> None:
     else:
         logger.trace(f"Stations has jobs.")
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        jobs = get_station_jobs(status)
-        if (len(jobs) > 1):
-            trigger_job(jobs, JobConfig.STATION)
+        count = count_job(JobConfig.STATION, status)
+        if count:
+            logger.info(f"Initiating {count} jobs for {JobConfig.STATION}")
+            trigger_job(JobConfig.STATION)
         else:
             logger.info(f"No pending jobs for Stations")
 
@@ -155,9 +156,11 @@ def check_series_job(job_config: JobConfig) -> None:
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
-        jobs = get_series_jobs(job_config, [JobStatus.FAILED.value, JobStatus.PENDING.value])
-        if (len(jobs) > 1):
-            trigger_job(jobs, job_config)
+        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        count = count_job(job_config, status)
+        if count:
+            logger.info(f"Initiating {count} jobs for {job_config}")
+            trigger_job(job_config)
         else:
             logger.info(f"No pending jobs for {job_config}")
 
@@ -211,14 +214,14 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
 
 
 write_queue = Queue()
-def trigger_job(jobs: HidroJob, job_config: JobConfig) -> None:
-    logger.info(f"Initiating {len(jobs)} jobs for {job_config}")
+def trigger_job(job_config: JobConfig) -> None:
+    global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for job in jobs:
+        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        for index, job in enumerate(get_jobs_yield(job_config, status)):
             executor.submit(handle_job, job, job_config)
-        executor.shutdown(wait=True)
     write_queue.put((job_config, None, None, True))
     writer.join()
 
