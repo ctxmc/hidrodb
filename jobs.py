@@ -271,7 +271,7 @@ def db_writer() -> None:
     while True:
         try:
             if write_queue.empty():
-                time.sleep(0.1)
+                time.sleep(0.01)
                 continue
 
             job_config, job, data, stop_signal = write_queue.get()
