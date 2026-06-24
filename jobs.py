@@ -22,7 +22,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue              import Queue
 from threading          import Thread, Lock
 
@@ -221,10 +221,16 @@ def trigger_job(job_config: JobConfig) -> None:
     global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
+    futures = set()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
         for index, job in enumerate(get_jobs_yield(job_config, status)):
             executor.submit(handle_job, job, job_config)
+            futures.add(executor.submit(handle_job, job, job_config))
+            if len(futures) >= MAX_WORKERS:
+                logger.info(f"Max futures reached on job {index}")
+                _, futures = wait(futures, return_when=FIRST_COMPLETED)
+            wait(futures)
     write_queue.put((job_config, None, None, True))
     writer.join()
 
