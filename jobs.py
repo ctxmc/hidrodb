@@ -33,6 +33,8 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
+import sys
+
 from database          import *
 from hidro_webservices import *
 from config            import *
@@ -216,7 +218,8 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
     logger.info(f"Created {total_jobs_count} jobs for {job_config}")
 
 
-write_queue = Queue()
+write_queue      = Queue()
+queue_data_size  = 0
 def trigger_job(job_config: JobConfig) -> None:
     global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
@@ -225,7 +228,12 @@ def trigger_job(job_config: JobConfig) -> None:
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
         for index, job in enumerate(get_jobs_yield(job_config, status)):
-            executor.submit(handle_job, job, job_config)
+            if queue_data_size > BATCH_SIZE * 2:
+                logger.warning(f"[WORKER {job_config}]: Queue data size limit reached on job {index}")
+                while queue_data_size  > BATCH_SIZE * 2:
+                    _, futures = wait(futures, return_when=FIRST_COMPLETED)
+                    time.sleep(0.01)
+
             futures.add(executor.submit(handle_job, job, job_config))
             if len(futures) >= MAX_WORKERS:
                 logger.info(f"Max futures reached on job {index}")
@@ -234,12 +242,12 @@ def trigger_job(job_config: JobConfig) -> None:
     write_queue.put((job_config, None, None, True))
     writer.join()
 
-
-lock = Lock()
+token_lock = Lock()
 def handle_job(job: HidroJob, job_config: JobConfig) -> None:
-    with lock:
+    global queue_data_size
+    with token_lock:
         token = get_token()
-    success, data = request_data(token, job_config.get_endpoint(), job.to_params())
+    success, items = request_data(token, job_config.get_endpoint(), job.to_params())
 
     if success:
         match job_config:
@@ -260,10 +268,13 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
         logger.verbose(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
                        f"""request for station {job.StationID} """
                        f"""on period ({job.FromDate})-({job.ToDate})""")
+
+    queue_data_size += get_queue_data_size(data)
     write_queue.put((job_config, job, data, False))
 
 
 def db_writer() -> None:
+    global queue_data_size
     batch_buffer = {"jobs": [], "data": []}
     total_data    = 0
     total_jobs    = 0
@@ -275,6 +286,7 @@ def db_writer() -> None:
                 continue
 
             job_config, job, data, stop_signal = write_queue.get()
+            queue_data_size -= get_queue_data_size(data)
 
             if job:
                 batch_buffer["jobs"].append(job)
@@ -313,6 +325,11 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) ->
     logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
+def get_queue_data_size(data):
+    size = 0
+    if data:
+        size = len(data)
+    return size
 
 def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
     #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
