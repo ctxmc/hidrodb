@@ -320,13 +320,13 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
             dict_len = 18
         case _:
             #TODO: CHECK LEN FOR EVERY TABLE?
-            return (status, items)
+            return (job, items)
 
     for item in items:
         if (len(item) != dict_len):
             items   = []
             job.Status = JobStatus.INVALID
-            logger.verbose(f"[VALIDATE JOB {job_id}] Invalid item: {item}")
+            logger.verbose(f"[VALIDATE JOB {job.ID}] Invalid item: {item}")
             break
 
     return (job, items)
