@@ -278,6 +278,7 @@ def db_writer() -> None:
                 batch_buffer["data"].clear()
 
             if stop_signal:
+                write_queue.task_done()
                 logger.info(f"""Finished jobs for {job_config}""")
                 break;
 
