@@ -166,8 +166,9 @@ def check_series_job(job_config: JobConfig) -> None:
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
-    jobs = []
+    total_jobs_count = 0
     for station_code, start_date, end_date in stations_data:
+        jobs = []
         formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
         for fmt in formats:
             try:
@@ -209,8 +210,10 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
                 HidroTable = job_config
             ))
             current_year = next_year
-    insert_jobs(jobs)
-    logger.info(f"Created {len(jobs)} jobs for Job_Config {job_config}")
+        insert_jobs(jobs)
+        logger.verbose(f"Inserted {len(jobs)} jobs for station {station_code} over the period {start_date}-{end_date}")
+        total_jobs_count += len(jobs)
+    logger.info(f"Created {total_jobs_count} jobs for {job_config}")
 
 
 write_queue = Queue()
