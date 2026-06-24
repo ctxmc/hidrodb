@@ -244,7 +244,7 @@ def trigger_job(job_config: JobConfig) -> None:
 
             futures.add(executor.submit(handle_job, job, job_config))
             if len(futures) >= MAX_WORKERS:
-                logger.info(f"Max futures reached on job {index}")
+                logger.warning(f"Max futures reached on job {index}")
                 _, futures = wait(futures, return_when=FIRST_COMPLETED)
             wait(futures)
     write_queue.put((job_config, None, None, True))
@@ -356,6 +356,8 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
             dict_len = 117
         case JobConfig.CROSS_SECTION:
             dict_len = 18
+        case JobConfig.WATER_QUALITY:
+            dict_len = 303
         case _:
             #TODO: CHECK LEN FOR EVERY TABLE?
             return (job, items)
