@@ -64,30 +64,37 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+from typing import Optional
+_token_cache: Optional[Token] = None
 def get_token() -> str:
     """Authenticate and return access token.
     Returns: Valid token for requesition
     """
+    global _token_cache
     logger.verbose("Cheking Token.")
-    if (not count_client(Token)):
-        logger.verbose("No Token present, requesting.")
-        credentials = get_credentials()
-        token, expires = request_token(credentials.ID, credentials.Password)
-        add_token(credentials.ID, token, expires)
-        return token
+
+    if _token_cache is None:
+        _token_cache = get_token_model()
+
+    if _token_cache is not None and datetime.now() < _token_cache.Expires:
+        logger.verbose(f"Token is valid. ({_token_cache.Expires})")
+        return _token_cache.Token
+
+    logger.info("No valid token present, requesting.")
+    credentials = get_credentials()
+    token, expires = request_token(credentials.ID, credentials.Password)
+    if _token_cache is None:
+        _token_cache = Token()
+    _token_cache.Token   = token
+    _token_cache.Expires = expires
+
+    if count_client(Token):
+        update_token(_token_cache.RegistroID, token, expires)
     else:
-        token_model = get_token_model()
-        if datetime.now() < token_model.Expires:
-            logger.verbose(f"Token is valid, continuing ({token_model.Expires}).")
-            return token_model.Token
-        else:
-            logger.verbose("Token expired, requesting new.")
-            credentials = get_credentials()
-            token, expires = request_token(credentials.ID, credentials.Password)
-            logger.verbose("Aquired new token, updating.")
-            update_token(Token.RegistroID, token, expires)
-            logger.verbose("Token updated.")
-            return token
+        add_token(credentials.ID, token, expires)
+
+    logger.info("Token acquired and cached.")
+    return token
 
 
 def check_resource(resource: HidroResource) -> None:
