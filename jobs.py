@@ -247,14 +247,19 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
                 job.Status    = JobStatus.COMPLETED
                 job.LastCheck = datetime.now()
             case _:
-                job, data = validate_data(job_config, data, job)
+                job, items = validate_data(job_config, items, job)
     else:
         job.Status = JobStatus.FAILED
 
+    if job.Status == JobStatus.COMPLETED and len(items) > 0:
+        data = data_to_model_orm(job_config, items)
+    else:
+        data = []
+
     if isinstance(job, SeriesJobs):
-        logger.trace(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
-                     f"""request for station {job.StationID} """
-                     f"""on period ({job.FromDate})-({job.ToDate})""")
+        logger.verbose(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
+                       f"""request for station {job.StationID} """
+                       f"""on period ({job.FromDate})-({job.ToDate})""")
     write_queue.put((job_config, job, data, False))
 
 
@@ -299,9 +304,8 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) ->
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
-        model_data = data_to_model_orm(job_config, hidro_data)
         has_id = True if job_config == JobConfig.CROSS_SECTION else False
-        insert_hidro(model_data, has_id)
+        insert_hidro(hidro_data, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
