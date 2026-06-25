@@ -61,6 +61,7 @@ def setup_database(user_id, password):
     """ Setup Hidro and Client Database. """
 
     from hidrodb.database import DatabaseType, init_db, count_client, insert_credentials;
+    from hidrodb.models.client import Credentials;
 
     init_db(CLIENT_PATH, DatabaseType.CLIENT)
     init_db(HIDRO_PATH, DatabaseType.HIDRO)
@@ -75,9 +76,9 @@ def setup_database(user_id, password):
 
 from enum import StrEnum
 
-from hidrodb.webservices   import *
-from hidrodb.models.hidro  import *
-from hidrodb.models.client import *
+from hidrodb.webservices   import HidroEndpoint
+from hidrodb.models.hidro  import Basin, SubBasin, Entity, Township, River, State, Station, Rain, DischargeSummary, DischargeFlow, Sediments, WaterQuality, Stage, Granulometry, CrossSection, FlowRate
+from hidrodb.models.client import StationJobs, SeriesJobs
 
 class HidroResource(StrEnum):
     """ Enum to hold basic resources data that does not require Threads. """
