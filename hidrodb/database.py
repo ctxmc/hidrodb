@@ -32,9 +32,9 @@ from sqlalchemy.orm import sessionmaker, Session
 from enum   import StrEnum
 from typing import List
 
-from models.hidro_models import *
-from models.client       import *
-from config              import *
+from models.hidro  import *
+from models.client import *
+from config        import *
 
 class DatabaseType(StrEnum):
     HIDRO  = "Hidro"

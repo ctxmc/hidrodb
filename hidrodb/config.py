@@ -24,9 +24,9 @@
 
 from enum import StrEnum
 
-from webservices         import *
-from models.hidro_models import *
-from models.client       import *
+from webservices   import *
+from models.hidro  import *
+from models.client import *
 
 class HidroResource(StrEnum):
     BASIN             = "Bacia"
