@@ -79,11 +79,6 @@ def init_db(db_path, db_type) -> None:
                 logger.info(f"Initialized {db.type} Database Version {VERSION}.")
             case DatabaseType.CLIENT:
                 ClientBase.metadata.create_all(db.engine)
-                user_id = input("Enter API username: ")
-                import getpass
-                password = getpass.getpass("Enter API password: ")
-                credentials = Credentials(ID=user_id, Password=password)
-                session.add(credentials)
         session.commit()
     session.close()
     db.close()
@@ -103,6 +98,19 @@ def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None
                 conn.exec_driver_sql(stmt)
         conn.commit()
         
+
+def insert_credentials(user_id, password):
+    """ Insert an Credentials model entrie in Client Database. """
+
+    credentials = Credentials(ID=user_id, Password=password)
+    client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    client_session.add(credentials)
+    client_session.commit()
+    client_session.close()
+    client_db.close()
+
+
 def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
     """ Insert a list of Hidro ORM Model into Hidro Database"""
 

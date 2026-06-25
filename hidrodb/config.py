@@ -60,10 +60,15 @@ def _make_logger(level):
 def setup_database():
     """ Setup Hidro and Client Database. """
 
-    from database import DatabaseType, init_db
+    from database import DatabaseType, init_db, count_client, insert_credentials;
 
     init_db(CLIENT_PATH, DatabaseType.CLIENT)
     init_db(HIDRO_PATH, DatabaseType.HIDRO)
+    if not count_client(Credentials):
+        user_id = input("Enter API username: ")
+        import getpass;
+        password = getpass.getpass("Enter API password: ")
+        insert_credentials(user_id, password)
 
 
 from enum import StrEnum
