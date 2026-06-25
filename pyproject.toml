@@ -7,10 +7,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pydoc-markdown"]
+dev = ["pydoc-markdown", "pytest", "pytest-cov"]
 
 [tool.setuptools.packages.find]
 include = ["hidrodb"]
+
+[tool.pytest.ini_options]
+testpaths        = ["tests"]
+python_files     = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["hidrodb"]
 
 [[tool.pydoc-markdown.loaders]]
 type = "python"
