@@ -22,13 +22,65 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from enum import StrEnum
+"""
+Provides general config to HidroDB application.
+"""
 
-from hidro_webservices   import *
-from models.hidro_models import *
-from models.client       import *
+import logging
+
+HIDRO_PATH  = None
+CLIENT_PATH = None
+MAX_WOKERS  = None
+BATCH_SIZE  = None
+
+def setup_logger(log_level):
+    """ Setup logger object accross application. """
+
+    TRACE = 15
+    setattr(logging.Logger, 'trace', _make_logger(TRACE))
+    logging.addLevelName(TRACE, 'TRACE')
+    VERBOSE = 5
+    setattr(logging.Logger, 'verbose', _make_logger(VERBOSE))
+    logging.addLevelName(VERBOSE, 'VERBOSE')
+    logging.basicConfig(
+        level=log_level,
+        format='[%(levelname)s]: %(message)s'
+    )
+
+
+def _make_logger(level):
+    """ Helper method to create TRACE and VERBOSE logger modes. """
+
+    def logger(self, msg, *args, **kwargs):
+        if self.isEnabledFor(level):
+            self._log(level, msg, args, **kwargs)
+    return logger
+
+
+def setup_database(user_id, password):
+    """ Setup Hidro and Client Database. """
+
+    from database import DatabaseType, init_db, count_client, insert_credentials;
+
+    init_db(CLIENT_PATH, DatabaseType.CLIENT)
+    init_db(HIDRO_PATH, DatabaseType.HIDRO)
+    if not count_client(Credentials):
+        if not user_id:
+            user_id = input("Enter API username: ")
+        if not password:
+            import getpass;
+            password = getpass.getpass("Enter API password: ")
+        insert_credentials(user_id, password)
+
+
+from enum import StrEnum
+from webservices   import *
+from models.hidro  import *
+from models.client import *
 
 class HidroResource(StrEnum):
+    """ Enum to hold basic resources data that does not require Threads. """
+
     BASIN             = "Bacia"
     SUB_BASIN         = "SubBacia"
     ENTITY            = "Entidade"
@@ -59,6 +111,7 @@ class HidroResource(StrEnum):
         return mapping[self]
 
 class JobConfig(StrEnum):
+    """ Enum to hold Hidro Jobs that will run with threads. """
     STATION           = "Estacao"
     RAIN              = "Chuvas"
     DISCHARGE_SUMMARY = "ResumoDescarga"
@@ -106,9 +159,3 @@ class JobConfig(StrEnum):
         }
         return mapping[self]
 
-
-def _make_logger(level):
-    def logger(self, msg, *args, **kwargs):
-        if self.isEnabledFor(level):
-            self._log(level, msg, args, **kwargs)
-    return logger

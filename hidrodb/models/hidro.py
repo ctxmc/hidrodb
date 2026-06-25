@@ -21,6 +21,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+""" Provides models for Hidro Database. """
 
 from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,13 +29,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
 def str_to_datetime(date_str):
+    """ Converts string to datetime. """
+
     if date_str:
         return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S.%f")
     else:
         return None
 
+
 HidroBase = declarative_base()
 class HidroBaseModel(HidroBase):
+    """ Abstract model to hold commom attributes to Hidro Models. """
+
     __abstract__ = True
 
     RegistroID        = Column(Float, primary_key=True)
@@ -52,7 +58,10 @@ class HidroBaseModel(HidroBase):
         kwargs.setdefault('ImportadoRepetido', 0)
         super().__init__(**kwargs)
 
+
 class Basin(HidroBaseModel):
+    """ Database model for storing Basins data. """
+
     __tablename__ = 'Bacia'
 
     Nome    = Column(String)
@@ -66,7 +75,10 @@ class Basin(HidroBaseModel):
             DataAlt = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
         )
 
+
 class SubBasin(HidroBaseModel):
+    """ Database model for storing Sub Basins data. """
+
     __tablename__ = 'SubBacia'
 
     Nome        = Column(String)
@@ -84,6 +96,8 @@ class SubBasin(HidroBaseModel):
 
 
 class Entity(HidroBaseModel):
+    """ Database model for storing Entity data. """
+
     __tablename__ = 'Entidade'
 
     Nome    = Column(String)
@@ -101,6 +115,8 @@ class Entity(HidroBaseModel):
 
 
 class Township(HidroBaseModel):
+    """ Database model for storing Township data. """
+
     __tablename__ = 'Municipio'
 
     Nome       = Column(String)
@@ -118,6 +134,8 @@ class Township(HidroBaseModel):
 
 
 class River(HidroBaseModel):
+    """ Database model for storing Rivers data. """
+
     __tablename__ = 'Rio'
 
     Nome              = Column(String)
@@ -139,6 +157,8 @@ class River(HidroBaseModel):
 
 
 class State(HidroBaseModel):
+    """ Database model for storing States data. """
+
     __tablename__ = 'Estado'
 
     Nome       = Column(String)
@@ -158,6 +178,8 @@ class State(HidroBaseModel):
 
 
 class Station(HidroBaseModel):
+    """ Database model for storing Stations data. """
+
     __tablename__ = 'Estacao'
 
     Altitude                      = Column(Float)
@@ -298,6 +320,8 @@ class Station(HidroBaseModel):
 
 
 class Rain(HidroBaseModel):
+    """ Database model for storing Rain data. """
+
     __tablename__ = 'Chuvas'
 
     Data                 = Column(DateTime)
@@ -344,6 +368,8 @@ class Rain(HidroBaseModel):
 
 
 class DischargeSummary(HidroBaseModel):
+    """ Database model for storing Discharge Summary  data. """
+
     __tablename__ = 'ResumoDescarga'
 
     AreaMolhada       = Column(Float)
@@ -373,6 +399,8 @@ class DischargeSummary(HidroBaseModel):
 
 
 class Sediments(HidroBaseModel):
+    """ Database model for storing Sediments data. """
+
     __tablename__ = 'Sedimentos'
 
     AreaMolhada                = Column(Float)
@@ -418,6 +446,8 @@ class Sediments(HidroBaseModel):
 
 
 class Stage(HidroBaseModel):
+    """ Database model for storing Stage data. """
+
     __tablename__ = 'Cotas'
 
     Data              = Column(DateTime)
@@ -466,7 +496,10 @@ class Stage(HidroBaseModel):
 
         return cls(**kwargs)
 
+
 class DischargeFlow(HidroBaseModel):
+    """ Database model for storing Discharge Flow data. """
+
     __tablename__ = 'CurvaDescarga'
 
     CoefA                 = Column(Float)
@@ -512,6 +545,8 @@ class DischargeFlow(HidroBaseModel):
 
 
 class WaterQuality(HidroBaseModel):
+    """ Database model for storing Water Quality data. """
+
     __tablename__ = 'QualAgua'
 
     n245T                       = Column(Float)
@@ -829,6 +864,8 @@ class WaterQuality(HidroBaseModel):
 
 
 class WaterQualityStatus(HidroBase):
+    """ Database model for storing Water Quality Status data. """
+
     __tablename__ = 'QualAguaStatus'
 
     RegistroID = Column(Float, primary_key=True)
@@ -848,6 +885,8 @@ class WaterQualityStatus(HidroBase):
 
 
 class Granulometry(HidroBaseModel):
+    """ Database model for storing Granulometry data. """
+
     __tablename__ = 'Granulometria'
 
     EstacaoCodigo             = Column(BigInteger)
@@ -1089,7 +1128,10 @@ class Granulometry(HidroBaseModel):
             DataAlt                   = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
         )
 
+
 class CrossSection(HidroBaseModel):
+    """ Database model for storing Cross Section data. """
+
     __tablename__ = 'PerfilTransversal'
 
     EstacaoCodigo     = Column(BigInteger)
@@ -1127,6 +1169,8 @@ class CrossSection(HidroBaseModel):
 
 
 class VerticalCrossSection(HidroBase):
+    """ Database model for storing Vertical Cross Section data. """
+
     __tablename__ = 'PerfilTransversalVert'
 
     RegistroID = Column(Float, primary_key=True)
@@ -1143,7 +1187,10 @@ class VerticalCrossSection(HidroBase):
             Distancia  = json_data.get("Distancia")
         )
 
+
 class FlowRate(HidroBaseModel):
+    """ Database model for storing Flow Rate data. """
+
     __tablename__ = 'Vazoes'
 
     EstacaoCodigo        = Column(BigInteger)

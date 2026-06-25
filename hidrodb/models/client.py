@@ -21,6 +21,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+""" Provides models for Client Database. """
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,13 +29,18 @@ from sqlalchemy.ext.declarative import declarative_base
 ClientBase = declarative_base()
 
 class Credentials(ClientBase):
+    """ Database model for storing client authentication credentials. """
+
     __tablename__ = 'Credentials'
 
     RegistroID = Column(Integer, primary_key=True, autoincrement=True)
     ID         = Column(String, nullable=False)
     Password   = Column(String, nullable=False)
 
+
 class Token(ClientBase):
+    """ Database model for storing client token. """
+
     __tablename__ = 'Token'
 
     RegistroID   = Column(Integer, primary_key=True, autoincrement=True)
@@ -42,7 +48,10 @@ class Token(ClientBase):
     Token        = Column(String)
     Expires      = Column(DateTime)
 
+
 class HidroJob(ClientBase):
+    """ Abstract Database model with basic attributes for a concrete Job Model. """
+
     __abstract__ = True
 
     ID         = Column(Integer, primary_key=True, autoincrement=True)
@@ -56,7 +65,10 @@ class HidroJob(ClientBase):
             "Status":     self.Status.value
         }.items()
 
+
 class StationJobs(HidroJob):
+    """ Database model for storing Station Jobs. """
+
     __tablename__ = 'StationJobs'
 
     UF         = Column(String, nullable=False)
@@ -72,7 +84,10 @@ class StationJobs(HidroJob):
     def to_params(self):
         return {"Unidade Federativa": f"{self.UF}"}
 
+
 class SeriesJobs(HidroJob):
+    """ Database model for storing Series Jobs. """
+
     __tablename__ = 'SeriesJobs'
 
     StationID  = Column(BigInteger, nullable=False)

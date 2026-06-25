@@ -1,0 +1,61 @@
+[project]
+name = "HidroDB"
+version = "0.0.0"
+dependencies = [
+    "requests",
+    "sqlalchemy"
+]
+
+[project.optional-dependencies]
+dev = ["pydoc-markdown"]
+
+[tool.setuptools.packages.find]
+include = ["hidrodb"]
+
+[[tool.pydoc-markdown.loaders]]
+type = "python"
+search_path = [ "./hidrodb" ]
+
+[tool.pydoc-markdown.renderer]
+type = "mkdocs"
+output_directory = "wiki"
+content_directory_name = "./"
+mkdocs_config = {
+    site_name = "HidroDB",
+    repo_url  = "https://github.com/ctxmc/hidrodb"
+}
+
+[[tool.pydoc-markdown.renderer.pages]]
+title  = "Home"
+name   = "Home"
+source = "README.md"
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Jobs"
+name     = "jobs"
+contents = ['jobs.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Database"
+name     = "database"
+contents = ['database.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "WebServices"
+name     = "webservices"
+contents = ['webservices.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Config"
+name     = "config"
+contents = ['config.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Client Models"
+name     = "client models"
+contents = ['models.client.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Hidro Models"
+name     = "hidro models"
+contents = ['models.hidro.*']
