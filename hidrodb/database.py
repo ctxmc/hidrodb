@@ -35,9 +35,9 @@ from sqlalchemy.orm import sessionmaker, Session
 from enum   import StrEnum
 from typing import List
 
-from models.hidro  import *
-from models.client import *
-from config        import *
+from hidrodb.models.hidro  import *
+from hidrodb.models.client import *
+from hidrodb.config        import *
 
 class DatabaseType(StrEnum):
     """

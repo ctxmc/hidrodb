@@ -60,7 +60,7 @@ def _make_logger(level):
 def setup_database(user_id, password):
     """ Setup Hidro and Client Database. """
 
-    from database import DatabaseType, init_db, count_client, insert_credentials;
+    from hidrodb.database import DatabaseType, init_db, count_client, insert_credentials;
 
     init_db(CLIENT_PATH, DatabaseType.CLIENT)
     init_db(HIDRO_PATH, DatabaseType.HIDRO)
@@ -74,9 +74,10 @@ def setup_database(user_id, password):
 
 
 from enum import StrEnum
-from webservices   import *
-from models.hidro  import *
-from models.client import *
+
+from hidrodb.webservices   import *
+from hidrodb.models.hidro  import *
+from hidrodb.models.client import *
 
 class HidroResource(StrEnum):
     """ Enum to hold basic resources data that does not require Threads. """

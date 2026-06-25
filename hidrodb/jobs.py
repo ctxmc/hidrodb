@@ -33,13 +33,13 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue              import Queue
 from threading          import Thread, Lock
 
-from datetime import datetime, timedelta
-from enum     import Enum, auto
-
-from database    import *
-from webservices import *
-from config      import *
+from datetime    import datetime, timedelta
+from enum        import Enum, auto
 from dataclasses import dataclass
+
+from hidrodb.database    import *
+from hidrodb.webservices import *
+from hidrodb.config      import *
 
 class JobStatus(Enum):
     """ Enum to control job status."""

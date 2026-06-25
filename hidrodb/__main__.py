@@ -23,7 +23,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def main() -> None:
-    from jobs import check_resource, check_stations_jobs, check_series_job;
+    from hidrodb.jobs import check_resource, check_stations_jobs, check_series_job;
 
     for resource in config.HidroResource:
         check_resource(resource)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    import config;
+    import hidrodb.config as config;
     config.HIDRO_PATH  = args.hidro
     config.CLIENT_PATH = args.client
     config.MAX_WORKERS = args.max_workers
@@ -70,8 +70,5 @@ if __name__ == "__main__":
 
     config.setup_logger(args.log_level)
     config.setup_database(args.user_id, args.password)
-
-    from database import *
-    from jobs     import *
 
     main()
