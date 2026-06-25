@@ -1,0 +1,45 @@
+[project]
+name = "HidroDB"
+version = "0.0.0"
+dependencies = [
+    "requests",
+    "sqlalchemy"
+]
+
+[project.optional-dependencies]
+dev = ["pydoc-markdown"]
+
+debug = [
+    "hanging_threads",
+    "memory_profiler",
+    "objgraph"
+]
+
+misc = ["ruff"]
+
+[tool.setuptools.packages.find]
+include = ["hidrodb"]
+
+[[tool.pydoc-markdown.loaders]]
+type = "python"
+search_path = [ "./hidrodb" ]
+
+[tool.pydoc-markdown.renderer]
+type = "mkdocs"
+output_directory = "wiki"
+content_directory_name = "./"
+mkdocs_config = {
+    site_name = "HidroDB",
+    repo_url  = "https://github.com/ctxmc/hidrodb"
+}         
+[[tool.pydoc-markdown.renderer.pages]]
+title  = "Home"
+name   = "Home"
+source = "README"
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Jobs"
+name     = "jobs"
+contents = ['jobs.*']
+
+
