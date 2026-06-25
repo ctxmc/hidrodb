@@ -37,6 +37,7 @@ class Credentials(ClientBase):
     ID         = Column(String, nullable=False)
     Password   = Column(String, nullable=False)
 
+
 class Token(ClientBase):
     """ Database model for storing client token. """
 
@@ -46,6 +47,7 @@ class Token(ClientBase):
     CredentialID = Column(Integer, ForeignKey('Credentials.ID'), nullable=False)
     Token        = Column(String)
     Expires      = Column(DateTime)
+
 
 class HidroJob(ClientBase):
     """ Abstract Database model with basic attributes for a concrete Job Model. """
@@ -62,6 +64,7 @@ class HidroJob(ClientBase):
             "HidroTable": self.HidroTable,
             "Status":     self.Status.value
         }.items()
+
 
 class StationJobs(HidroJob):
     """ Database model for storing Station Jobs. """
@@ -80,6 +83,7 @@ class StationJobs(HidroJob):
 
     def to_params(self):
         return {"Unidade Federativa": f"{self.UF}"}
+
 
 class SeriesJobs(HidroJob):
     """ Database model for storing Series Jobs. """

@@ -22,8 +22,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse
-import logging
+import argparse, logging
 logger = logging.getLogger(__name__)
 
 from config import *
@@ -45,6 +44,7 @@ def main() -> None:
                 check_stations_jobs()
             case _:
                 check_series_job(job_config)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

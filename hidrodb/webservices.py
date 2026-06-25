@@ -26,16 +26,11 @@
 Provides request functionalities to ANA HidroWebservices API
 """
 
-import os
-import requests
-import json
-import time
+import os, requests, json, time, logging
+logger = logging.getLogger(__name__)
 
 from datetime import datetime
 from enum     import StrEnum
-
-import logging
-logger = logging.getLogger(__name__)
 
 class HidroEndpoint(StrEnum):
     """ Enum to hold endpoins."""
@@ -57,6 +52,7 @@ class HidroEndpoint(StrEnum):
     GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
     CROSS_SECTION     = "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1"
     FLOW_RATE         = "/EstacoesTelemetricas/HidroSerieVazao/v1"
+
 
 def request_hidro_ws(endpoint, headers, params={}):
     """ Make a request to ANA API and returns the json."""
@@ -99,6 +95,7 @@ def request_token(client_id: str, client_password: str, max_retries=3, retry_del
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
     raise
+
 
 def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, dict):
     """ Request data to ANA API and returns it."""

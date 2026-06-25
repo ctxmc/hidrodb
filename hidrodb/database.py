@@ -26,7 +26,6 @@
 Provides database connection and SQL queries throught ORM.
 """
 
-import os
 import logging
 logger = logging.getLogger(__name__)
 
@@ -55,10 +54,12 @@ class DatabaseConnection:
         self.engine  = create_engine(f"sqlite:///{dbq}", echo=False)
         self.Session = sessionmaker(bind=self.engine)
         self.type    = db_type
+
     def get_session(self) -> Session:
         return self.Session()
     def close(self):
         self.engine.dispose()
+
 
 def init_db(db: DatabaseConnection) -> None:
     """ Init an DatabaseConnection, if there is no tables, creates then"""
@@ -105,6 +106,7 @@ def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
 
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
+
     if not has_id:
         model_class = type(collection[0])
         reg_id  = (hidro_session.query(func.max(model_class.RegistroID)).scalar() or 0) + 1
@@ -114,10 +116,12 @@ def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
         import warnings;
         from sqlalchemy import exc as sa_exc;
         warnings.filterwarnings('ignore', '.*Identity map already had an identity.*', sa_exc.SAWarning)
+
     hidro_session.add_all(collection)
     hidro_session.commit()
     hidro_session.close()
     hidro_db.close()
+
 
 def insert_jobs(jobs: List[HidroJob]) -> None:
     """ Insert a list of Jobs into Client Database. """
@@ -129,6 +133,7 @@ def insert_jobs(jobs: List[HidroJob]) -> None:
     client_session.close()
     client_db.close()
 
+
 def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
     """ Updates a list of Jobs. """
 
@@ -138,6 +143,7 @@ def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
     client_session.commit()
     client_session.close()
     client_db.close()
+
 
 def count_client(model: ClientBase):
     """ Counts a given Model in Client Database. """
@@ -149,6 +155,7 @@ def count_client(model: ClientBase):
     client_db.close()
     return count_model
 
+
 def get_credentials() -> Credentials:
     """ Gets the first registered Credential on Client Database and returns it. """
 
@@ -158,6 +165,7 @@ def get_credentials() -> Credentials:
     client_session.close()
     client_db.close()
     return credentials
+
 
 def add_token(client_id, token, expires):
     """ Add an Token to Client Database """
@@ -169,6 +177,7 @@ def add_token(client_id, token, expires):
     client_session.close()
     client_db.close()
 
+
 def get_token_model() -> Token:
     """ Returns the first found Token on Client Database """
 
@@ -178,6 +187,7 @@ def get_token_model() -> Token:
     client_session.close()
     client_db.close()
     return token
+
 
 def update_token(RegistroID, new_token, new_expires):
     """ Updates an Token on Client Database """
@@ -193,6 +203,7 @@ def update_token(RegistroID, new_token, new_expires):
     client_session.commit()
     client_session.close()
     client_db.close()
+
 
 def get_station_jobs(status) -> StationJobs:
     """ Returns all Stations Jobs on Client Database """
@@ -229,6 +240,7 @@ def get_jobs_yield(job_config, status):
         client_session.close()
         client_db.close()
 
+
 def count_job(job_config: JobConfig, status = None):
     """ Counts jobs registered in Client Database. """
 
@@ -243,6 +255,7 @@ def count_job(job_config: JobConfig, status = None):
     client_db.close()
     return count_job
 
+
 def count_hidro(model: HidroBase):
     """ Counts a given Model in Hidro Database. """
 
@@ -253,6 +266,7 @@ def count_hidro(model: HidroBase):
     hidro_db.close()
     return count_model
 
+
 def get_states() -> State:
     """ Returns registered States in Hidro Database. """
 
@@ -262,6 +276,7 @@ def get_states() -> State:
     hidro_session.close()
     hidro_db.close()
     return states
+
 
 def get_rain_period():
     """ Returns Stations with Rain Periods in Hidro Database. """
@@ -277,6 +292,7 @@ def get_rain_period():
     hidro_db.close()
     return rain_period
 
+
 def get_discharge_period():
     """ Returns Stations with Discharge Periods in Hidro Database. """
 
@@ -290,6 +306,7 @@ def get_discharge_period():
     hidro_session.close()
     hidro_db.close()
     return discharge_period
+
 
 def get_sediments_period():
     """ Returns Stations with Sediments Periods in Hidro Database. """
@@ -305,6 +322,7 @@ def get_sediments_period():
     hidro_db.close()
     return sediments_period
 
+
 def get_water_period():
     """ Returns Stations with Water Periods in Hidro Database. """
 
@@ -318,6 +336,7 @@ def get_water_period():
     hidro_session.close()
     hidro_db.close()
     return water_period
+
 
 def get_stage_period():
     """ Returns Stations with Stage Periods in Hidro Database. """

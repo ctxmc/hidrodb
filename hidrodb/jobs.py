@@ -26,16 +26,15 @@
 Provides routines to request and sync data on database.
 """
 
+import logging, time
+logger = logging.getLogger(__name__)
+
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue              import Queue
 from threading          import Thread, Lock
 
 from datetime import datetime, timedelta
 from enum     import Enum, auto
-
-import time
-import logging
-logger = logging.getLogger(__name__)
 
 from database    import *
 from webservices import *
@@ -71,6 +70,7 @@ class JobStatus(Enum):
         }
         return mapping[self]
 
+
 @dataclass
 class SerieStationData:
     """ Data class to receive Series Job data when starting a job."""
@@ -87,6 +87,7 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+
 from typing import Optional
 _token_cache: Optional[Token] = None
 """Private Token global to control expiration time."""
@@ -96,6 +97,7 @@ def get_token() -> Token.Token:
     
     :returns: Valid token for requesition
     """
+
     global _token_cache
     logger.verbose("Cheking Token.")
 
@@ -129,6 +131,7 @@ def check_resource(resource: HidroResource) -> None:
     :param resource: Current Resource to check, insert and update.
     :returns: Nothing.
     """
+
     model    = resource.get_model()
     endpoint = resource.get_endpoint()
     logger.verbose(f"Checking {resource}.")
@@ -142,7 +145,7 @@ def check_resource(resource: HidroResource) -> None:
     else:
         logger.info(f"Checking updates for {resource}.")
 
-        
+
 def check_stations_jobs() -> None:
     """Checks if there is Stations entries on database.
     Request all national stations by UF if there isnt.
@@ -216,6 +219,7 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
     """ Creates Series Jobs for each SerieStationData received for a given JobConfig.
     Preprocess all years from "Start Date" to "End Date" that will become a job request.
     """
+
     total_jobs_count = 0
     for station_code, start_date, end_date in stations_data:
         jobs = []
@@ -285,6 +289,7 @@ def trigger_job(job_config: JobConfig) -> None:
                     time.sleep(0.01)
 
             futures.add(executor.submit(handle_job, job, job_config))
+
             if len(futures) >= MAX_WORKERS:
                 logger.warning(f"Max futures reached on job {index}")
                 _, futures = wait(futures, return_when=FIRST_COMPLETED)
@@ -292,9 +297,15 @@ def trigger_job(job_config: JobConfig) -> None:
     write_queue.put((job_config, None, None, True))
     writer.join()
 
+
 token_lock = Lock()
 def handle_job(job: HidroJob, job_config: JobConfig) -> None:
+    """ Request data of an HidroJob.
+    Validate data on success return, and convert to ORM model before writing on Queue.
+    """
+
     global queue_data_size
+
     with token_lock:
         token = get_token()
     success, items = request_data(token, job_config.get_endpoint(), job.to_params())
@@ -319,7 +330,7 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
                        f"""request for station {job.StationID} """
                        f"""on period ({job.FromDate})-({job.ToDate})""")
 
-    queue_data_size += get_queue_data_size(data)
+    queue_data_size += len(data)
     write_queue.put((job_config, job, data, False))
 
 
@@ -340,7 +351,8 @@ def db_writer() -> None:
                 continue
 
             job_config, job, data, stop_signal = write_queue.get()
-            queue_data_size -= get_queue_data_size(data)
+            if data:
+                queue_data_size -= len(data)
 
             if job:
                 batch_buffer["jobs"].append(job)
@@ -366,6 +378,7 @@ def db_writer() -> None:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
+
 def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
     """Insert data into DB and update the jobs as well. """
 
@@ -381,11 +394,6 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) ->
     logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
     return elapsed_time
 
-def get_queue_data_size(data):
-    size = 0
-    if data:
-        size = len(data)
-    return size
 
 def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
     """Validate returned data by the API. """

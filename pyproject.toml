@@ -31,7 +31,8 @@ content_directory_name = "./"
 mkdocs_config = {
     site_name = "HidroDB",
     repo_url  = "https://github.com/ctxmc/hidrodb"
-}         
+}
+
 [[tool.pydoc-markdown.renderer.pages]]
 title  = "Home"
 name   = "Home"

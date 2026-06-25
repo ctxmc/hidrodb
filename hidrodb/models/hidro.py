@@ -36,6 +36,7 @@ def str_to_datetime(date_str):
     else:
         return None
 
+
 HidroBase = declarative_base()
 class HidroBaseModel(HidroBase):
     """ Abstract model to hold commom attributes to Hidro Models. """
@@ -57,6 +58,7 @@ class HidroBaseModel(HidroBase):
         kwargs.setdefault('ImportadoRepetido', 0)
         super().__init__(**kwargs)
 
+
 class Basin(HidroBaseModel):
     """ Database model for storing Basins data. """
 
@@ -72,6 +74,7 @@ class Basin(HidroBaseModel):
             Codigo  = json_data.get("codigobacia"),
             DataAlt = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
         )
+
 
 class SubBasin(HidroBaseModel):
     """ Database model for storing Sub Basins data. """
@@ -492,6 +495,7 @@ class Stage(HidroBaseModel):
             kwargs[f"Cota{i:02d}Status"] = json_data.get(f"Cota_{i:02d}_Status")
 
         return cls(**kwargs)
+
 
 class DischargeFlow(HidroBaseModel):
     """ Database model for storing Discharge Flow data. """
@@ -1124,6 +1128,7 @@ class Granulometry(HidroBaseModel):
             DataAlt                   = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
         )
 
+
 class CrossSection(HidroBaseModel):
     """ Database model for storing Cross Section data. """
 
@@ -1181,6 +1186,7 @@ class VerticalCrossSection(HidroBase):
             Cota       = json_data.get("Cota"),
             Distancia  = json_data.get("Distancia")
         )
+
 
 class FlowRate(HidroBaseModel):
     """ Database model for storing Flow Rate data. """
