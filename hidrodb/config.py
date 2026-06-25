@@ -24,7 +24,7 @@
 
 from enum import StrEnum
 
-from hidro_webservices   import *
+from webservices         import *
 from models.hidro_models import *
 from models.client       import *
 

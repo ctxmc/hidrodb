@@ -73,7 +73,7 @@ if __name__ == "__main__":
         format='[%(levelname)s]: %(message)s'
     )
 
-    from database          import *
-    from jobs              import *
+    from database import *
+    from jobs     import *
 
     main()

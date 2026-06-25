@@ -37,10 +37,10 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
-from database          import *
-from hidro_webservices import *
-from config            import *
-from dataclasses       import dataclass
+from database    import *
+from webservices import *
+from config      import *
+from dataclasses import dataclass
 
 class JobStatus(Enum):
     """ Enum to control job status."""
