@@ -9,14 +9,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pydoc-markdown"]
 
-debug = [
-    "hanging_threads",
-    "memory_profiler",
-    "objgraph"
-]
-
-misc = ["ruff"]
-
 [tool.setuptools.packages.find]
 include = ["hidrodb"]
 
