@@ -73,31 +73,13 @@ def init_db(db_path, db_type) -> None:
         logger.info(f"No tables found for {db.type} Database. Initializing.")
         match db.type:
             case DatabaseType.HIDRO:
-                execute_sql_file(db, "tables/hidro.sql")
-                VERSION = '1.4.0.000'
-                session.execute(text(f"INSERT INTO Versao (Versao) VALUES ('{VERSION}')"))
-                logger.info(f"Initialized {db.type} Database Version {VERSION}.")
+                HidroBase.metadata.create_all(db.engine)
             case DatabaseType.CLIENT:
                 ClientBase.metadata.create_all(db.engine)
         session.commit()
     session.close()
     db.close()
 
-def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None) -> None:
-    if not os.path.isfile(sql_file_path):
-        logger.error(f"{sql_file_path} does not exist")
-        return
-    with open(sql_file_path, "r") as f:
-        sql_script = f.read()
-    with db.engine.connect() as conn:
-        statements = [s.strip() for s in sql_script.split(';') if s.strip()]
-        for stmt in statements:
-            if parameters and '?' in stmt:
-                conn.exec_driver_sql(stmt, parameters)
-            else:
-                conn.exec_driver_sql(stmt)
-        conn.commit()
-        
 
 def insert_credentials(user_id, password):
     """ Insert an Credentials model entrie in Client Database. """
@@ -225,14 +207,6 @@ def get_station_jobs(status) -> StationJobs:
     client_db.close()
     return station_jobs
 
-def get_series_jobs(job_config, status):
-    client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    series_jobs = (client_session.query(SeriesJobs).filter(
-        SeriesJobs.Status.in_(status), SeriesJobs.HidroTable == job_config).all())
-    client_session.close()
-    client_db.close()
-    return series_jobs
 
 def get_jobs_yield(job_config, status):
     """ Returns all Series Jobs on Client Database, yield then in batches """
