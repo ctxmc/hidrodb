@@ -1,8 +1,20 @@
 # HidroDB
 
+An python application tool to request and sync data from ANA Hidro WebServices.
+
+## Setup
+
+TODO
+
+## Usage
+
 TODO
 
 ## Documentation
 
+- [WebServices](https://github.com/ctxmc/hidrodb/wiki/webservices)
+- [Database](https://github.com/ctxmc/hidrodb/wiki/database)
+- [Hidro Models](https://github.com/ctxmc/hidrodb/wiki/hidro-models)
+- [Client Models](https://github.com/ctxmc/hidrodb/wiki/client-models)
+- [Config](https://github.com/ctxmc/hidrodb/wiki/config)
 - [Jobs](https://github.com/ctxmc/hidrodb/wiki/jobs)
-- TODO

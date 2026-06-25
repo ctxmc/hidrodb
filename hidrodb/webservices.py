@@ -22,6 +22,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Provides request functionalities to ANA HidroWebservices API
+"""
+
 import os
 import requests
 import json
@@ -34,6 +38,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 class HidroEndpoint(StrEnum):
+    """ Enum to hold endpoins."""
+
     AUTH              = "/EstacoesTelemetricas/OAUth/v1"
     BASIN             = "/EstacoesTelemetricas/HidroBacia/v1"
     SUB_BASIN         = "/EstacoesTelemetricas/HidroSubBacia/v1"
@@ -53,6 +59,8 @@ class HidroEndpoint(StrEnum):
     FLOW_RATE         = "/EstacoesTelemetricas/HidroSerieVazao/v1"
 
 def request_hidro_ws(endpoint, headers, params={}):
+    """ Make a request to ANA API and returns the json."""
+
     url = "https://www.ana.gov.br/hidrowebservice"
     logger.trace(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
     response = requests.get(f"{url}{endpoint}", headers=headers, params=params)
@@ -72,6 +80,8 @@ def request_hidro_ws(endpoint, headers, params={}):
                 return
 
 def request_token(client_id: str, client_password: str, max_retries=3, retry_delay=2):
+    """ Request an token to ANA API and returns it."""
+
     headers = {
         "accept":        "*/*",
         "Identificador": f"{client_id}",
@@ -91,6 +101,8 @@ def request_token(client_id: str, client_password: str, max_retries=3, retry_del
     raise
 
 def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, dict):
+    """ Request data to ANA API and returns it."""
+
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
@@ -112,6 +124,8 @@ def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, di
 
 
 def get_file_path(endpoint: HidroEndpoint, params: dict) -> str:
+    """ Returns file path to save returned json. """
+
     match endpoint:
         case HidroEndpoint.BASIN:
             return "./json/Bacia.json"

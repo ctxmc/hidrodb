@@ -22,6 +22,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Provides database connection and SQL queries throught ORM.
+"""
+
 import os
 import logging
 logger = logging.getLogger(__name__)
@@ -37,10 +41,16 @@ from models.client import *
 from config        import *
 
 class DatabaseType(StrEnum):
+    """
+    Enum to name databases
+    """
+
     HIDRO  = "Hidro"
     CLIENT = "Client"
 
 class DatabaseConnection:
+    """ Class to hold database engine."""
+
     def __init__(self, dbq: str, db_type: DatabaseType):
         self.engine  = create_engine(f"sqlite:///{dbq}", echo=False)
         self.Session = sessionmaker(bind=self.engine)
@@ -51,6 +61,8 @@ class DatabaseConnection:
         self.engine.dispose()
 
 def init_db(db: DatabaseConnection) -> None:
+    """ Init an DatabaseConnection, if there is no tables, creates then"""
+
     session = db.get_session()
     check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
     result = session.execute(check_tables_sql)
@@ -89,6 +101,8 @@ def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None
         conn.commit()
         
 def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
+    """ Insert a list of Hidro ORM Model into Hidro Database"""
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     if not has_id:
@@ -106,6 +120,8 @@ def insert_hidro(collection: List[HidroBase], has_id=False) -> None:
     hidro_db.close()
 
 def insert_jobs(jobs: List[HidroJob]) -> None:
+    """ Insert a list of Jobs into Client Database. """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.add_all(jobs)
@@ -114,6 +130,8 @@ def insert_jobs(jobs: List[HidroJob]) -> None:
     client_db.close()
 
 def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
+    """ Updates a list of Jobs. """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.bulk_update_mappings(job_config.get_job_model(), jobs)
@@ -122,6 +140,8 @@ def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
     client_db.close()
 
 def count_client(model: ClientBase):
+    """ Counts a given Model in Client Database. """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     count_model    = client_session.query(model).count()
@@ -130,6 +150,8 @@ def count_client(model: ClientBase):
     return count_model
 
 def get_credentials() -> Credentials:
+    """ Gets the first registered Credential on Client Database and returns it. """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     credentials    = client_session.query(Credentials).first()
@@ -138,6 +160,8 @@ def get_credentials() -> Credentials:
     return credentials
 
 def add_token(client_id, token, expires):
+    """ Add an Token to Client Database """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     client_session.add(Token(CredentialID=client_id, Token=token, Expires=expires))
@@ -146,6 +170,8 @@ def add_token(client_id, token, expires):
     client_db.close()
 
 def get_token_model() -> Token:
+    """ Returns the first found Token on Client Database """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     token          = client_session.query(Token).first()
@@ -154,6 +180,8 @@ def get_token_model() -> Token:
     return token
 
 def update_token(RegistroID, new_token, new_expires):
+    """ Updates an Token on Client Database """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     from sqlalchemy import update;
@@ -167,6 +195,8 @@ def update_token(RegistroID, new_token, new_expires):
     client_db.close()
 
 def get_station_jobs(status) -> StationJobs:
+    """ Returns all Stations Jobs on Client Database """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     station_jobs   = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
@@ -184,6 +214,8 @@ def get_series_jobs(job_config, status):
     return series_jobs
 
 def get_jobs_yield(job_config, status):
+    """ Returns all Series Jobs on Client Database, yield then in batches """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     model = job_config.get_job_model()
@@ -198,6 +230,8 @@ def get_jobs_yield(job_config, status):
         client_db.close()
 
 def count_job(job_config: JobConfig, status = None):
+    """ Counts jobs registered in Client Database. """
+
     client_db      = DatabaseConnection(client_path, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     model          = job_config.get_job_model()
@@ -210,6 +244,8 @@ def count_job(job_config: JobConfig, status = None):
     return count_job
 
 def count_hidro(model: HidroBase):
+    """ Counts a given Model in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     count_model   = hidro_session.query(model).count()
@@ -218,6 +254,8 @@ def count_hidro(model: HidroBase):
     return count_model
 
 def get_states() -> State:
+    """ Returns registered States in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
@@ -226,6 +264,8 @@ def get_states() -> State:
     return states
 
 def get_rain_period():
+    """ Returns Stations with Rain Periods in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     rain_period = hidro_session.query(
@@ -238,6 +278,8 @@ def get_rain_period():
     return rain_period
 
 def get_discharge_period():
+    """ Returns Stations with Discharge Periods in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     discharge_period = hidro_session.query(
@@ -250,6 +292,8 @@ def get_discharge_period():
     return discharge_period
 
 def get_sediments_period():
+    """ Returns Stations with Sediments Periods in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     sediments_period = hidro_session.query(
@@ -262,6 +306,8 @@ def get_sediments_period():
     return sediments_period
 
 def get_water_period():
+    """ Returns Stations with Water Periods in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     water_period = hidro_session.query(
@@ -274,6 +320,8 @@ def get_water_period():
     return water_period
 
 def get_stage_period():
+    """ Returns Stations with Stage Periods in Hidro Database. """
+
     hidro_db      = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
     hidro_session = hidro_db.get_session()
     sql = text("""

@@ -22,6 +22,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Provides general config to HidroDB application.
+"""
+
 from enum import StrEnum
 
 from webservices   import *
@@ -29,6 +33,8 @@ from models.hidro  import *
 from models.client import *
 
 class HidroResource(StrEnum):
+    """ Enum to hold basic resources data that does not require Threads. """
+
     BASIN             = "Bacia"
     SUB_BASIN         = "SubBacia"
     ENTITY            = "Entidade"
@@ -59,6 +65,7 @@ class HidroResource(StrEnum):
         return mapping[self]
 
 class JobConfig(StrEnum):
+    """ Enum to hold Hidro Jobs that will run with threads. """
     STATION           = "Estacao"
     RAIN              = "Chuvas"
     DISCHARGE_SUMMARY = "ResumoDescarga"
@@ -108,6 +115,7 @@ class JobConfig(StrEnum):
 
 
 def _make_logger(level):
+    """ Helper method to create TRACE and VERBOSE logger modes. """
     def logger(self, msg, *args, **kwargs):
         if self.isEnabledFor(level):
             self._log(level, msg, args, **kwargs)
