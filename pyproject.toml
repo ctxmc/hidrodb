@@ -20,10 +20,7 @@ search_path = [ "./hidrodb" ]
 type = "mkdocs"
 output_directory = "wiki"
 content_directory_name = "./"
-mkdocs_config = {
-    site_name = "HidroDB",
-    repo_url  = "https://github.com/ctxmc/hidrodb"
-}
+mkdocs_config = {site_name = "HidroDB", repo_url  = "https://github.com/ctxmc/hidrodb"}
 
 [[tool.pydoc-markdown.renderer.pages]]
 title  = "Home"
