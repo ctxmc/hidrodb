@@ -26,8 +26,37 @@
 Provides general config to HidroDB application.
 """
 
-from enum import StrEnum
+import logging
 
+HIDRO_PATH  = None
+CLIENT_PATH = None
+MAX_WOKERS  = None
+BATCH_SIZE  = None
+
+def setup_logger(log_level):
+    """ Setup logger object accross application. """
+
+    TRACE = 15
+    setattr(logging.Logger, 'trace', _make_logger(TRACE))
+    logging.addLevelName(TRACE, 'TRACE')
+    VERBOSE = 5
+    setattr(logging.Logger, 'verbose', _make_logger(VERBOSE))
+    logging.addLevelName(VERBOSE, 'VERBOSE')
+    logging.basicConfig(
+        level=log_level,
+        format='[%(levelname)s]: %(message)s'
+    )
+
+
+def _make_logger(level):
+    """ Helper method to create TRACE and VERBOSE logger modes. """
+
+    def logger(self, msg, *args, **kwargs):
+        if self.isEnabledFor(level):
+            self._log(level, msg, args, **kwargs)
+    return logger
+
+from enum import StrEnum
 from webservices   import *
 from models.hidro  import *
 from models.client import *
@@ -113,10 +142,3 @@ class JobConfig(StrEnum):
         }
         return mapping[self]
 
-
-def _make_logger(level):
-    """ Helper method to create TRACE and VERBOSE logger modes. """
-    def logger(self, msg, *args, **kwargs):
-        if self.isEnabledFor(level):
-            self._log(level, msg, args, **kwargs)
-    return logger

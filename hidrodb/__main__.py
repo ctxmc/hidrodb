@@ -22,14 +22,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse, logging
-logger = logging.getLogger(__name__)
-
 from config import *
 
 def main() -> None:
-    client = DatabaseConnection(client_path, DatabaseType.CLIENT)
-    hidro  = DatabaseConnection(hidro_path, DatabaseType.HIDRO)
+    client = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
+    hidro  = DatabaseConnection(HIDRO_PATH, DatabaseType.HIDRO)
     init_db(client)
     init_db(hidro)
     client.close()
@@ -55,24 +52,14 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size',  type=int, default=10000)
     args = parser.parse_args()
 
-    import builtins;
-    builtins.hidro_path  = args.hidro
-    builtins.client_path = args.client
-    builtins.MAX_WORKERS = args.max_workers
-    builtins.BATCH_SIZE  = args.batch_size
+    import config;
+    config.HIDRO_PATH  = args.hidro
+    config.CLIENT_PATH = args.client
+    config.MAX_WORKERS = args.max_workers
+    config.BATCH_SIZE  = args.batch_size
+    config.DEBUG_MODE  = args.debug_mode
 
-    from config import _make_logger
-    builtins.TRACE = 15
-    setattr(logging.Logger, 'trace', _make_logger(TRACE))
-    logging.addLevelName(TRACE, 'TRACE')
-    builtins.VERBOSE = 5
-    setattr(logging.Logger, 'verbose', _make_logger(VERBOSE))
-    logging.addLevelName(VERBOSE, 'VERBOSE')
-    logging.basicConfig(
-        level=args.log_level,
-        format='[%(levelname)s]: %(message)s'
-    )
-
+    config.setup_logger(args.log_level)
     from database import *
     from jobs     import *
 
