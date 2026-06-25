@@ -39,11 +39,20 @@ def main() -> None:
 if __name__ == "__main__":
     import argparse;
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'])
-    parser.add_argument('--hidro',       type=str, default='db/hidro.db')
-    parser.add_argument('--client',      type=str, default='db/client.db')
-    parser.add_argument('--max-workers', type=int, default=100)
-    parser.add_argument('--batch-size',  type=int, default=10000)
+    hidro_help_message = "Path to Hidro Database file"
+    parser.add_argument('--hidro',       type=str, default='db/hidro.db', help=hidro_help_message)
+
+    client_help_message = "Path to Client Database file"
+    parser.add_argument('--client',      type=str, default='db/client.db', help=client_help_message)
+
+    max_workers_help_message = "Maximum number of worker threads"
+    parser.add_argument('--max-workers', type=int, default=10)
+
+    batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
+    parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
+
+    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
+
     args = parser.parse_args()
 
     import config;
