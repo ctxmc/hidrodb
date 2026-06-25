@@ -56,6 +56,16 @@ def _make_logger(level):
             self._log(level, msg, args, **kwargs)
     return logger
 
+
+def setup_database():
+    """ Setup Hidro and Client Database. """
+
+    from database import DatabaseType, init_db
+
+    init_db(CLIENT_PATH, DatabaseType.CLIENT)
+    init_db(HIDRO_PATH, DatabaseType.HIDRO)
+
+
 from enum import StrEnum
 from webservices   import *
 from models.hidro  import *

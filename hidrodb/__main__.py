@@ -22,28 +22,22 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from config import *
-
 def main() -> None:
-    client = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
-    hidro  = DatabaseConnection(HIDRO_PATH, DatabaseType.HIDRO)
-    init_db(client)
-    init_db(hidro)
-    client.close()
-    hidro.close()
+    from jobs import check_resource, check_stations_jobs, check_series_job;
 
-    for resource in HidroResource:
+    for resource in config.HidroResource:
         check_resource(resource)
 
-    for job_config in JobConfig:
+    for job_config in config.JobConfig:
         match job_config:
-            case JobConfig.STATION:
+            case config.JobConfig.STATION:
                 check_stations_jobs()
             case _:
                 check_series_job(job_config)
 
 
 if __name__ == "__main__":
+    import argparse;
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--hidro',       type=str, default='db/hidro.db')
@@ -60,6 +54,8 @@ if __name__ == "__main__":
     config.DEBUG_MODE  = args.debug_mode
 
     config.setup_logger(args.log_level)
+    config.setup_database(args.user_id, args.password)
+
     from database import *
     from jobs     import *
 

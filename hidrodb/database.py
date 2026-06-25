@@ -61,9 +61,10 @@ class DatabaseConnection:
         self.engine.dispose()
 
 
-def init_db(db: DatabaseConnection) -> None:
+def init_db(db_path, db_type) -> None:
     """ Init an DatabaseConnection, if there is no tables, creates then"""
 
+    db = DatabaseConnection(db_path, db_type)
     session = db.get_session()
     check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
     result = session.execute(check_tables_sql)
@@ -83,8 +84,9 @@ def init_db(db: DatabaseConnection) -> None:
                 password = getpass.getpass("Enter API password: ")
                 credentials = Credentials(ID=user_id, Password=password)
                 session.add(credentials)
-                session.commit()
         session.commit()
+    session.close()
+    db.close()
 
 def execute_sql_file(db: DatabaseConnection, sql_file_path: str, parameters=None) -> None:
     if not os.path.isfile(sql_file_path):
