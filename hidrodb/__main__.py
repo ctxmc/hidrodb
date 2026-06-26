@@ -66,7 +66,6 @@ if __name__ == "__main__":
     config.CLIENT_PATH = args.client
     config.MAX_WORKERS = args.max_workers
     config.BATCH_SIZE  = args.batch_size
-    config.DEBUG_MODE  = args.debug_mode
 
     config.setup_logger(args.log_level)
     config.setup_database(args.user_id, args.password)

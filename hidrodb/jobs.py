@@ -433,10 +433,6 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
 def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
     """Convert returned data by the API into the correspondent ORM Model of the job. """
 
-    if DEBUG_MODE and LOG_LEVEL == VERBOSE:
-        import tracemalloc
-        current, peak = tracemalloc.get_traced_memory()
-        logger.warning(f"Before ORM conversion: {current/1024/1024:.1f} MiB, data len: {len(hidro_data)}")
     model_data = []
     match job_config:
         case JobConfig.WATER_QUALITY:
