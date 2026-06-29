@@ -92,7 +92,7 @@ def request_token(client_id: str, client_password: str, max_retries=3, retry_del
             logger.warning(f"[TOKEN]: (attempt {attempt+1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
-    raise
+    raise Exception(f"Failed after {max_retries} attempts")
 
 
 def request_job_data(job_name: str, token: str, params: dict) -> (bool, dict):

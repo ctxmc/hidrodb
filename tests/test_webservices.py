@@ -103,3 +103,15 @@ def test_request_token_retry_then_success(mock_sleep, mock_request):
     assert result[0]               == "token_after_retry"
     assert mock_request.call_count == 2
     mock_sleep.assert_called_once_with(2)
+
+
+@patch('hidrodb.webservices.request_hidro_ws')
+@patch('hidrodb.webservices.time.sleep')
+def test_request_token_all_retries_fail(mock_sleep, mock_request):
+    """Test that exception is raised after all retries fail."""
+
+    with pytest.raises(Exception, match="Failed after"):
+        request_token("client123", "pass456", max_retries=3, retry_delay=2)
+
+    assert mock_request.call_count == 3
+    assert mock_sleep.call_count   == 2
