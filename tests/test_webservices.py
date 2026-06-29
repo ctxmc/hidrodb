@@ -23,3 +23,19 @@ def test_request_hidro_ws_success(mock_get):
         headers={"Authorization": "Bearer token"},
         params={}
     )
+
+@patch('hidrodb.webservices.requests.get')
+@patch('hidrodb.webservices.time.sleep')
+def test_request_hidro_ws_error(mock_sleep, mock_get):
+    """Test sleep on 503 code."""
+
+    mock_response                   = Mock()
+    mock_response.ok                = False
+    mock_response.status_code       = 503
+    mock_response.json.return_value = {"error": "Service Unavailable"}
+    mock_get.return_value           = mock_response
+
+    result = request_hidro_ws("/endpoint", {})
+
+    assert result is None
+    mock_sleep.assert_called_once_with(1)
