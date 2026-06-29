@@ -33,11 +33,6 @@ LOG_LEVEL = None
 def setup_arguments():
     import argparse;
     parser = argparse.ArgumentParser()
-    user_id_help_message = "User ID for authentication on ANA HidroWebServices"
-    parser.add_argument('--user-id',     type=str, default=None, help=user_id_help_message)
-
-    password_help_message = "Password for authentication on ANA HidroWebServices"
-    parser.add_argument('--password',    type=str, default=None, help=password_help_message)
 
     hidro_help_message = "Path to Hidro Database file"
     parser.add_argument('--hidro',       type=str, default='db/hidro.db', help=hidro_help_message)

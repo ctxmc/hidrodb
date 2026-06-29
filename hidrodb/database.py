@@ -38,6 +38,9 @@ from typing import List
 from hidrodb.models.hidro  import *
 from hidrodb.models.client import *
 
+CLIENT_PATH = None
+HIDRO_PATH  = None
+
 _HIDRO_MODELS_MAP = {
     "Bacia":             Basin,
     "SubBacia":          SubBasin,
