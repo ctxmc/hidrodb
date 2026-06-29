@@ -125,3 +125,11 @@ def test_get_file_path_basic_jobs():
     for job in basic_jobs:
         result = _get_file_path(job, {})
         assert result == f"./json/{job}.json"
+
+
+def test_get_file_path_estacao():
+    """Test Estacao job with UF parameter."""
+
+    params = {"Unidade Federativa": "MG"}
+    result = _get_file_path("Estacao", params)
+    assert result == "./json/Estacao/Estacao_MG.json"
