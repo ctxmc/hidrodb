@@ -23,55 +23,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def main() -> None:
-    from jobs import check_resource, check_stations_jobs, check_series_job;
+    import hidrodb.jobs as jobs
 
-    for resource in config.HidroResource:
-        check_resource(resource)
+    for job in jobs.JobConfig.Base:
+        jobs.check_base_job(job)
 
-    for job_config in config.JobConfig:
+    for job_config in jobs.JobConfig.Serial:
         match job_config:
-            case config.JobConfig.STATION:
-                check_stations_jobs()
+            case jobs.JobConfig.Serial.STATION:
+                jobs.check_stations_jobs()
             case _:
-                check_series_job(job_config)
+                jobs.check_series_job(job_config)
 
 
 if __name__ == "__main__":
-    import argparse;
-    parser = argparse.ArgumentParser()
-    user_id_help_message = "User ID for authentication on ANA HidroWebServices"
-    parser.add_argument('--user-id',     type=str, default=None, help=user_id_help_message)
-
-    password_help_message = "Password for authentication on ANA HidroWebServices"
-    parser.add_argument('--password',    type=str, default=None, help=password_help_message)
-
-    hidro_help_message = "Path to Hidro Database file"
-    parser.add_argument('--hidro',       type=str, default='db/hidro.db', help=hidro_help_message)
-
-    client_help_message = "Path to Client Database file"
-    parser.add_argument('--client',      type=str, default='db/client.db', help=client_help_message)
-
-    max_workers_help_message = "Maximum number of worker threads"
-    parser.add_argument('--max-workers', type=int, default=10)
-
-    batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
-    parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
-
-    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
-
-    args = parser.parse_args()
-
-    import config;
-    config.HIDRO_PATH  = args.hidro
-    config.CLIENT_PATH = args.client
-    config.MAX_WORKERS = args.max_workers
-    config.BATCH_SIZE  = args.batch_size
-    config.DEBUG_MODE  = args.debug_mode
-
-    config.setup_logger(args.log_level)
-    config.setup_database(args.user_id, args.password)
-
-    from database import *
-    from jobs     import *
-
+    import hidrodb.config as config;
+    config.setup_arguments()
+    config.setup_logger()
+    config.setup_database()
     main()

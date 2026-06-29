@@ -35,9 +35,30 @@ from sqlalchemy.orm import sessionmaker, Session
 from enum   import StrEnum
 from typing import List
 
-from models.hidro  import *
-from models.client import *
-from config        import *
+from hidrodb.models.hidro  import *
+from hidrodb.models.client import *
+
+CLIENT_PATH = None
+HIDRO_PATH  = None
+
+_HIDRO_MODELS_MAP = {
+    "Bacia":             Basin,
+    "SubBacia":          SubBasin,
+    "Entidade":          Entity,
+    "Municipio":         Township,
+    "Rio":               River,
+    "Estado":            State,
+    "Estacao":           Station,
+    "Chuvas":            Rain,
+    "ResumoDescarga":    DischargeSummary,
+    "CurvaDescarga":     DischargeFlow,
+    "Sedimentos":        Sediments,
+    "QualAgua":          WaterQuality,
+    "Cotas":             Stage,
+    "Granulometria":     Granulometry,
+    "PerfilTransversal": CrossSection,
+    "Vazoes":            FlowRate,
+}
 
 class DatabaseType(StrEnum):
     """
@@ -126,12 +147,12 @@ def insert_jobs(jobs: List[HidroJob]) -> None:
     client_db.close()
 
 
-def update_jobs(jobs: List[HidroJob], job_config: JobConfig) -> None:
+def update_jobs(jobs: List[HidroJob], job_name: str) -> None:
     """ Updates a list of Jobs. """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    client_session.bulk_update_mappings(job_config.get_job_model(), jobs)
+    client_session.bulk_update_mappings(get_job_model(job_name), jobs)
     client_session.commit()
     client_session.close()
     client_db.close()
@@ -208,16 +229,16 @@ def get_station_jobs(status) -> StationJobs:
     return station_jobs
 
 
-def get_jobs_yield(job_config, status):
+def get_jobs_yield(job_name, status):
     """ Returns all Series Jobs on Client Database, yield then in batches """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    model = job_config.get_job_model()
+    model = get_job_model(job_name)
     try:
         query = (client_session.query(model).filter(
             model.Status.in_(status),
-            model.HidroTable == job_config))
+            model.HidroTable == job_name))
         for job in query.yield_per(100):
             yield job
     finally:
@@ -225,13 +246,13 @@ def get_jobs_yield(job_config, status):
         client_db.close()
 
 
-def count_job(job_config: JobConfig, status = None):
+def count_job(job_name: str, status = None):
     """ Counts jobs registered in Client Database. """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    model          = job_config.get_job_model()
-    filters        = [model.HidroTable == job_config]
+    model          = get_job_model(job_name)
+    filters        = [model.HidroTable == job_name]
     if status:
         filters.append(model.Status.in_(status))
     count_job = client_session.query(model).filter(*filters).count()
@@ -345,3 +366,15 @@ def get_stage_period():
     hidro_session.close()
     hidro_db.close()
     return stage_period
+
+def get_hidro_model(name: str):
+    return _HIDRO_MODELS_MAP[name]
+
+def get_job_model(name: str):
+    if name == "Estacao":
+        return StationJobs
+    else:
+        return SeriesJobs
+
+def check_credentials():
+    return count_client(Credentials)

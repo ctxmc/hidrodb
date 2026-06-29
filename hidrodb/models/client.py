@@ -24,7 +24,7 @@
 """ Provides models for Client Database. """
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, SmallInteger
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 ClientBase = declarative_base()
 
