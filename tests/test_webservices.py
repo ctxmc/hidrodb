@@ -24,6 +24,7 @@ def test_request_hidro_ws_success(mock_get):
         params={}
     )
 
+
 @patch('hidrodb.webservices.requests.get')
 @patch('hidrodb.webservices.time.sleep')
 def test_request_hidro_ws_error(mock_sleep, mock_get):
@@ -53,3 +54,31 @@ def test_request_hidro_ws_json_exception(mock_get):
     result = request_hidro_ws("/endpoint", {})
 
     assert result is None
+
+
+@patch('hidrodb.webservices.request_hidro_ws')
+def test_request_token_success(mock_request):
+    """Test successful token retrieval."""
+
+    mock_request.return_value = {
+        "items": {
+            "tokenautenticacao": "abc123token",
+            "validade": "Mon Jan 15 14:30:00 GMT-03:00 2024"
+        }
+    }
+
+    result = request_token("client123", "pass456")
+
+    assert result[0] == "abc123token"
+    assert isinstance(result[1], datetime)
+    assert result[1] == datetime(2024, 1, 15, 14, 30, 0)
+
+    mock_request.assert_called_once_with(
+        "/EstacoesTelemetricas/OAUth/v1",
+        {
+            "accept": "*/*",
+            "Identificador": "client123",
+            "Senha": "pass456"
+        },
+        {}
+    )
