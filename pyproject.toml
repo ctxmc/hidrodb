@@ -1,10 +1,7 @@
 [project]
 name = "HidroDB"
 version = "0.0.0"
-dependencies = [
-    "requests",
-    "sqlalchemy"
-]
+dependencies = ["requests", "sqlalchemy"]
 
 [project.optional-dependencies]
 dev = ["pydoc-markdown", "pytest", "pytest-cov"]

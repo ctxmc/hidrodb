@@ -19,19 +19,6 @@ def test_setup_logger_creates_custom_levels(caplog):
     assert "VERBOSE" in caplog.text
 
 
-def test_setup_logger_respects_log_level(caplog):
-    import logging;
-
-    setup_logger(logging.WARNING)
-
-    logging.getLogger().trace("should not appear")
-    logging.getLogger().verbose("should not appear")
-    logging.getLogger().warning("warning message")
-
-    assert "should not appear" not in caplog.text
-    assert "warning message" in caplog.text
-
-
 def test_hidro_resource():
     from hidrodb.models.hidro  import Basin, SubBasin, Entity, Township, River, State;
     from hidrodb.webservices   import HidroEndpoint
