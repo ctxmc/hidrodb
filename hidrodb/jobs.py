@@ -34,12 +34,42 @@ from queue              import Queue
 from threading          import Thread, Lock
 
 from datetime    import datetime, timedelta
-from enum        import Enum, auto
+from enum        import Enum, auto, StrEnum
 from dataclasses import dataclass
 
 from hidrodb.database    import *
 from hidrodb.webservices import *
-from hidrodb.config      import *
+
+MAX_WORKERS = None
+BATCH_SIZE  = None
+
+class JobConfig:
+    # """ TODO """
+
+    class Base(StrEnum):
+        """ Enum to hold basic resources data that does not require Threads. """
+
+        BASIN             = "Bacia"
+        SUB_BASIN         = "SubBacia"
+        ENTITY            = "Entidade"
+        TOWNSHIP          = "Municipio"
+        RIVER             = "Rio"
+        STATE             = "Estado"
+
+    class Serial(StrEnum):
+        """ Enum to hold Hidro Jobs that will run with threads. """
+
+        STATION           = "Estacao"
+        RAIN              = "Chuvas"
+        DISCHARGE_SUMMARY = "ResumoDescarga"
+        DISCHARGE_FLOW    = "CurvaDescarga"
+        SEDIMENTS         = "Sedimentos"
+        WATER_QUALITY     = "QualAgua"
+        STAGE             = "Cotas"
+        GRANULOMETRY      = "Granulometria"
+        CROSS_SECTION     = "PerfilTransversal"
+        FLOW_RATE         = "Vazoes"
+
 
 class JobStatus(Enum):
     """ Enum to control job status."""
@@ -125,25 +155,24 @@ def get_token() -> Token.Token:
     return token
 
 
-def check_resource(resource: HidroResource) -> None:
-    """Checks each HidroResource and request/update them.
+def check_base_job(job: JobConfig.Base) -> None:
+    """Checks each HidroJob and request/update them.
 
-    :param resource: Current Resource to check, insert and update.
+    :param job: Current Job to check, insert and update.
     :returns: Nothing.
     """
 
-    model    = resource.get_model()
-    endpoint = resource.get_endpoint()
-    logger.verbose(f"Checking {resource}.")
+    model    = get_hidro_model(job)
+    logger.verbose(f"Checking {job}.")
     if not count_hidro(model):
-        logger.info(f"{resource} has no Entries, requesting data.")
+        logger.info(f"{job} has no Entries, requesting data.")
         token = get_token()
         if (token):
-            success, items = request_data(token, endpoint, {})
+            success, items = request_job_data(job, token, {})
             entries = [model.from_json(item) for item in items]
             insert_hidro(entries)
     else:
-        logger.info(f"Checking updates for {resource}.")
+        logger.info(f"Checking updates for {job}.")
 
 
 def check_stations_jobs() -> None:
@@ -165,10 +194,10 @@ def check_stations_jobs() -> None:
     else:
         logger.trace(f"Stations has jobs.")
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        count = count_job(JobConfig.STATION, status)
+        count = count_job(JobConfig.Serial.STATION, status)
         if count:
-            logger.info(f"Initiating {count} jobs for {JobConfig.STATION}")
-            trigger_job(JobConfig.STATION)
+            logger.info(f"Initiating {count} jobs for {JobConfig.Serial.STATION}")
+            trigger_job(JobConfig.Serial.STATION)
         else:
             logger.info(f"No pending jobs for Stations")
 
@@ -182,23 +211,23 @@ def check_series_job(job_config: JobConfig) -> None:
     if not count_job(job_config):
         logger.info(f"Creating jobs for {job_config}")
         match job_config:
-            case JobConfig.RAIN:
+            case JobConfig.Serial.RAIN:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_rain_period()]
-            case (JobConfig.DISCHARGE_SUMMARY
-                  | JobConfig.DISCHARGE_FLOW
-                  | JobConfig.CROSS_SECTION
-                  | JobConfig.FLOW_RATE
+            case (JobConfig.Serial.DISCHARGE_SUMMARY
+                  | JobConfig.Serial.DISCHARGE_FLOW
+                  | JobConfig.Serial.CROSS_SECTION
+                  | JobConfig.Serial.FLOW_RATE
             ):
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_discharge_period()]
-            case JobConfig.SEDIMENTS | JobConfig.GRANULOMETRY:
+            case JobConfig.Serial.SEDIMENTS | JobConfig.GRANULOMETRY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_sediments_period()]
-            case JobConfig.WATER_QUALITY:
+            case JobConfig.Serial.WATER_QUALITY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_water_period()]
-            case JobConfig.STAGE:
+            case JobConfig.Serial.STAGE:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_stage_period()]
         create_series_jobs(stations_data, job_config)
@@ -291,7 +320,7 @@ def trigger_job(job_config: JobConfig) -> None:
             futures.add(executor.submit(handle_job, job, job_config))
 
             if len(futures) >= MAX_WORKERS:
-                logger.warning(f"Max futures reached on job {index}")
+                logger.trace(f"Max futures reached on job {index}")
                 _, futures = wait(futures, return_when=FIRST_COMPLETED)
             wait(futures)
     write_queue.put((job_config, None, None, True))
@@ -308,11 +337,11 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
 
     with token_lock:
         token = get_token()
-    success, items = request_data(token, job_config.get_endpoint(), job.to_params())
+    success, items = request_job_data(job_config, token, job.to_params())
 
     if success:
         match job_config:
-            case JobConfig.STATION:
+            case JobConfig.Serial.STATION:
                 job.Status    = JobStatus.COMPLETED
                 job.LastCheck = datetime.now()
             case _:
@@ -385,7 +414,7 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) ->
     start_time = time.perf_counter()
     if len(hidro_data) > 0:
         logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
-        has_id = True if job_config == JobConfig.CROSS_SECTION else False
+        has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
         insert_hidro(hidro_data, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
@@ -402,19 +431,19 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
     job.Status = JobStatus.COMPLETED
 
     match job_config:
-        case JobConfig.RAIN:
+        case JobConfig.Serial.RAIN:
             dict_len = 76
-        case JobConfig.DISCHARGE_SUMMARY:
+        case JobConfig.Serial.DISCHARGE_SUMMARY:
             dict_len = 10
-        case JobConfig.DISCHARGE_FLOW:
+        case JobConfig.Serial.DISCHARGE_FLOW:
             dict_len = 18
-        case JobConfig.STAGE:
+        case JobConfig.Serial.STAGE:
             dict_len = 78
-        case JobConfig.GRANULOMETRY:
+        case JobConfig.Serial.GRANULOMETRY:
             dict_len = 117
-        case JobConfig.CROSS_SECTION:
+        case JobConfig.Serial.CROSS_SECTION:
             dict_len = 18
-        case JobConfig.WATER_QUALITY:
+        case JobConfig.Serial.WATER_QUALITY:
             dict_len = 303
         case _:
             #TODO: CHECK LEN FOR EVERY TABLE?
@@ -435,19 +464,19 @@ def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
 
     model_data = []
     match job_config:
-        case JobConfig.WATER_QUALITY:
+        case JobConfig.Serial.WATER_QUALITY:
             for item in hidro_data:
                 model_data.append(WaterQuality.from_json(item))
                 model_data.append(WaterQualityStatus.from_json(item))
-        case JobConfig.CROSS_SECTION:
+        case JobConfig.Serial.CROSS_SECTION:
             current_id      = None
             for item in hidro_data:
                 item_id = item.get("Registro_ID")
                 if current_id != item_id:
                     current_id = item_id
-                    model_data.append(job_config.get_hidro_model().from_json(item))
+                    model_data.append(get_hidro_model(job_config).from_json(item))
                 model_data.append(VerticalCrossSection.from_json(item, current_id))
         case _:
             for data in hidro_data:
-                model_data.append(job_config.get_hidro_model().from_json(data))
+                model_data.append(get_hidro_model(job_config).from_json(data))
     return model_data

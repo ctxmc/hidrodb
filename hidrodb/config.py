@@ -28,12 +28,43 @@ Provides general config to HidroDB application.
 
 import logging
 
-HIDRO_PATH  = None
-CLIENT_PATH = None
-MAX_WOKERS  = None
-BATCH_SIZE  = None
+LOG_LEVEL = None
 
-def setup_logger(log_level):
+def setup_arguments():
+    import argparse;
+    parser = argparse.ArgumentParser()
+    user_id_help_message = "User ID for authentication on ANA HidroWebServices"
+    parser.add_argument('--user-id',     type=str, default=None, help=user_id_help_message)
+
+    password_help_message = "Password for authentication on ANA HidroWebServices"
+    parser.add_argument('--password',    type=str, default=None, help=password_help_message)
+
+    hidro_help_message = "Path to Hidro Database file"
+    parser.add_argument('--hidro',       type=str, default='db/hidro.db', help=hidro_help_message)
+
+    client_help_message = "Path to Client Database file"
+    parser.add_argument('--client',      type=str, default='db/client.db', help=client_help_message)
+
+    max_workers_help_message = "Maximum number of worker threads"
+    parser.add_argument('--max-workers', type=int, default=10)
+
+    batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
+    parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
+
+    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
+
+    args = parser.parse_args()
+
+    global LOG_LEVEL
+    LOG_LEVEL = args.log_level
+    import hidrodb.jobs as jobs
+    jobs.MAX_WORKERS = args.max_workers
+    jobs.BATCH_SIZE  = args.batch_size
+    import hidrodb.database as db
+    db.CLIENT_PATH = args.client
+    db.HIDRO_PATH  = args.hidro
+
+def setup_logger():
     """ Setup logger object accross application. """
 
     TRACE = 15
@@ -43,7 +74,7 @@ def setup_logger(log_level):
     setattr(logging.Logger, 'verbose', _make_logger(VERBOSE))
     logging.addLevelName(VERBOSE, 'VERBOSE')
     logging.basicConfig(
-        level=log_level,
+        level=LOG_LEVEL,
         format='[%(levelname)s]: %(message)s'
     )
 
@@ -57,107 +88,14 @@ def _make_logger(level):
     return logger
 
 
-def setup_database(user_id, password):
+def setup_database():
     """ Setup Hidro and Client Database. """
 
-    from hidrodb.database import DatabaseType, init_db, count_client, insert_credentials;
-    from hidrodb.models.client import Credentials;
-
-    init_db(CLIENT_PATH, DatabaseType.CLIENT)
-    init_db(HIDRO_PATH, DatabaseType.HIDRO)
-    if not count_client(Credentials):
-        if not user_id:
-            user_id = input("Enter API username: ")
-        if not password:
-            import getpass;
-            password = getpass.getpass("Enter API password: ")
-        insert_credentials(user_id, password)
-
-
-from enum import StrEnum
-
-from hidrodb.webservices   import HidroEndpoint
-from hidrodb.models.hidro  import Basin, SubBasin, Entity, Township, River, State, Station, Rain, DischargeSummary, DischargeFlow, Sediments, WaterQuality, Stage, Granulometry, CrossSection, FlowRate
-from hidrodb.models.client import StationJobs, SeriesJobs
-
-class HidroResource(StrEnum):
-    """ Enum to hold basic resources data that does not require Threads. """
-
-    BASIN             = "Bacia"
-    SUB_BASIN         = "SubBacia"
-    ENTITY            = "Entidade"
-    TOWNSHIP          = "Municipio"
-    RIVER             = "Rio"
-    STATE             = "Estado"
-
-    def get_model(self):
-        mapping = {
-            HidroResource.BASIN:     Basin,
-            HidroResource.SUB_BASIN: SubBasin,
-            HidroResource.ENTITY:    Entity,
-            HidroResource.TOWNSHIP:  Township,
-            HidroResource.RIVER:     River,
-            HidroResource.STATE:     State,
-        }
-        return mapping[self]
-
-    def get_endpoint(self):
-        mapping = {
-            HidroResource.BASIN:     HidroEndpoint.BASIN,
-            HidroResource.SUB_BASIN: HidroEndpoint.SUB_BASIN,
-            HidroResource.ENTITY:    HidroEndpoint.ENTITY,
-            HidroResource.TOWNSHIP:  HidroEndpoint.TOWNSHIP,
-            HidroResource.RIVER:     HidroEndpoint.RIVER,
-            HidroResource.STATE:     HidroEndpoint.STATE,
-        }
-        return mapping[self]
-
-class JobConfig(StrEnum):
-    """ Enum to hold Hidro Jobs that will run with threads. """
-    STATION           = "Estacao"
-    RAIN              = "Chuvas"
-    DISCHARGE_SUMMARY = "ResumoDescarga"
-    DISCHARGE_FLOW    = "CurvaDescarga"
-    SEDIMENTS         = "Sedimentos"
-    WATER_QUALITY     = "QualAgua"
-    STAGE             = "Cotas"
-    GRANULOMETRY      = "Granulometria"
-    CROSS_SECTION     = "PerfilTransversal"
-    FLOW_RATE         = "Vazoes"
-
-    def get_job_model(self):
-        if self == JobConfig.STATION:
-            return StationJobs
-        else:
-            return SeriesJobs
-
-    def get_hidro_model(self):
-        mapping = {
-            JobConfig.STATION:           Station,
-            JobConfig.RAIN:              Rain,
-            JobConfig.DISCHARGE_SUMMARY: DischargeSummary,
-            JobConfig.DISCHARGE_FLOW:    DischargeFlow,
-            JobConfig.SEDIMENTS:         Sediments,
-            JobConfig.WATER_QUALITY:     WaterQuality,
-            JobConfig.STAGE:             Stage,
-            JobConfig.GRANULOMETRY:      Granulometry,
-            JobConfig.CROSS_SECTION:     CrossSection,
-            JobConfig.FLOW_RATE:         FlowRate,
-        }
-        return mapping[self]
-
-    def get_endpoint(self):
-        mapping = {
-            JobConfig.STATION:           HidroEndpoint.STATION,
-            JobConfig.RAIN:              HidroEndpoint.RAIN,
-            JobConfig.DISCHARGE_SUMMARY: HidroEndpoint.DISCHARGE_SUMMARY,
-            JobConfig.DISCHARGE_FLOW:    HidroEndpoint.DISCHARGE_FLOW,
-            JobConfig.SEDIMENTS:         HidroEndpoint.SEDIMENTS,
-            JobConfig.WATER_QUALITY:     HidroEndpoint.WATER_QUALITY,
-            JobConfig.STAGE:             HidroEndpoint.STAGE,
-            JobConfig.GRANULOMETRY:      HidroEndpoint.GRANULOMETRY,
-            JobConfig.CROSS_SECTION:     HidroEndpoint.CROSS_SECTION,
-            JobConfig.FLOW_RATE:         HidroEndpoint.FLOW_RATE,
-        }
-        return mapping[self]
-
+    import hidrodb.database as db
+    db.init_db(db.CLIENT_PATH, db.DatabaseType.CLIENT)
+    db.init_db(db.HIDRO_PATH,  db.DatabaseType.HIDRO)
+    if not db.check_credentials():
+        user_id = input("Enter API username: ")
+        import getpass;
+        password = getpass.getpass("Enter API password: ")
+        db.insert_credentials(user_id, password)

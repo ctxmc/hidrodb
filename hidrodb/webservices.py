@@ -32,27 +32,24 @@ logger = logging.getLogger(__name__)
 from datetime import datetime
 from enum     import StrEnum
 
-class HidroEndpoint(StrEnum):
-    """ Enum to hold endpoins."""
-
-    AUTH              = "/EstacoesTelemetricas/OAUth/v1"
-    BASIN             = "/EstacoesTelemetricas/HidroBacia/v1"
-    SUB_BASIN         = "/EstacoesTelemetricas/HidroSubBacia/v1"
-    ENTITY            = "/EstacoesTelemetricas/HidroEntidade/v1"
-    TOWNSHIP          = "/EstacoesTelemetricas/HidroMunicipio/v1"
-    RIVER             = "/EstacoesTelemetricas/HidroRio/v1"
-    STATE             = "/EstacoesTelemetricas/HidroUF/v1"
-    STATION           = "/EstacoesTelemetricas/HidroInventarioEstacoes/v1"
-    RAIN              = "/EstacoesTelemetricas/HidroSerieChuva/v1"
-    DISCHARGE_SUMMARY = "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1"
-    SEDIMENTS         = "/EstacoesTelemetricas/HidroSerieSedimentos/v1"
-    STAGE             = "/EstacoesTelemetricas/HidroSerieCotas/v1"
-    DISCHARGE_FLOW    = "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1"
-    WATER_QUALITY     = "/EstacoesTelemetricas/HidroSerieQA/v1"
-    GRANULOMETRY      = "/EstacoesTelemetricas/HidroSerieGranulometria/v1"
-    CROSS_SECTION     = "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1"
-    FLOW_RATE         = "/EstacoesTelemetricas/HidroSerieVazao/v1"
-
+_DATA_ENDPOINTS_MAP = {
+    "Bacia":             "/EstacoesTelemetricas/HidroBacia/v1",
+    "SubBacia":          "/EstacoesTelemetricas/HidroSubBacia/v1",
+    "Entidade":          "/EstacoesTelemetricas/HidroEntidade/v1",
+    "Municipio":         "/EstacoesTelemetricas/HidroMunicipio/v1",
+    "Rio":               "/EstacoesTelemetricas/HidroRio/v1",
+    "Estado":            "/EstacoesTelemetricas/HidroUF/v1",
+    "Estacao":           "/EstacoesTelemetricas/HidroInventarioEstacoes/v1",
+    "Chuvas":            "/EstacoesTelemetricas/HidroSerieChuva/v1",
+    "ResumoDescarga":    "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1",
+    "CurvaDescarga":     "/EstacoesTelemetricas/HidroSerieSedimentos/v1",
+    "Sedimentos":        "/EstacoesTelemetricas/HidroSerieCotas/v1",
+    "QualAgua":          "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1",
+    "Cotas":             "/EstacoesTelemetricas/HidroSerieQA/v1",
+    "Granulometria":     "/EstacoesTelemetricas/HidroSerieGranulometria/v1",
+    "PerfilTransversal": "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1",
+    "Vazoes":            "/EstacoesTelemetricas/HidroSerieVazao/v1"
+}
 
 def request_hidro_ws(endpoint, headers, params={}):
     """ Make a request to ANA API and returns the json."""
@@ -83,9 +80,10 @@ def request_token(client_id: str, client_password: str, max_retries=3, retry_del
         "Identificador": f"{client_id}",
         "Senha":         f"{client_password}",
     }
+    endpoint = "/EstacoesTelemetricas/OAUth/v1"
     for attempt in range(max_retries):
         try:
-            data = request_hidro_ws(HidroEndpoint.AUTH, headers, {})
+            data = request_hidro_ws(endpoint, headers, {})
             token           = data.get("items", {}).get("tokenautenticacao")
             expires_RFC2822 = data.get("items", {}).get("validade")
             expires_ISOND   = datetime.strptime(expires_RFC2822, "%a %b %d %H:%M:%S GMT-03:00 %Y")
@@ -97,15 +95,16 @@ def request_token(client_id: str, client_password: str, max_retries=3, retry_del
     raise
 
 
-def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, dict):
+def request_job_data(job_name: str, token: str, params: dict) -> (bool, dict):
     """ Request data to ANA API and returns it."""
 
     headers = {
         "accept":        "*/*",
         "Authorization": f"Bearer {token}"
     }
+    endpoint = _DATA_ENDPOINTS_MAP[job_name]
     try:
-        file_path = get_file_path(endpoint, params)
+        file_path = _get_file_path(job_name, params)
         items = []
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
@@ -120,49 +119,18 @@ def request_data(token: str, endpoint: HidroEndpoint, params: dict) -> (bool, di
             return (False, [])
 
 
-def get_file_path(endpoint: HidroEndpoint, params: dict) -> str:
+def _get_file_path(job_name: str, params: dict) -> str:
     """ Returns file path to save returned json. """
 
-    match endpoint:
-        case HidroEndpoint.BASIN:
-            return "./json/Bacia.json"
-        case HidroEndpoint.SUB_BASIN:
-            return "./json/SubBacia.json"
-        case HidroEndpoint.ENTITY:
-            return "./json/Entidade.json"
-        case HidroEndpoint.TOWNSHIP:
-            return "./json/Municipio.json"
-        case HidroEndpoint.RIVER:
-            return "./json/Rio.json"
-        case HidroEndpoint.STATE:
-            return "./json/Estado.json"
-        case HidroEndpoint.STATION:
+    match job_name:
+        case ("Bacia"     | "SubBacia" | "Entidade" |
+              "Municipio" | "Rio"      | "Estado"):
+            return f"./json/{job_name}.json"
+        case "Estacao":
             UF = params["Unidade Federativa"]
-            return f"./json/stations/Estacao_{UF}.json"
-        case HidroEndpoint.RAIN:
+            return f"./json/{job_name}/{job_name}_{UF}.json"
+        case ("Chuvas"        | "ResumoDescarga"    | "CurvaDescarga" |
+              "Sedimentos"    | "QualAgua"          | "Cotas"         |
+              "Granulometria" | "PerfilTransversal" | "Vazoes"):
             station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/rain/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.DISCHARGE_SUMMARY:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/liquid_desc/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.SEDIMENTS:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/sediments/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.STAGE:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/stage/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.DISCHARGE_FLOW:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/discharge/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.WATER_QUALITY:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/qa/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.GRANULOMETRY:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/granulometry/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.CROSS_SECTION:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/profile/station_{station_code}_{ymd_start}_{ymd_end}.json"
-        case HidroEndpoint.FLOW_RATE:
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/flow/station_{station_code}_{ymd_start}_{ymd_end}.json"
+            return f"./json/{job_name}/station_{station_code}_{ymd_start}_{ymd_end}.json"
