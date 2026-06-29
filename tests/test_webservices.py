@@ -39,3 +39,17 @@ def test_request_hidro_ws_error(mock_sleep, mock_get):
 
     assert result is None
     mock_sleep.assert_called_once_with(1)
+
+
+@patch('hidrodb.webservices.requests.get')
+def test_request_hidro_ws_json_exception(mock_get):
+    """Test handling of JSON decode error on successful response."""
+
+    mock_response                  = Mock()
+    mock_response.ok               = True
+    mock_response.json.side_effect = ValueError("Invalid JSON")
+    mock_get.return_value          = mock_response
+
+    result = request_hidro_ws("/endpoint", {})
+
+    assert result is None
