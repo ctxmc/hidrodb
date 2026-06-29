@@ -133,3 +133,21 @@ def test_get_file_path_estacao():
     params = {"Unidade Federativa": "MG"}
     result = _get_file_path("Estacao", params)
     assert result == "./json/Estacao/Estacao_MG.json"
+
+
+def test_get_file_path_serial_jobs():
+    """Test serial jobs."""
+
+    station_jobs = [
+        "Chuvas", "ResumoDescarga", "CurvaDescarga", "Sedimentos",
+        "QualAgua", "Cotas", "Granulometria", "PerfilTransversal", "Vazoes"
+    ]
+    params = {
+        "Código da Estação":         "12345",
+        "Tipo Filtro Data":          "DATA_LEITURA",
+        "Data Inicial (yyyy-MM-dd)": "1927-05-01",
+        "Data Final (yyyy-MM-dd)":   "1928-05-01"
+    }
+    for job in station_jobs:
+        result = _get_file_path(job, params)
+        assert result == f"./json/{job}/station_12345_1927-05-01_1928-05-01.json"
