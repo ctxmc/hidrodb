@@ -82,3 +82,24 @@ def test_request_token_success(mock_request):
         },
         {}
     )
+
+
+@patch('hidrodb.webservices.request_hidro_ws')
+@patch('hidrodb.webservices.time.sleep')
+def test_request_token_retry_then_success(mock_sleep, mock_request):
+    """Test retry logic when first attempt fails."""
+    mock_request.side_effect = [
+        Exception("Connection error"),
+        {
+            "items": {
+                "tokenautenticacao": "token_after_retry",
+                "validade": "Tue Feb 20 10:00:00 GMT-03:00 2024"
+            }
+        }
+    ]
+
+    result = request_token("client123", "pass456", max_retries=3, retry_delay=2)
+
+    assert result[0]               == "token_after_retry"
+    assert mock_request.call_count == 2
+    mock_sleep.assert_called_once_with(2)
