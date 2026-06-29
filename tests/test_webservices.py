@@ -115,3 +115,13 @@ def test_request_token_all_retries_fail(mock_sleep, mock_request):
 
     assert mock_request.call_count == 3
     assert mock_sleep.call_count   == 2
+
+
+from hidrodb.webservices import _get_file_path
+def test_get_file_path_basic_jobs():
+    """Test jobs that return simple path with just job name."""
+
+    basic_jobs = ["Bacia", "SubBacia", "Entidade", "Municipio", "Rio", "Estado"]
+    for job in basic_jobs:
+        result = _get_file_path(job, {})
+        assert result == f"./json/{job}.json"
