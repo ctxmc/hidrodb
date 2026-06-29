@@ -39,3 +39,20 @@ def test_setup_arguments_custum():
         assert hidrodb.jobs.BATCH_SIZE      == 500
         assert hidrodb.database.CLIENT_PATH == 'custom/client.db'
         assert hidrodb.database.HIDRO_PATH  == 'custom/hidro.db'
+
+
+def test_setup_logger_creates_custom_levels(caplog):
+    import logging;
+
+    VERBOSE = 5
+    hidrodb.config.LOG_LEVEL = VERBOSE
+    hidrodb.config.setup_logger()
+    caplog.set_level(VERBOSE)
+
+    logging.getLogger().trace("trace message")
+    assert "trace message" in caplog.text
+    assert "TRACE" in caplog.text
+
+    logging.getLogger().verbose("verbose message")
+    assert "verbose message" in caplog.text
+    assert "VERBOSE" in caplog.text
