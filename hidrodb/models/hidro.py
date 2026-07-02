@@ -234,7 +234,7 @@ class Station(HidroBaseModel):
     TipoRedeQualAgua              = Column(SmallInteger)
     TipoRedeSedimentos            = Column(SmallInteger)
     BaciaCodigo                   = Column(BigInteger)
-    Codigo                        = Column(BigInteger)
+    Codigo                        = Column(BigInteger, unique=True)
 
     @classmethod
     def from_json(cls, json_data: dict):
