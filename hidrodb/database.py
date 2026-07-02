@@ -371,10 +371,17 @@ def get_hidro_model(name: str):
     return _HIDRO_MODELS_MAP[name]
 
 def get_job_model(name: str):
-    if name == "Estacao":
-        return StationJobs
-    else:
-        return SeriesJobs
+    match name:
+        case ("Bacia"     | "SubBacia" | "Entidade" |
+              "Municipio" | "Rio"      | "Estado"):
+            return BaseJobs
+        case "Estacao":
+            return StationJobs
+        case ("Chuvas"        | "ResumoDescarga"    | "CurvaDescarga" |
+              "Sedimentos"    | "QualAgua"          | "Cotas"         |
+              "Granulometria" | "PerfilTransversal" | "Vazoes"):
+            return SeriesJobs
+
 
 def check_credentials():
     return count_client(Credentials)

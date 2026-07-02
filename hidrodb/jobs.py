@@ -150,25 +150,32 @@ def get_token() -> Token.Token:
     return token
 
 
-def check_base_job(job: JobConfig.Base) -> None:
+def check_base_job(job_config: JobConfig.Base) -> None:
     """Checks each HidroJob and request/update them.
 
     :param job: Current Job to check, insert and update.
     :returns: Nothing.
     """
 
-    model    = get_hidro_model(job)
-    logger.verbose(f"Checking {job}.")
-    if not count_hidro(model):
-        logger.info(f"{job} has no Entries, requesting data.")
-        token = get_token()
-        if (token):
-            success, items = request_job_data(job, token, {})
-            entries = [model.from_json(item) for item in items]
-            insert_hidro(entries)
+    if not count_job(job_config):
+        logger.info(f"Creating jobs for {job_config}.")
+        job_model = get_job_model(job_config)
+        jobs = []
+        job = job_model(
+            HidroTable = job_config,
+            Status     = JobConfig.Status.PENDING.value
+        )
+        jobs.append(job)
+        insert_jobs(jobs)
+        check_base_job(job_config)
     else:
-        logger.info(f"Checking updates for {job}.")
-
+        status  = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
+        count = count_job(job_config, status)
+        if count:
+            logger.info(f"Initiating jobs for {job_config}")
+            trigger_job(job_config)
+        else:
+            logger.info(f"No pending jobs for {job_config}")
 
 def check_stations_jobs() -> None:
     """Checks if there is Stations entries on database.
@@ -337,7 +344,7 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     if success:
         job.Status = JobConfig.Status.COMPLETED.value
         match job_config:
-            case JobConfig.Serial.STATION:
+            case JobConfig.Base() | JobConfig.Serial.STATION:
                 job.LastCheck = datetime.now()
     else:
         job.Status = JobConfig.Status.FAILED.value

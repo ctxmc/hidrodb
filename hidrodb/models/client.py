@@ -65,6 +65,20 @@ class HidroJob(ClientBase):
             "Status":     self.Status
         }.items()
 
+class BaseJobs(HidroJob):
+    """ Database model for storing Base Jobs. """
+
+    __tablename__ = 'BaseJobs'
+
+    LastCheck  = Column(DateTime)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield from { "LastCheck": self.LastCheck }.items()
+
+    def to_params(self):
+        return {}
+
 
 class StationJobs(HidroJob):
     """ Database model for storing Station Jobs. """
