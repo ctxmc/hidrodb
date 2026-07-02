@@ -356,25 +356,12 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     success, items = request_job_data(job_config, token, job.to_params())
 
     if success:
+        job.Status = JobStatus.COMPLETED
         match job_config:
             case JobConfig.Serial.STATION:
-                job.Status    = JobStatus.COMPLETED
                 job.LastCheck = datetime.now()
-            case _:
-                job, items = validate_data(job_config, items, job)
     else:
         job.Status = JobStatus.FAILED
-
-    if job.Status == JobStatus.COMPLETED and len(items) > 0:
-        data = data_to_model_orm(job_config, items)
-    else:
-        data = []
-
-    if isinstance(job, SeriesJobs):
-        logger.verbose(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
-                       f"""request for station {job.StationID} """
-                       f"""on period ({job.FromDate})-({job.ToDate})""")
-
     queue_data = QueueData(
         job_config  = job_config,
         job         = job,
@@ -448,21 +435,20 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
 
     start_time = time.perf_counter()
     if len(items) > 0:
+        items = validate_data(job_config, items)
+        entries = data_to_model_orm(job_config, items)
         has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
-        insert_hidro(hidro_data, has_id)
+        insert_hidro(entries, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.trace(f"[WRITER {job_config}]: Inserted {len(items)} entries in {elapsed_time} seconds")
+    logger.trace(f"[WRITER {job_config}]: Inserted {len(entries)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
-def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
+def validate_data(job_config: JobConfig, items):
     """Validate returned data by the API. """
-
-    #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
-    job.Status = JobStatus.COMPLETED
 
     match job_config:
         case JobConfig.Serial.RAIN:
@@ -480,17 +466,9 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
         case JobConfig.Serial.WATER_QUALITY:
             dict_len = 303
         case _:
-            #TODO: CHECK LEN FOR EVERY TABLE?
-            return (job, items)
+            dict_len = None
 
-    for item in items:
-        if (len(item) != dict_len):
-            items   = []
-            job.Status = JobStatus.INVALID
-            logger.verbose(f"[VALIDATE JOB {job.ID}] Invalid item: {item}")
-            break
+    if dict_len:
+        items = [item for item in items if len(item) == dict_len]
 
-    return (job, items)
-
-
-
+    return items
