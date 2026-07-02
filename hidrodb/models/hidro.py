@@ -23,7 +23,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """ Provides models for Hidro Database. """
 
-from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime, func
+from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime
 from sqlalchemy.orm import declarative_base
 
 from datetime import datetime
@@ -39,7 +39,7 @@ class HidroBaseModel(HidroBase):
     Temporario        = Column(SmallInteger, default=0)
     Removido          = Column(SmallInteger, default=0)
     ImportadoRepetido = Column(SmallInteger, default=0)
-    DataIns           = Column(DateTime, default=func.now())
+    DataIns           = Column(DateTime, default=datetime.now)
     DataAlt           = Column(DateTime)
 
     def __init__(self, **kwargs):

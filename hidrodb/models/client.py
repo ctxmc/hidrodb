@@ -25,6 +25,7 @@
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, SmallInteger
 from sqlalchemy.orm import declarative_base
+from datetime import datetime
 
 ClientBase = declarative_base()
 
@@ -70,7 +71,7 @@ class BaseJobs(HidroJob):
 
     __tablename__ = 'BaseJobs'
 
-    LastCheck  = Column(DateTime)
+    LastCheck  = Column(DateTime, default=datetime.now)
 
     def __iter__(self):
         yield from super().__iter__()
@@ -85,8 +86,8 @@ class StationJobs(HidroJob):
 
     __tablename__ = 'StationJobs'
 
-    UF         = Column(String, nullable=False)
-    LastCheck  = Column(DateTime)
+    UF         = Column(String,   nullable=False)
+    LastCheck  = Column(DateTime, default=datetime.now)
 
     def __iter__(self):
         yield from super().__iter__()
