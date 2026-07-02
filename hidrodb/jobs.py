@@ -70,35 +70,12 @@ class JobConfig:
         CROSS_SECTION     = "PerfilTransversal"
         FLOW_RATE         = "Vazoes"
 
-
-class JobStatus(Enum):
-    """ Enum to control job status."""
-
-    PENDING   = auto()
-    """Job is queued and waiting to be processed."""
-
-    FAILED    = auto()
-    """Job request failed."""
-
-    INVALID   = auto()
-    """Job request returned item had incorrect fields."""
-
-    CORRUPTED = auto()
-    """Job with incorrect start date."""
-
-    COMPLETED = auto()
-    """Job successfully completed."""
-
-    def get_label(self) -> str:
-        """ :returns: a string label for each status."""
-        mapping = {
-            JobStatus.PENDING:   "Pending",
-            JobStatus.FAILED:    "Failed",
-            JobStatus.INVALID:   "Invalid",
-            JobStatus.CORRUPTED: "Corrupted",
-            JobStatus.COMPLETED: "Completed"
-        }
-        return mapping[self]
+    class Status(Enum):
+        PENDING   = auto()
+        FAILED    = auto()
+        INVALID   = auto()
+        CORRUPTED = auto()
+        COMPLETED = auto()
 
 
 @dataclass
@@ -197,13 +174,14 @@ def check_stations_jobs() -> None:
     """Checks if there is Stations entries on database.
     Request all national stations by UF if there isnt.
     """
+
     if not count_client(StationJobs):
         logger.info(f"Creating jobs for Stations.")
         stations_jobs = []
         for state in get_states():
             station_job = StationJobs(
                 HidroTable = "Estacao",
-                Status     = JobStatus.PENDING.value,
+                Status     = JobConfig.Status.PENDING.value,
                 UF         = state.Sigla
             )
             stations_jobs.append(station_job)
@@ -211,7 +189,7 @@ def check_stations_jobs() -> None:
         check_stations_jobs()
     else:
         logger.trace(f"Stations has jobs.")
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
         count = count_job(JobConfig.Serial.STATION, status)
         if count:
             logger.info(f"Initiating {count} jobs for {JobConfig.Serial.STATION}")
@@ -253,7 +231,7 @@ def check_series_job(job_config: JobConfig) -> None:
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
         count = count_job(job_config, status)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
@@ -331,7 +309,7 @@ def trigger_job(job_config: JobConfig) -> None:
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
+        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
         for index, job in enumerate(get_jobs_yield(job_config, status)):
             executor.submit(handle_job_request, job, job_config)
     finish_queue = QueueData(
@@ -357,12 +335,12 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     success, items = request_job_data(job_config, token, job.to_params())
 
     if success:
-        job.Status = JobStatus.COMPLETED
+        job.Status = JobConfig.Status.COMPLETED.value
         match job_config:
             case JobConfig.Serial.STATION:
                 job.LastCheck = datetime.now()
     else:
-        job.Status = JobStatus.FAILED
+        job.Status = JobConfig.Status.FAILED.value
     elapsed = time.time() - start
     logger.verbose(f"[WORKER]: Job {job.ID} completed in {elapsed:.2f} seconds")
     queue_data = QueueData(

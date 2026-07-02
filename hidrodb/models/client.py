@@ -62,7 +62,7 @@ class HidroJob(ClientBase):
         yield from {
             "ID":         self.ID,
             "HidroTable": self.HidroTable,
-            "Status":     self.Status.value
+            "Status":     self.Status
         }.items()
 
 
