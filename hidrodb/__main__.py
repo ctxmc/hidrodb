@@ -24,17 +24,10 @@
 
 def main() -> None:
     import hidrodb.jobs as jobs
-
     for job in jobs.JobConfig.Base:
         jobs.check_base_job(job)
-
     for job_config in jobs.JobConfig.Serial:
-        match job_config:
-            case jobs.JobConfig.Serial.STATION:
-                jobs.check_stations_jobs()
-            case _:
-                jobs.check_series_job(job_config)
-
+        jobs.check_series_job(job_config)
 
 if __name__ == "__main__":
     import hidrodb.config as config;

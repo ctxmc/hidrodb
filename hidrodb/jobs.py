@@ -55,11 +55,11 @@ class JobConfig:
         TOWNSHIP          = "Municipio"
         RIVER             = "Rio"
         STATE             = "Estado"
+        STATION           = "Estacao"
 
     class Serial(StrEnum):
         """ Enum to hold Hidro Jobs that will run with threads. """
 
-        STATION           = "Estacao"
         RAIN              = "Chuvas"
         DISCHARGE_SUMMARY = "ResumoDescarga"
         DISCHARGE_FLOW    = "CurvaDescarga"
@@ -161,11 +161,21 @@ def check_base_job(job_config: JobConfig.Base) -> None:
         logger.info(f"Creating jobs for {job_config}.")
         job_model = get_job_model(job_config)
         jobs = []
-        job = job_model(
-            HidroTable = job_config,
-            Status     = JobConfig.Status.PENDING.value
-        )
-        jobs.append(job)
+        match job_config:
+            case JobConfig.Base.STATION:
+                for state in get_states():
+                    job = job_model(
+                        HidroTable = job_config,
+                        Status     = JobConfig.Status.PENDING.value,
+                        UF         = state.Sigla
+                    )
+                    jobs.append(job)
+            case _:
+                job = job_model(
+                    HidroTable = job_config,
+                    Status     = JobConfig.Status.PENDING.value
+                )
+                jobs.append(job)
         insert_jobs(jobs)
         check_base_job(job_config)
     else:
@@ -176,33 +186,6 @@ def check_base_job(job_config: JobConfig.Base) -> None:
             trigger_job(job_config)
         else:
             logger.info(f"No pending jobs for {job_config}")
-
-def check_stations_jobs() -> None:
-    """Checks if there is Stations entries on database.
-    Request all national stations by UF if there isnt.
-    """
-
-    if not count_client(StationJobs):
-        logger.info(f"Creating jobs for Stations.")
-        stations_jobs = []
-        for state in get_states():
-            station_job = StationJobs(
-                HidroTable = "Estacao",
-                Status     = JobConfig.Status.PENDING.value,
-                UF         = state.Sigla
-            )
-            stations_jobs.append(station_job)
-        insert_jobs(stations_jobs)
-        check_stations_jobs()
-    else:
-        logger.trace(f"Stations has jobs.")
-        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        count = count_job(JobConfig.Serial.STATION, status)
-        if count:
-            logger.info(f"Initiating {count} jobs for {JobConfig.Serial.STATION}")
-            trigger_job(JobConfig.Serial.STATION)
-        else:
-            logger.info(f"No pending jobs for Stations")
 
 
 def check_series_job(job_config: JobConfig) -> None:
@@ -344,7 +327,7 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     if success:
         job.Status = JobConfig.Status.COMPLETED.value
         match job_config:
-            case JobConfig.Base() | JobConfig.Serial.STATION:
+            case JobConfig.Base():
                 job.LastCheck = datetime.now()
     else:
         job.Status = JobConfig.Status.FAILED.value
