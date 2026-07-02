@@ -29,7 +29,7 @@ Provides routines to request and sync data on database.
 import logging, time
 logger = logging.getLogger(__name__)
 
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from queue              import Queue
 from threading          import Thread, Lock
 
@@ -307,40 +307,25 @@ def process_period(station_code, start_date, end_date, job_config):
 
 
 write_queue      = Queue()
-queue_data_size  = 0
 def trigger_job(job_config: JobConfig) -> None:
     """ Triggers an Thread Worker for each pending or falied job entrie in DB for a given JobConfig."""
 
-    global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
-    futures = set()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
         for index, job in enumerate(get_jobs_yield(job_config, status)):
-            if queue_data_size > BATCH_SIZE * 2:
-                logger.warning(f"[WORKER {job_config}]: Queue data size limit reached on job {index}")
-                while queue_data_size  > BATCH_SIZE * 2:
-                    _, futures = wait(futures, return_when=FIRST_COMPLETED)
-                    time.sleep(0.01)
-
-            futures.add(executor.submit(handle_job, job, job_config))
-
-            if len(futures) >= MAX_WORKERS:
-                logger.trace(f"Max futures reached on job {index}")
-                _, futures = wait(futures, return_when=FIRST_COMPLETED)
-            wait(futures)
+            executor.submit(handle_job_request, job, job_config)
     write_queue.put((job_config, None, None, True))
     writer.join()
 
 
 token_lock = Lock()
-def handle_job(job: HidroJob, job_config: JobConfig) -> None:
+def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     """ Request data of an HidroJob.
     Validate data on success return, and convert to ORM model before writing on Queue.
     """
 
-    global queue_data_size
 
     with token_lock:
         token = get_token()
@@ -366,7 +351,6 @@ def handle_job(job: HidroJob, job_config: JobConfig) -> None:
                        f"""request for station {job.StationID} """
                        f"""on period ({job.FromDate})-({job.ToDate})""")
 
-    queue_data_size += len(data)
     write_queue.put((job_config, job, data, False))
 
 
@@ -375,7 +359,6 @@ def db_writer() -> None:
     Consumes an Queue writen by each worker and write data in batches.
     """
 
-    global queue_data_size
     batch_buffer = {"jobs": [], "data": []}
     total_data    = 0
     total_jobs    = 0
@@ -387,8 +370,6 @@ def db_writer() -> None:
                 continue
 
             job_config, job, data, stop_signal = write_queue.get()
-            if data:
-                queue_data_size -= len(data)
 
             if job:
                 batch_buffer["jobs"].append(job)
