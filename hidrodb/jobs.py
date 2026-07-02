@@ -117,6 +117,24 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+@dataclass
+class QueueData:
+
+    job_config:  JobConfig
+    job:         HidroJob
+    items:       dict
+    worker_time: float
+    stop_signal: bool
+
+    def __iter__(self):
+        return iter((
+            self.job_config,
+            self.job,
+            self.items,
+            self.worker_time,
+            self.stop_signal
+        ))
+
 
 from typing import Optional
 _token_cache: Optional[Token] = None
@@ -306,7 +324,7 @@ def process_period(station_code, start_date, end_date, job_config):
     return jobs
 
 
-write_queue      = Queue()
+write_queue: Queue[QueueData] = Queue()
 def trigger_job(job_config: JobConfig) -> None:
     """ Triggers an Thread Worker for each pending or falied job entrie in DB for a given JobConfig."""
 
@@ -316,7 +334,13 @@ def trigger_job(job_config: JobConfig) -> None:
         status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
         for index, job in enumerate(get_jobs_yield(job_config, status)):
             executor.submit(handle_job_request, job, job_config)
-    write_queue.put((job_config, None, None, True))
+    finish_queue = QueueData(
+        job_config  = job_config,
+        job         = None,
+        items       = None,
+        stop_signal = True
+    )
+    write_queue.put(finish_queue)
     writer.join()
 
 
@@ -351,7 +375,13 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
                        f"""request for station {job.StationID} """
                        f"""on period ({job.FromDate})-({job.ToDate})""")
 
-    write_queue.put((job_config, job, data, False))
+    queue_data = QueueData(
+        job_config  = job_config,
+        job         = job,
+        items       = items,
+        stop_signal = False
+    )
+    write_queue.put(queue_data)
 
 
 def db_writer() -> None:
