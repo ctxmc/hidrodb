@@ -233,21 +233,17 @@ def create_job_filters(job_name: str, status: List[int], last_check: bool) -> Li
         filters.append(or_(*or_conditions))
     return filters
 
-def get_jobs_yield(job_name, status)
+
+def get_jobs(job_name: str, filters: List[elements]):
     """ Returns all Series Jobs on Client Database, yield then in batches """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
     client_session = client_db.get_session()
-    model = get_job_model(job_name)
-    try:
-        query = (client_session.query(model).filter(
-            model.Status.in_(status),
-            model.HidroTable == job_name))
-        for job in query.yield_per(100):
-            yield job
-    finally:
-        client_session.close()
-        client_db.close()
+    model          = get_job_model(job_name)
+    jobs = client_session.query(model).filter(*filters).all()
+    client_session.close()
+    client_db.close()
+    return jobs
 
 
 def count_job(job_name: str, filters: List[elements]) -> int:

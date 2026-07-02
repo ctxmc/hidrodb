@@ -185,7 +185,7 @@ def check_base_job(job_config: JobConfig.Base) -> None:
         count   = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating jobs for {job_config}")
-            trigger_job(job_config)
+            trigger_job(job_config, filters)
         else:
             logger.info(f"No pending jobs for {job_config}")
 
@@ -229,7 +229,7 @@ def check_series_job(job_config: JobConfig) -> None:
         count = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
-            trigger_job(job_config)
+            trigger_job(job_config, filters)
         else:
             logger.info(f"No pending jobs for {job_config}")
 
@@ -297,14 +297,13 @@ def process_period(station_code, start_date, end_date, job_config):
 
 
 write_queue: Queue[QueueData] = Queue()
-def trigger_job(job_config: JobConfig) -> None:
+def trigger_job(job_config: JobConfig, filters) -> None:
     """ Triggers an Thread Worker for each pending or falied job entrie in DB for a given JobConfig."""
 
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        for index, job in enumerate(get_jobs_yield(job_config, status)):
+        for job in get_jobs(job_config, filters):
             executor.submit(handle_job_request, job, job_config)
     finish_queue = QueueData(
         job_config  = job_config,
