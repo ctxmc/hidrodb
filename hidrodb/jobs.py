@@ -29,7 +29,7 @@ Provides routines to request and sync data on database.
 import logging, time
 logger = logging.getLogger(__name__)
 
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
 from queue              import Queue
 from threading          import Thread, Lock
 
@@ -248,55 +248,62 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
     """ Creates Series Jobs for each SerieStationData received for a given JobConfig.
     Preprocess all years from "Start Date" to "End Date" that will become a job request.
     """
+    start = time.time()
+    jobs = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_period, *data, job_config)
+                   for data in stations_data]
+        for future in as_completed(futures):
+            jobs.extend(future.result())
+    insert_jobs(jobs)
+    elapsed = time.time() - start
+    logger.info(f"Created {len(jobs)} jobs for {job_config} in {elapsed:.2f} seconds")
 
-    total_jobs_count = 0
-    for station_code, start_date, end_date in stations_data:
-        jobs = []
-        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
+
+def process_period(station_code, start_date, end_date, job_config):
+    jobs = []
+    formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
+    for fmt in formats:
+        try:
+            start_date = datetime.strptime(start_date, fmt)
+            break
+        except Exception as e:
+            continue
+    if end_date is None:
+        end_date = datetime.today() - timedelta(days=1)
+        end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
         for fmt in formats:
             try:
-                start_date = datetime.strptime(start_date, fmt)
+                end_date = datetime.strptime(end_date, fmt)
                 break
             except Exception as e:
                 continue
-        if end_date is None:
-            end_date = datetime.today() - timedelta(days=1)
-            end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        else:
-            for fmt in formats:
-                try:
-                    end_date = datetime.strptime(end_date, fmt)
-                    break
-                except Exception as e:
-                    continue
-        if start_date > datetime.today():
-            logger.warning(f"Corrupted start date {start_date} for station {station_code}")
-            jobs.append(SeriesJobs(
-                StationID  = station_code,
-                FromDate   = start_date,
-                ToDate     = end_date,
-                Status     = JobStatus.CORRUPTED.value,
-                HidroTable = job_config
-            ))
-            continue
-        total_years  = end_date.year - start_date.year
-        current_year = start_date
-        for count_year in range(1, total_years+1):
-            next_year = current_year.replace(year=current_year.year+1)
-            if next_year > end_date:
-                next_year = end_date
-            jobs.append(SeriesJobs(
-                StationID  = station_code,
-                FromDate   = current_year,
-                ToDate     = next_year,
-                Status     = JobStatus.PENDING.value,
-                HidroTable = job_config
-            ))
-            current_year = next_year
-        insert_jobs(jobs)
-        logger.verbose(f"Inserted {len(jobs)} jobs for station {station_code} over the period {start_date}-{end_date}")
-        total_jobs_count += len(jobs)
-    logger.info(f"Created {total_jobs_count} jobs for {job_config}")
+    if start_date > datetime.today():
+        logger.warning(f"Corrupted start date {start_date} for station {station_code}")
+        jobs.append(SeriesJobs(
+            StationID  = station_code,
+            FromDate   = start_date,
+            ToDate     = end_date,
+            Status     = JobConfig.Status.CORRUPTED.value,
+            HidroTable = job_config
+        ))
+        return jobs
+    total_years  = end_date.year - start_date.year
+    current_year = start_date
+    for count_year in range(1, total_years+1):
+        next_year = current_year.replace(year=current_year.year+1)
+        if next_year > end_date:
+            next_year = end_date
+        jobs.append(SeriesJobs(
+            StationID  = station_code,
+            FromDate   = current_year,
+            ToDate     = next_year,
+            Status     = JobConfig.Status.PENDING.value,
+            HidroTable = job_config
+        ))
+        current_year = next_year
+    return jobs
 
 
 write_queue      = Queue()
