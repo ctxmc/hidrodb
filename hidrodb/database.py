@@ -378,3 +378,26 @@ def get_job_model(name: str):
 
 def check_credentials():
     return count_client(Credentials)
+
+
+def data_to_model_orm(job_config: str, items: dict):
+    """Convert returned data by the API into the correspondent ORM Model of the job. """
+
+    model_data = []
+    match job_config:
+        case "QualAgua":
+            for item in items:
+                model_data.append(WaterQuality.from_json(item))
+                model_data.append(WaterQualityStatus.from_json(item))
+        case "PerfilTransversal":
+            current_id      = None
+            for item in items:
+                item_id = item.get("Registro_ID")
+                if current_id != item_id:
+                    current_id = item_id
+                    model_data.append(get_hidro_model(job_config).from_json(item))
+                model_data.append(VerticalCrossSection.from_json(item, current_id))
+        case _:
+            for item in items:
+                model_data.append(get_hidro_model(job_config).from_json(item))
+    return model_data

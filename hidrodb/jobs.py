@@ -459,24 +459,4 @@ def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJo
     return (job, items)
 
 
-def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
-    """Convert returned data by the API into the correspondent ORM Model of the job. """
 
-    model_data = []
-    match job_config:
-        case JobConfig.Serial.WATER_QUALITY:
-            for item in hidro_data:
-                model_data.append(WaterQuality.from_json(item))
-                model_data.append(WaterQualityStatus.from_json(item))
-        case JobConfig.Serial.CROSS_SECTION:
-            current_id      = None
-            for item in hidro_data:
-                item_id = item.get("Registro_ID")
-                if current_id != item_id:
-                    current_id = item_id
-                    model_data.append(get_hidro_model(job_config).from_json(item))
-                model_data.append(VerticalCrossSection.from_json(item, current_id))
-        case _:
-            for data in hidro_data:
-                model_data.append(get_hidro_model(job_config).from_json(data))
-    return model_data
