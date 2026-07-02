@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 from sqlalchemy     import create_engine, text, func
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.sql import elements
 
 from enum   import StrEnum
 from typing import List
@@ -218,18 +219,21 @@ def update_token(RegistroID, new_token, new_expires):
     client_db.close()
 
 
-def get_station_jobs(status) -> StationJobs:
-    """ Returns all Stations Jobs on Client Database """
+def create_job_filters(job_name: str, status: List[int], last_check: bool) -> List[elements]:
+    model   = get_job_model(job_name)
+    filters = [model.HidroTable == job_name]
+    if status or last_check:
+        from sqlalchemy import or_
+        or_conditions = []
+        if status:
+            or_conditions.append(model.Status.in_(status))
+        if last_check:
+            from datetime import date
+            or_conditions.append(model.LastCheck < date.today())
+        filters.append(or_(*or_conditions))
+    return filters
 
-    client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
-    client_session = client_db.get_session()
-    station_jobs   = client_session.query(StationJobs).filter(StationJobs.Status.in_(status)).all()
-    client_session.close()
-    client_db.close()
-    return station_jobs
-
-
-def get_jobs_yield(job_name, status):
+def get_jobs_yield(job_name, status)
     """ Returns all Series Jobs on Client Database, yield then in batches """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
