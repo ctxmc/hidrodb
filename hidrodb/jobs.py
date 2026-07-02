@@ -446,4 +446,14 @@ def validate_data(job_config: JobConfig, items):
     if dict_len:
         items = [item for item in items if len(item) == dict_len]
 
+    for item in items:
+        for key, value in item.items():
+            if isinstance(value, str):
+                try:
+                    item[key] = json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    try:
+                        item[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                    except ValueError:
+                        pass
     return items
