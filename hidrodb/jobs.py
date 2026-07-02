@@ -269,8 +269,8 @@ def process_period(station_code, start_date, end_date, job_config):
                 break
             except Exception as e:
                 continue
-    if start_date > datetime.today():
-        logger.warning(f"Corrupted start date {start_date} for station {station_code}")
+    if start_date > end_date:
+        logger.warning(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
         jobs.append(SeriesJobs(
             StationID  = station_code,
             FromDate   = start_date,
