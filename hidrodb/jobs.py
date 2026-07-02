@@ -464,3 +464,11 @@ def validate_data(job_config: JobConfig, items):
                     except ValueError:
                         pass
     return items
+
+
+def run():
+    for job in JobConfig.Base:
+        check_base_job(job)
+    for job in JobConfig.Serial:
+        check_series_job(job)
+        exit(0)
