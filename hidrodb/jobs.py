@@ -338,6 +338,7 @@ def trigger_job(job_config: JobConfig) -> None:
         job_config  = job_config,
         job         = None,
         items       = None,
+        worker_time = 0,
         stop_signal = True
     )
     write_queue.put(finish_queue)
@@ -350,7 +351,7 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     Validate data on success return, and convert to ORM model before writing on Queue.
     """
 
-
+    start = time.time()
     with token_lock:
         token = get_token()
     success, items = request_job_data(job_config, token, job.to_params())
@@ -362,10 +363,13 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
                 job.LastCheck = datetime.now()
     else:
         job.Status = JobStatus.FAILED
+    elapsed = time.time() - start
+    logger.verbose(f"[WORKER]: Job {job.ID} completed in {elapsed:.2f} seconds")
     queue_data = QueueData(
         job_config  = job_config,
         job         = job,
         items       = items,
+        worker_time = elapsed,
         stop_signal = False
     )
     write_queue.put(queue_data)
@@ -380,12 +384,14 @@ def db_writer() -> None:
     total_data     = 0
     total_jobs     = 0
 
+    worker_elapsed = 0
     total_elapsed  = 0
     insert_elapsed = 0
     batch_start_time = None
     while True:
-        job_config, job, data, stop_signal = write_queue.get()
+        job_config, job, data, worker_time, stop_signal = write_queue.get()
         try:
+            worker_elapsed += worker_time
             if job:
                 batch_buffer["jobs"].append(job)
             if data:
@@ -411,6 +417,7 @@ def db_writer() -> None:
                             f"""Time to reach batch: {batch_elapsed}, """
                             f"""Time to insert batch: {insert_elapsed}. """)
                 logger.trace(f"""[TIMER {job_config}]: """
+                            f"""Total worker elapsed: {worker_elapsed}, """
                             f"""Total writer elapsed: {total_elapsed}.""")
 
                 batch_buffer["jobs"].clear()
