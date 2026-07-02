@@ -390,34 +390,48 @@ def db_writer() -> None:
     """
 
     batch_buffer = {"jobs": [], "data": []}
-    total_data    = 0
-    total_jobs    = 0
-    total_elapsed = 0
+    total_data     = 0
+    total_jobs     = 0
+
+    total_elapsed  = 0
+    insert_elapsed = 0
+    batch_start_time = None
     while True:
+        job_config, job, data, stop_signal = write_queue.get()
         try:
-            if write_queue.empty():
-                time.sleep(0.01)
-                continue
-
-            job_config, job, data, stop_signal = write_queue.get()
-
             if job:
                 batch_buffer["jobs"].append(job)
-            if data and len(data) > 0:
+            if data:
                 batch_buffer["data"].extend(data)
+                if batch_start_time is None:
+                    batch_start_time = time.time()
+
 
             if len(batch_buffer["data"]) >= BATCH_SIZE or stop_signal:
-                total_data    += len(batch_buffer["data"])
-                total_jobs    += len(batch_buffer["jobs"])
-                total_elapsed += write_data(job_config, batch_buffer["jobs"], batch_buffer["data"])
-                logger.info(f"""[WRITER {job_config}]: Total Data: {total_data}, """
-                            f"""Total Jobs: {total_jobs}, """
-                            f"""Total thread elapsed: {total_elapsed}""")
+                if batch_start_time is not None:
+                    batch_elapsed = time.time() - batch_start_time
+                total_data     += len(batch_buffer["data"])
+                total_jobs     += len(batch_buffer["jobs"])
+                insert_elapsed  = write_data(job_config,
+                                             batch_buffer["jobs"],
+                                             batch_buffer["data"])
+                total_elapsed  += batch_elapsed + insert_elapsed
+
+                logger.info(f"""[WRITER {job_config}]: """
+                            f"""Total processed Data: {total_data}, """
+                            f"""Total finished Jobs: {total_jobs}. """)
+                logger.trace(f"""[TIMER {job_config}]: """
+                            f"""Time to reach batch: {batch_elapsed}, """
+                            f"""Time to insert batch: {insert_elapsed}. """)
+                logger.trace(f"""[TIMER {job_config}]: """
+                            f"""Total writer elapsed: {total_elapsed}.""")
+
                 batch_buffer["jobs"].clear()
                 batch_buffer["data"].clear()
+                batch_start_time = None
+
 
             if stop_signal:
-                write_queue.task_done()
                 logger.info(f"""Finished jobs for {job_config}""")
                 break;
 
@@ -425,20 +439,22 @@ def db_writer() -> None:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
+        finally:
+            write_queue.task_done()
 
-def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
+
+def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
     """Insert data into DB and update the jobs as well. """
 
     start_time = time.perf_counter()
-    if len(hidro_data) > 0:
-        logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
+    if len(items) > 0:
         has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
         insert_hidro(hidro_data, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
+    logger.trace(f"[WRITER {job_config}]: Inserted {len(items)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
