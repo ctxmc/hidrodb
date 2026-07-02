@@ -157,7 +157,8 @@ def check_base_job(job_config: JobConfig.Base) -> None:
     :returns: Nothing.
     """
 
-    if not count_job(job_config):
+    filters = create_job_filters(job_config, None, last_check=False)
+    if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}.")
         job_model = get_job_model(job_config)
         jobs = []
@@ -180,7 +181,8 @@ def check_base_job(job_config: JobConfig.Base) -> None:
         check_base_job(job_config)
     else:
         status  = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        count = count_job(job_config, status)
+        filters = create_job_filters(job_config, status, last_check=True)
+        count   = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating jobs for {job_config}")
             trigger_job(job_config)
@@ -194,7 +196,8 @@ def check_series_job(job_config: JobConfig) -> None:
     """
 
     logger.trace(f"Checking Job for {job_config}")
-    if not count_job(job_config):
+    filters = create_job_filters(job_config, None, last_check=False)
+    if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}")
         match job_config:
             case JobConfig.Serial.RAIN:
@@ -222,7 +225,8 @@ def check_series_job(job_config: JobConfig) -> None:
     else:
         logger.verbose("[TODO]: Update JOBS")
         status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        count = count_job(job_config, status)
+        filters = create_job_filters(job_config, status, last_check=False)
+        count = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
             trigger_job(job_config)

@@ -250,16 +250,13 @@ def get_jobs_yield(job_name, status)
         client_db.close()
 
 
-def count_job(job_name: str, status = None):
+def count_job(job_name: str, filters: List[elements]) -> int:
     """ Counts jobs registered in Client Database. """
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
     client_session = client_db.get_session()
     model          = get_job_model(job_name)
-    filters        = [model.HidroTable == job_name]
-    if status:
-        filters.append(model.Status.in_(status))
-    count_job = client_session.query(model).filter(*filters).count()
+    count_job      = client_session.query(model).filter(*filters).count()
     client_session.close()
     client_db.close()
     return count_job
