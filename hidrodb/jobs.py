@@ -269,8 +269,9 @@ def process_period(station_code, start_date, end_date, job_config):
                 break
             except Exception as e:
                 continue
+
     if start_date > end_date:
-        logger.warning(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
+        logger.trace(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
         jobs.append(SeriesJobs(
             StationID  = station_code,
             FromDate   = start_date,
@@ -292,7 +293,10 @@ def process_period(station_code, start_date, end_date, job_config):
             Status     = JobConfig.Status.PENDING.value,
             HidroTable = job_config
         ))
-        current_year = next_year
+        if next_year < end_date:
+            current_year = next_year
+        else:
+            break
     return jobs
 
 
