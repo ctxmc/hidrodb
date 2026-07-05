@@ -30,7 +30,6 @@ import os, requests, json, time, logging
 logger = logging.getLogger(__name__)
 
 from datetime import datetime
-from enum     import StrEnum
 
 _DATA_ENDPOINTS_MAP = {
     "Bacia":             "/EstacoesTelemetricas/HidroBacia/v1",
@@ -42,10 +41,10 @@ _DATA_ENDPOINTS_MAP = {
     "Estacao":           "/EstacoesTelemetricas/HidroInventarioEstacoes/v1",
     "Chuvas":            "/EstacoesTelemetricas/HidroSerieChuva/v1",
     "ResumoDescarga":    "/EstacoesTelemetricas/HidroSerieResumoDescarga/v1",
-    "CurvaDescarga":     "/EstacoesTelemetricas/HidroSerieSedimentos/v1",
-    "Sedimentos":        "/EstacoesTelemetricas/HidroSerieCotas/v1",
-    "QualAgua":          "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1",
-    "Cotas":             "/EstacoesTelemetricas/HidroSerieQA/v1",
+    "CurvaDescarga":     "/EstacoesTelemetricas/HidroSerieCurvaDescarga/v1",
+    "Sedimentos":        "/EstacoesTelemetricas/HidroSerieSedimentos/v1",
+    "QualAgua":          "/EstacoesTelemetricas/HidroSerieQA/v1",
+    "Cotas":             "/EstacoesTelemetricas/HidroSerieCotas/v1",
     "Granulometria":     "/EstacoesTelemetricas/HidroSerieGranulometria/v1",
     "PerfilTransversal": "/EstacoesTelemetricas/HidroSeriePerfilTransversal/v1",
     "Vazoes":            "/EstacoesTelemetricas/HidroSerieVazao/v1"
