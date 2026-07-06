@@ -61,3 +61,28 @@ def test_insert_credentials_creates_entry(client_db):
 def test_get_job_model(client_db, table_name, expected_result):
     model = get_job_model(table_name)
     assert model == expected_result
+
+
+@pytest.fixture
+def base_jobs():
+    return [
+        BaseJobs(HidroTable="Bacia",     Status=1),
+        BaseJobs(HidroTable="SubBacia",  Status=1),
+        BaseJobs(HidroTable="Entidade",  Status=1),
+        BaseJobs(HidroTable="Municipio", Status=1),
+        BaseJobs(HidroTable="Rio",       Status=1),
+        BaseJobs(HidroTable="Estado",    Status=1),
+    ]
+
+
+@pytest.mark.parametrize("job_type, jobs", [
+    (BaseJobs, "base_jobs"),
+])
+def test_insert_jobs(client_db, job_type, jobs, request):
+
+    jobs = request.getfixturevalue(jobs)
+    insert_jobs(jobs)
+    session = client_db.get_session()
+    inserted_jobs = session.query(job_type).all()
+    assert len(inserted_jobs) == len(jobs)
+    session.close()
