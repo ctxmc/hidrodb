@@ -40,8 +40,9 @@ from dataclasses import dataclass
 from hidrodb.database    import *
 from hidrodb.webservices import *
 
-MAX_WORKERS = None
-BATCH_SIZE  = None
+MAX_WORKERS      = None
+BATCH_SIZE       = None
+SKIP_FOR         = []
 
 class JobConfig:
     # """ TODO """
@@ -596,4 +597,7 @@ def run():
     for job in JobConfig.Base:
         check_base_job(job)
     for job in JobConfig.Series:
+        if job in SKIP_FOR:
+            logger.info(f"Skiping job for {job}.\n")
+            continue
         check_series_job(job)

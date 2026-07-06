@@ -31,6 +31,8 @@ import logging
 LOG_LEVEL = None
 
 def setup_arguments():
+    """ Setup command line arguments. """
+
     import argparse;
     parser = argparse.ArgumentParser()
 
@@ -46,7 +48,15 @@ def setup_arguments():
     batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
     parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
 
-    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
+    parser.add_argument('--log-level', default='INFO',
+                        choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help='Set logging level')
+
+    parser.add_argument('--skip-for', default=[], nargs='*',
+                        choices=['Chuvas', 'ResumoDescarga', 'Sedimentos',
+                                 'Cotas', 'Vazoes', 'Granulometria',
+                                 'CurvaDescarga', 'QualAgua', 'PerfilTransversal'],
+                        help='Skip job creation and requesition for the given choices')
 
     args = parser.parse_args()
 
@@ -55,6 +65,7 @@ def setup_arguments():
     import hidrodb.jobs as jobs
     jobs.MAX_WORKERS = args.max_workers
     jobs.BATCH_SIZE  = args.batch_size
+    jobs.SKIP_FOR    = args.skip_for
     import hidrodb.database as db
     db.CLIENT_PATH = args.client
     db.HIDRO_PATH  = args.hidro
