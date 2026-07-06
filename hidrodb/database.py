@@ -448,10 +448,6 @@ def data_to_model_orm(job_config: str, items: dict):
 
     model_data = []
     match job_config:
-        case "QualAgua":
-            for item in items:
-                model_data.append(WaterQuality.from_json(item))
-                model_data.append(WaterQualityStatus.from_json(item))
         case "PerfilTransversal":
             current_id      = None
             for item in items:

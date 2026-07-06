@@ -464,6 +464,24 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                 entries = handle_batch_update(job_config, items, check_keys)
                 if entries:
                     insert_hidro(entries)
+
+            case JobConfig.Series.WATER_QUALITY:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Hora_Dado'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    entries = insert_hidro(entries, False)
+                    entry_lookup = {}
+                    for entry in entries:
+                        key = (getattr(entry, 'EstacaoCodigo'), getattr(entry, 'Data'))
+                        entry_lookup[key] = entry
+                    for item in items:
+                        key = (item['codigoestacao'], item['Data_Hora_Dado'])
+                        if key in entry_lookup:
+                            item['Registro_ID'] = entry_lookup[key].RegistroID
+                    check_keys = {f'{job_config}ID': 'Registro_ID'}
+                    water_status_entries = handle_batch_update(f'{job_config}Status', items, check_keys)
+                    if water_status_entries:
+                        insert_hidro(water_status_entries)
             case JobConfig.Series():
                 entries = data_to_model_orm(job_config, items)
                 has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False

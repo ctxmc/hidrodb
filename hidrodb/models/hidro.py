@@ -26,7 +26,8 @@
 from sqlalchemy import (
     Column, Float, SmallInteger,
     BigInteger, Integer, String,
-    DateTime, UniqueConstraint
+    DateTime, UniqueConstraint,
+    ForeignKey
 )
 from sqlalchemy.orm import declarative_base
 
@@ -874,13 +875,12 @@ class WaterQuality(HidroBaseModel):
         )
 
 
-class WaterQualityStatus(HidroBase):
+class WaterQualityStatus(HidroBaseModel):
     """ Database model for storing Water Quality Status data. """
 
     __tablename__ = 'QualAguaStatus'
 
-    RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger, default=0)
+    QualAguaID = Column(Integer, ForeignKey("QualAgua.RegistroID"), nullable=False)
     locals().update({
         f'QualAgua{i:03d}Status': Column(f'QualAgua{i:03d}Status', SmallInteger)
         for i in range(1, 148)
@@ -889,6 +889,7 @@ class WaterQualityStatus(HidroBase):
     @classmethod
     def from_json(cls, json_data: dict):
         kwargs = {}
+        kwargs["QualAguaID"] = json_data.get("Registro_ID")
         for i in range(1, 148):
             kwargs[f"QualAgua{i:03d}Status"] = json_data.get(f"{i}_Status")
 
