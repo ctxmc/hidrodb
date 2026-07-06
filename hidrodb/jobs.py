@@ -428,8 +428,12 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
     """Insert data into DB and update the jobs as well. """
 
     start_time = time.perf_counter()
+    entries = []
     if len(items) > 0:
-        items = validate_data(job_config, items)
+        match job_config:
+            case JobConfig.Series():
+                items = validate_series_items(job_config, items)
+        items = convert_json_items(job_config, items)
         entries = data_to_model_orm(job_config, items)
         has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
         insert_hidro(entries, has_id)
@@ -441,7 +445,7 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
     return elapsed_time
 
 
-def validate_data(job_config: JobConfig, items):
+def validate_series_items(job_config: JobConfig, items):
     """Validate returned data by the API. """
 
     match job_config:
@@ -467,6 +471,7 @@ def validate_data(job_config: JobConfig, items):
     if dict_len:
         items = [item for item in items if len(item) == dict_len]
 
+def convert_json_items(job_config, items):
     for item in items:
         for key, value in item.items():
             if isinstance(value, str):
