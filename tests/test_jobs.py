@@ -27,7 +27,8 @@ from datetime import datetime, timedelta
 
 import hidrodb.jobs
 
-@pytest.mark.parametrize("station_code, start_date, end_date, expected_status", [
+
+CORRUPTED_DATES_PARAMS = [
     (3154001, "2911-12-01 00:00:00", "2026-07-01 00:00:00", 4),
     (1048002, "1996-12-01 00:00:00", "1977-11-01 00:00:00", 4),
     (1740000, "2009-01-02 00:00:00", "2009-01-01 00:00:00", 4),
@@ -39,20 +40,21 @@ import hidrodb.jobs
     (2652043, "1989-07-01 00:00:00", "1987-08-01 00:00:00", 4),
     (2950036, "1966-01-02 00:00:00", "1966-01-01 00:00:00", 4),
     (2056005, "2018-01-02 00:00:00", "2018-01-01 00:00:00", 4),
-])
+]
 
+@pytest.mark.parametrize("station_code, start_date, end_date, expected_status", CORRUPTED_DATES_PARAMS)
 def test_process_period_returns_corrupted_for_invalid_dates(station_code, start_date, end_date, expected_status):
     """Test that process_period returns CORRUPTED status when FromDate > ToDate."""
 
     from hidrodb.jobs import JobConfig, process_period
-    result = process_period(station_code, start_date, end_date, JobConfig.Serial.RAIN)
+    result = process_period(station_code, start_date, end_date, JobConfig.Series.RAIN)
 
     assert len(result) == 1, f"Expected 1 job, got {len(result)}"
     assert result[0].Status == expected_status, \
         f"Expected status {expected_status}, got {result[0].Status}"
     assert result[0].StationID == station_code
-    assert result[0].FromDate == datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
-    assert result[0].ToDate == datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+    assert result[0].FromDate  == datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+    assert result[0].ToDate    == datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 
 
 def test_process_period_returns_corrupted_for_future_date():
@@ -60,7 +62,7 @@ def test_process_period_returns_corrupted_for_future_date():
 
     from hidrodb.jobs import JobConfig, process_period
     future_date = (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
-    result = hidrodb.jobs.process_period(123456, future_date, "2020-01-01 00:00:00", JobConfig.Serial.RAIN)
+    result = hidrodb.jobs.process_period(123456, future_date, "2020-01-01 00:00:00", JobConfig.Series.RAIN)
 
     assert len(result) == 1
     assert result[0].Status == 4
