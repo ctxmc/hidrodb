@@ -57,7 +57,7 @@ class JobConfig:
         STATE             = "Estado"
         STATION           = "Estacao"
 
-    class Serial(StrEnum):
+    class Series(StrEnum):
         """ Enum to hold Hidro Jobs that will run with threads. """
 
         RAIN              = "Chuvas"
@@ -200,23 +200,20 @@ def check_series_job(job_config: JobConfig) -> None:
     if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}")
         match job_config:
-            case JobConfig.Serial.RAIN:
+            case JobConfig.Series.RAIN:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_rain_period()]
-            case (JobConfig.Serial.DISCHARGE_SUMMARY
-                  | JobConfig.Serial.DISCHARGE_FLOW
-                  | JobConfig.Serial.CROSS_SECTION
-                  | JobConfig.Serial.FLOW_RATE
-            ):
+            case (JobConfig.Series.DISCHARGE_SUMMARY | JobConfig.Series.DISCHARGE_FLOW |
+                  JobConfig.Series.CROSS_SECTION     | JobConfig.Series.FLOW_RATE):
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_discharge_period()]
-            case JobConfig.Serial.SEDIMENTS | JobConfig.GRANULOMETRY:
+            case JobConfig.Series.SEDIMENTS | JobConfig.Series.GRANULOMETRY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_sediments_period()]
-            case JobConfig.Serial.WATER_QUALITY:
+            case JobConfig.Series.WATER_QUALITY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_water_period()]
-            case JobConfig.Serial.STAGE:
+            case JobConfig.Series.STAGE:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_stage_period()]
         create_series_jobs(stations_data, job_config)
@@ -433,20 +430,22 @@ def validate_data(job_config: JobConfig, items):
     """Validate returned data by the API. """
 
     match job_config:
-        case JobConfig.Serial.RAIN:
+        case JobConfig.Series.RAIN:
             dict_len = 76
-        case JobConfig.Serial.DISCHARGE_SUMMARY:
+        case JobConfig.Series.DISCHARGE_SUMMARY:
             dict_len = 10
-        case JobConfig.Serial.DISCHARGE_FLOW:
+        case JobConfig.Series.DISCHARGE_FLOW:
             dict_len = 18
-        case JobConfig.Serial.STAGE:
+        case JobConfig.Series.STAGE:
             dict_len = 78
-        case JobConfig.Serial.GRANULOMETRY:
+        case JobConfig.Series.GRANULOMETRY:
             dict_len = 117
-        case JobConfig.Serial.CROSS_SECTION:
+        case JobConfig.Series.CROSS_SECTION:
             dict_len = 18
-        case JobConfig.Serial.WATER_QUALITY:
+        case JobConfig.Series.WATER_QUALITY:
             dict_len = 303
+        case JobConfig.Series.SEDIMENTS:
+            dict_len = 18
         case _:
             dict_len = None
 
@@ -469,6 +468,5 @@ def validate_data(job_config: JobConfig, items):
 def run():
     for job in JobConfig.Base:
         check_base_job(job)
-    for job in JobConfig.Serial:
+    for job in JobConfig.Series:
         check_series_job(job)
-        exit(0)
