@@ -22,3 +22,21 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import pytest
+from unittest.mock import patch
+
+from hidrodb.database        import *
+from hidrodb.database        import _setup_db
+from hidrodb.database.client import *
+
+@pytest.fixture
+def client_db(tmp_path):
+    """Create a temporary CLIENT database for testing."""
+
+    db_path = str(tmp_path / "client.db")
+    db_type = DatabaseType.CLIENT
+    connection = _setup_db(db_path, db_type)
+    with patch('hidrodb.database.client.client_db', connection):
+        yield connection
+        ClientBase.metadata.drop_all(connection.engine)
+        connection.close()
