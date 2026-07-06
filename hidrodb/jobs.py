@@ -456,6 +456,14 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                 entries = handle_batch_update(job_config, items, check_keys)
                 if entries:
                     insert_hidro(entries)
+
+            case JobConfig.Series.DISCHARGE_FLOW:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'NumeroCurva': 'Numero_Curva',
+                              'PeriodoValidadeInicio': 'Periodo_Validade_Inicio',
+                              'PeriodoValidadeFim': 'Periodo_Validade_Fim'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
             case JobConfig.Series():
                 entries = data_to_model_orm(job_config, items)
                 has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
