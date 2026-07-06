@@ -54,7 +54,7 @@ def request_hidro_ws(endpoint, headers, params={}):
     """ Make a request to ANA API and returns the json."""
 
     url = "https://www.ana.gov.br/hidrowebservice"
-    logger.trace(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
+    logger.verbose(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
     response = requests.get(f"{url}{endpoint}", headers=headers, params=params)
     if response.ok:
         try:

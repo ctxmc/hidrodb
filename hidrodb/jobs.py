@@ -30,8 +30,8 @@ import logging, time
 logger = logging.getLogger(__name__)
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from queue              import Queue
 from threading          import Thread, Lock
+from queue              import Queue
 
 from datetime    import datetime, timedelta
 from enum        import Enum, auto, StrEnum
@@ -124,8 +124,6 @@ def get_token() -> Token.Token:
     """
 
     global _token_cache
-    logger.verbose("Cheking Token.")
-
     if _token_cache is None:
         _token_cache = get_token_model()
 
@@ -187,7 +185,7 @@ def check_base_job(job_config: JobConfig.Base) -> None:
             logger.info(f"Initiating jobs for {job_config}")
             trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for {job_config}")
+            logger.info(f"No pending jobs for {job_config}.\n")
 
 
 def check_series_job(job_config: JobConfig) -> None:
@@ -195,7 +193,6 @@ def check_series_job(job_config: JobConfig) -> None:
     Create jobs if there is no entries and start pending jobs requisition.
     """
 
-    logger.trace(f"Checking Job for {job_config}")
     filters = create_job_filters(job_config, None, last_check=False)
     if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}")
@@ -228,7 +225,7 @@ def check_series_job(job_config: JobConfig) -> None:
             logger.info(f"Initiating {count} jobs for {job_config}")
             trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for {job_config}")
+            logger.info(f"No pending jobs for {job_config}.\n")
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
@@ -241,7 +238,11 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
         futures = [executor.submit(process_period, *data, job_config)
                    for data in stations_data]
         for future in as_completed(futures):
-            jobs.extend(future.result())
+            try:
+                processed_jobs = future.result()
+                jobs.extend(processed_jobs)
+            except Exception as e:
+                logger.error(f"Error processing period: {e}")
     insert_jobs(jobs)
     elapsed = time.time() - start
     logger.info(f"Created {len(jobs)} jobs for {job_config} in {elapsed:.2f} seconds")
@@ -303,9 +304,16 @@ def trigger_job(job_config: JobConfig, filters) -> None:
 
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for job in get_jobs(job_config, filters):
-            executor.submit(handle_job_request, job, job_config)
+        futures = [executor.submit(handle_job_request, job, job_config)
+                   for job in get_jobs(job_config, filters)]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logger.error(f"[WORKER]: {e}")
+
     finish_queue = QueueData(
         job_config  = job_config,
         job         = None,
@@ -359,10 +367,11 @@ def db_writer() -> None:
     worker_elapsed = 0
     total_elapsed  = 0
     insert_elapsed = 0
+    batch_elapsed  = 0
     batch_start_time = None
     while True:
-        job_config, job, data, worker_time, stop_signal = write_queue.get()
         try:
+            job_config, job, data, worker_time, stop_signal = write_queue.get()
             worker_elapsed += worker_time
             if job:
                 batch_buffer["jobs"].append(job)
@@ -370,7 +379,6 @@ def db_writer() -> None:
                 batch_buffer["data"].extend(data)
                 if batch_start_time is None:
                     batch_start_time = time.time()
-
 
             if len(batch_buffer["data"]) >= BATCH_SIZE or stop_signal:
                 if batch_start_time is not None:
@@ -380,14 +388,15 @@ def db_writer() -> None:
                 insert_elapsed  = write_data(job_config,
                                              batch_buffer["jobs"],
                                              batch_buffer["data"])
-                total_elapsed  += batch_elapsed + insert_elapsed
+                total_elapsed += batch_elapsed + insert_elapsed
+
+                logger.verbose(f"""[TIMER {job_config}]: """
+                               f"""Time to reach batch: {batch_elapsed}, """
+                               f"""Time to insert batch: {insert_elapsed}. """)
 
                 logger.info(f"""[WRITER {job_config}]: """
                             f"""Total processed Data: {total_data}, """
                             f"""Total finished Jobs: {total_jobs}. """)
-                logger.trace(f"""[TIMER {job_config}]: """
-                            f"""Time to reach batch: {batch_elapsed}, """
-                            f"""Time to insert batch: {insert_elapsed}. """)
                 logger.trace(f"""[TIMER {job_config}]: """
                             f"""Total worker elapsed: {worker_elapsed}, """
                             f"""Total writer elapsed: {total_elapsed}.""")
@@ -396,9 +405,12 @@ def db_writer() -> None:
                 batch_buffer["data"].clear()
                 batch_start_time = None
 
-
             if stop_signal:
-                logger.info(f"""Finished jobs for {job_config}""")
+                logger.info(f"""[WRITER]: Finished jobs for {job_config} """
+                            f"""Total processed Data: {total_data}, """
+                            f"""Total finished Jobs: {total_jobs}.""")
+                logger.info(f"""[WRITER]: Total worker elapsed: {worker_elapsed}, """
+                            f"""Total writer elapsed: {total_elapsed}.""")
                 break;
 
         except Exception as e:
