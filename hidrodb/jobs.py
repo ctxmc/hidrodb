@@ -482,10 +482,18 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                     water_status_entries = handle_batch_update(f'{job_config}Status', items, check_keys)
                     if water_status_entries:
                         insert_hidro(water_status_entries)
-            case JobConfig.Series():
-                entries = data_to_model_orm(job_config, items)
-                has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
-                insert_hidro(entries, has_id)
+
+            case JobConfig.Series.CROSS_SECTION:
+                current_id = None
+                for item in items:
+                    item_id = item.get("Registro_ID")
+                    if current_id != item_id:
+                        current_id = item_id
+                        if not any(entry.RegistroID == current_id for entry in entries):
+                            entries.append(get_hidro_model(job_config).from_json(item))
+                    entries.append(VerticalCrossSection.from_json(item))
+                insert_hidro(entries)
+
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
@@ -520,6 +528,10 @@ def validate_series_items(job_config: JobConfig, items):
 
     if dict_len:
         items = [item for item in items if len(item) == dict_len]
+
+    match job_config:
+        case JobConfig.Series.CROSS_SECTION:
+            return items
 
     seen = set()
     filtered = []

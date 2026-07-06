@@ -1145,11 +1145,12 @@ class Granulometry(HidroBaseModel):
         )
 
 
-class CrossSection(HidroBaseModel):
+class CrossSection(HidroBase):
     """ Database model for storing Cross Section data. """
 
     __tablename__ = 'PerfilTransversal'
 
+    RegistroID        = Column(Float, primary_key=True)
     EstacaoCodigo     = Column(BigInteger)
     NivelConsistencia = Column(SmallInteger)
     Data              = Column(DateTime)
@@ -1184,23 +1185,21 @@ class CrossSection(HidroBaseModel):
         )
 
 
-class VerticalCrossSection(HidroBase):
+class VerticalCrossSection(HidroBaseModel):
     """ Database model for storing Vertical Cross Section data. """
 
     __tablename__ = 'PerfilTransversalVert'
 
-    RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger, default=0)
-    Cota       = Column(Float)
-    Distancia  = Column(Float)
+    PerfilTransversalID = Column(Float, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
+    Cota                = Column(Float)
+    Distancia           = Column(Float)
 
     @classmethod
-    def from_json(cls, json_data: dict, reg_id):
+    def from_json(cls, json_data: dict):
         return cls(
-            RegistroID = reg_id,
-            Removido   = 0,
-            Cota       = json_data.get("Cota"),
-            Distancia  = json_data.get("Distancia")
+            PerfilTransversalID = json_data.get("Registro_ID"),
+            Cota                = json_data.get("Cota"),
+            Distancia           = json_data.get("Distancia")
         )
 
 
@@ -1241,7 +1240,7 @@ class FlowRate(HidroBaseModel):
             "EstacaoCodigo":        json_data.get("codigoestacao"),
             "NivelConsistencia":    json_data.get("Nivel_Consistencia"),
             "Data":                 json_data.get("Data_Hora_Dado"),
-            # "Hora":                 
+            # "Hora":               json_data.get("?"),
             "MediaDiaria":          json_data.get("Mediadiaria"),
             "MetodoObtencaoVazoes": json_data.get("Metodo_Obtencao_Vazoes"),
             "Maxima":               json_data.get("Maxima"),
