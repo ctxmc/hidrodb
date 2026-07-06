@@ -40,3 +40,14 @@ def client_db(tmp_path):
         yield connection
         ClientBase.metadata.drop_all(connection.engine)
         connection.close()
+
+
+def test_insert_credentials_creates_entry(client_db):
+
+    insert_credentials(user_id="test_user", password="test_pass")
+    session = client_db.get_session()
+    result = session.query(Credentials).filter_by(ID="test_user").first()
+    assert result is not None
+    assert result.ID == "test_user"
+    assert result.Password == "test_pass"
+    session.close()
