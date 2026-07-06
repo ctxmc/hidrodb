@@ -481,6 +481,39 @@ def validate_series_items(job_config: JobConfig, items):
     if dict_len:
         items = [item for item in items if len(item) == dict_len]
 
+    seen = set()
+    filtered = []
+    for index, item in enumerate(items):
+        try:
+            match job_config:
+                case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
+                      JobConfig.Series.STAGE     | JobConfig.Series.WATER_QUALITY     |
+                      JobConfig.Series.SEDIMENTS | JobConfig.Series.FLOW_RATE):
+                    key = (item['codigoestacao'], item['Data_Hora_Dado'])
+                case JobConfig.Series.GRANULOMETRY:
+                    key = (item['codigoestacao'], item['Data_Dado'],
+                           item['Hora_Inicial'], item['Hora_Final'])
+                case JobConfig.Series.DISCHARGE_FLOW:
+                    key = (item['codigoestacao'], item['Numero_Curva'],
+                           item['Periodo_Validade_Inicio'], item['Periodo_Validade_Fim'])
+
+            if key not in seen:
+                seen.add(key)
+                filtered.append(item)
+            else:
+                logger.verbose(f"[VALIDATE JOB]: Duplicated item: {key}")
+
+        except Exception as e:
+            logger.error(f"Error at index {index}: {e}")
+            logger.error(f"Item: {item}, type: {type(item)}")
+            pass
+
+    if filtered:
+        items = filtered
+
+    return items
+
+
 def convert_json_items(job_config, items):
     for item in items:
         for key, value in item.items():
