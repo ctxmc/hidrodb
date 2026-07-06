@@ -51,3 +51,13 @@ def test_insert_credentials_creates_entry(client_db):
     assert result.ID == "test_user"
     assert result.Password == "test_pass"
     session.close()
+
+
+@pytest.mark.parametrize("table_name, expected_result", [
+    ("Bacia",     BaseJobs), ("SubBacia",  BaseJobs),
+    ("Entidade",  BaseJobs), ("Municipio", BaseJobs),
+    ("Rio",       BaseJobs), ("Estado",    BaseJobs)
+])
+def test_get_job_model(client_db, table_name, expected_result):
+    model = get_job_model(table_name)
+    assert model == expected_result
