@@ -86,3 +86,29 @@ def test_insert_jobs(client_db, job_type, jobs, request):
     inserted_jobs = session.query(job_type).all()
     assert len(inserted_jobs) == len(jobs)
     session.close()
+
+
+@pytest.mark.parametrize("job", [pytest.param("base_jobs", marks=[])])
+def test_update_base_jobs(client_db, job, request):
+
+    jobs = request.getfixturevalue(job)
+    session = client_db.get_session()
+    session.add_all(jobs)
+    session.commit()
+    inserted_jobs = session.query(BaseJobs).all()
+    assert len(inserted_jobs) == len(jobs)
+    session.close()
+
+    import random;
+    from datetime import datetime;
+    for job in jobs:
+        job.Status = random.randint(2, 5)
+        job.LastCheck = datetime.now()
+    update_jobs(jobs, job.HidroTable)
+    session = client_db.get_session()
+    updated_jobs = session.query(BaseJobs).all()
+    for updated_job in updated_jobs:
+        assert 2 <= updated_job.Status <= 5
+        assert updated_job.LastCheck is not None
+        assert isinstance(job.LastCheck, datetime)
+    session.close()
