@@ -258,6 +258,7 @@ def count_job(job_name: str, filters: List[elements]) -> int:
     client_db.close()
     return count_job
 
+
 def count_job_by_status(job_name: str):
 
     client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
@@ -377,8 +378,53 @@ def get_stage_period():
     hidro_db.close()
     return stage_period
 
+
+def handle_batch_update(job_name: str, items, check_keys: set):
+
+    hidro_db      = DatabaseConnection(HIDRO_PATH, DatabaseType.HIDRO)
+    hidro_session = hidro_db.get_hidro_session()
+    model = get_hidro_model(job_name)
+
+    filter_values = {}
+    for model_key, json_key in check_keys.items():
+        filter_values[model_key] = [item.get(json_key) for item in items]
+
+    query = hidro_session.query(model)
+    for model_key, values in filter_values.items():
+        attr = getattr(model, model_key)
+        query = query.filter(attr.in_(values))
+
+    existing = query.all()
+
+    existing_map = {}
+    for e in existing:
+        key = tuple(getattr(e, k) for k in check_keys.keys())
+        existing_map[key] = e
+
+    new_entries = []
+    for item in items:
+        key = tuple(item.get(check_keys[k]) for k in check_keys.keys())
+        entry = existing_map.get(key)
+        if entry:
+            entry.from_json(item)
+            from sqlalchemy import inspect
+            if inspect(entry).modified:
+                logger.info(f"Updated {model.__tablename__} entry code {key}.")
+                hidro_session.merge(entry)
+                hidro_session.commit()
+            else:
+                logger.verbose(f"No Updates for {model.__tablename__} entry code {key}.")
+        else:
+            new_entries.append(model.from_json(item))
+            logger.verbose(f"New {model.__tablename__} entry code {key}.")
+    hidro_session.close()
+    hidro_db.close()
+    return new_entries
+
+
 def get_hidro_model(name: str):
     return _HIDRO_MODELS_MAP[name]
+
 
 def get_job_model(name: str):
     match name:

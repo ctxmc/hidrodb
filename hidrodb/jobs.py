@@ -433,15 +433,25 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
         match job_config:
             case JobConfig.Series():
                 items = validate_series_items(job_config, items)
-        items = convert_json_items(job_config, items)
-        entries = data_to_model_orm(job_config, items)
-        has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
-        insert_hidro(entries, has_id)
+        match job_config:
+            case JobConfig.Base():
+                if job_config == "Estado":
+                    check_keys = {"Codigo": "codigouf"}
+                else:
+                    check_keys = {f"Codigo": f'codigo{job_config.lower()}'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
+            case JobConfig.Series():
+                entries = data_to_model_orm(job_config, items)
+                has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
+                insert_hidro(entries, has_id)
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.trace(f"[WRITER {job_config}]: Inserted {len(entries)} entries in {elapsed_time} seconds")
+    if entries:
+        logger.trace(f"[WRITER {job_config}]: Inserted {len(entries)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
