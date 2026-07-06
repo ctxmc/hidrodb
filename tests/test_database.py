@@ -23,34 +23,54 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import pytest
+from unittest.mock import patch
+
 from hidrodb.database import *
+from hidrodb.database import _setup_db
 
-@pytest.fixture
-def hidro_db(tmp_path):
+DATABASE_PARAMS = [
+    ("hidro.db",  'hidrodb.database.hidro.HIDRO_PATH',  DatabaseType.HIDRO),
+    ("client.db", 'hidrodb.database.client.CLIENT_PATH', DatabaseType.CLIENT),
+]
+
+@pytest.mark.parametrize("filename, patch_module, db_type", DATABASE_PARAMS)
+def test_setup_db_creates_tables_when_empty(tmp_path, filename, patch_module, db_type):
+    """Test that init_db creates tables when database is empty."""
+
+    db_path = str(tmp_path / filename)
+    connection = DatabaseConnection(db_path, db_type)
+    session = connection.get_session()
+    check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
+    result = session.execute(check_tables_sql)
+    tables = result.fetchall()
+    assert len(tables) == 0
+    session.close()
+    connection.close()
+
+    with patch(patch_module, db_path):
+        new_connection = _setup_db(db_path, db_type)
+        session = new_connection.get_session()
+        result = session.execute(check_tables_sql)
+        tables = result.fetchall()
+        assert len(tables) > 0
+        session.close()
+        new_connection.close()
+
+
+@pytest.fixture(params=DATABASE_PARAMS)
+def db_connection(tmp_path, request):
     """Create a temporary database connection for testing."""
 
-    hidro_path       = tmp_path / "hidro.db"
-    hidro_connection = DatabaseConnection(str(hidro_path), DatabaseType.HIDRO)
-    yield hidro_connection
-    hidro_connection.close()
-
-@pytest.fixture
-def client_db(tmp_path):
-    """Create a temporary database connection for testing."""
-
-    client_path       = tmp_path / "client.db"
-    client_connection = DatabaseConnection(str(client_path), DatabaseType.CLIENT)
-    yield client_connection
-    client_connection.close()
+    filename, _, db_type = request.param
+    db_path = tmp_path / filename
+    connection = DatabaseConnection(str(db_path), db_type)
+    yield connection
+    connection.close()
 
 
-def test_get_session_returns_session(hidro_db, client_db):
+def test_get_session_returns_session(db_connection):
     """Test that get_session returns a valid session."""
 
-    hidro_session = hidro_db.get_session()
-    assert hidro_session is not None
-    hidro_session.close()
-
-    client_session = client_db.get_session()
-    assert client_session is not None
-    client_session.close()
+    session = db_connection.get_session()
+    assert session is not None
+    session.close()

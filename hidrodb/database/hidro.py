@@ -1,0 +1,202 @@
+# Copyright (c) 2026, base
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import logging
+logger = logging.getLogger(__name__)
+
+from typing import List
+
+from hidrodb.models.hidro  import *
+
+HIDRO_PATH  = None
+hidro_db    = None
+
+_HIDRO_MODELS_MAP = {
+    "Bacia":                 Basin,
+    "SubBacia":              SubBasin,
+    "Entidade":              Entity,
+    "Municipio":             Township,
+    "Rio":                   River,
+    "Estado":                State,
+    "Estacao":               Station,
+    "Chuvas":                Rain,
+    "ResumoDescarga":        DischargeSummary,
+    "CurvaDescarga":         DischargeFlow,
+    "Sedimentos":            Sediments,
+    "QualAgua":              WaterQuality,
+    "QualAguaStatus":        WaterQualityStatus,
+    "Cotas":                 Stage,
+    "Granulometria":         Granulometry,
+    "PerfilTransversal":     CrossSection,
+    "PerfilTransversalVert": VerticalCrossSection,
+    "Vazoes":                FlowRate,
+}
+
+
+def get_hidro_model(name: str):
+    return _HIDRO_MODELS_MAP[name]
+
+
+def insert_hidro(collection: List[HidroBase], expire = True) -> List[HidroBase]:
+    """ Insert a list of Hidro ORM Model into Hidro Database"""
+
+    hidro_session = hidro_db.get_session()
+    hidro_session.expire_on_commit = expire
+    hidro_session.add_all(collection)
+    hidro_session.flush()
+    hidro_session.commit()
+    hidro_session.close()
+    return collection
+
+
+def count_hidro(model: HidroBase):
+    """ Counts a given Model in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    count_model   = hidro_session.query(model).count()
+    hidro_session.close()
+    return count_model
+
+
+def get_states() -> State:
+    """ Returns registered States in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
+    hidro_session.close()
+    return states
+
+
+def get_rain_period():
+    """ Returns Stations with Rain Periods in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    rain_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoRegistradorChuvaInicio,
+        Station.PeriodoRegistradorChuvaFim
+    ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
+    hidro_session.close()
+    return rain_period
+
+
+def get_discharge_period():
+    """ Returns Stations with Discharge Periods in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    discharge_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoDescLiquidaInicio,
+        Station.PeriodoDescLiquidaFim
+    ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
+    hidro_session.close()
+    return discharge_period
+
+
+def get_sediments_period():
+    """ Returns Stations with Sediments Periods in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    sediments_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoSedimentosInicio,
+        Station.PeriodoSedimentosFim
+    ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
+    hidro_session.close()
+    return sediments_period
+
+
+def get_water_period():
+    """ Returns Stations with Water Periods in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    water_period = hidro_session.query(
+        Station.Codigo,
+        Station.PeriodoQualAguaInicio,
+        Station.PeriodoQualAguaFim
+    ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
+    hidro_session.close()
+    return water_period
+
+
+def get_stage_period():
+    """ Returns Stations with Stage Periods in Hidro Database. """
+
+    hidro_session = hidro_db.get_session()
+    sql = text("""
+    SELECT 
+        Codigo, 
+        MIN(PeriodoInicio) AS PeriodoInicio, 
+        MIN(PeriodoFim)    AS PeriodoFim
+    FROM (
+        SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
+        FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
+        UNION
+        SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
+        FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
+    ) combined
+    GROUP BY Codigo;
+    """)
+    stage_period = hidro_session.execute(sql).fetchall()
+    hidro_session.close()
+    return stage_period
+
+
+def handle_batch_update(job_name: str, items, check_keys: set):
+
+    hidro_session = hidro_db.get_session()
+    model = get_hidro_model(job_name)
+
+    filter_values = {}
+    for model_key, json_key in check_keys.items():
+        filter_values[model_key] = [item.get(json_key) for item in items]
+
+    query = hidro_session.query(model)
+    for model_key, values in filter_values.items():
+        attr = getattr(model, model_key)
+        query = query.filter(attr.in_(values))
+
+    existing = query.all()
+
+    existing_map = {}
+    for e in existing:
+        key = tuple(getattr(e, k) for k in check_keys.keys())
+        existing_map[key] = e
+
+    new_entries = []
+    for item in items:
+        key = tuple(item.get(check_keys[k]) for k in check_keys.keys())
+        entry = existing_map.get(key)
+        if entry:
+            entry.from_json(item)
+            from sqlalchemy import inspect
+            if inspect(entry).modified:
+                logger.info(f"Updated {model.__tablename__} entry code {key}.")
+                hidro_session.merge(entry)
+                hidro_session.commit()
+            else:
+                logger.verbose(f"No Updates for {model.__tablename__} entry code {key}.")
+        else:
+            new_entries.append(model.from_json(item))
+            logger.verbose(f"New {model.__tablename__} entry code {key}.")
+    hidro_session.close()
+    return new_entries

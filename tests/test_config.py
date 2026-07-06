@@ -35,11 +35,11 @@ def test_setup_arguments_defaults():
         import hidrodb.jobs, hidrodb.database
 
         hidrodb.config.setup_arguments()
-        assert hidrodb.config.LOG_LEVEL     == 'INFO'
-        assert hidrodb.jobs.MAX_WORKERS     == 10
-        assert hidrodb.jobs.BATCH_SIZE      == 1000
-        assert hidrodb.database.CLIENT_PATH == 'db/client.db'
-        assert hidrodb.database.HIDRO_PATH  == 'db/hidro.db'
+        assert hidrodb.config.LOG_LEVEL            == 'INFO'
+        assert hidrodb.jobs.MAX_WORKERS            == 10
+        assert hidrodb.jobs.BATCH_SIZE             == 1000
+        assert hidrodb.database.client.CLIENT_PATH == 'db/client.db'
+        assert hidrodb.database.hidro.HIDRO_PATH   == 'db/hidro.db'
 
 
 def test_setup_arguments_custum():
@@ -58,11 +58,11 @@ def test_setup_arguments_custum():
         import hidrodb.jobs, hidrodb.database
 
         hidrodb.config.setup_arguments()
-        assert hidrodb.config.LOG_LEVEL     == 'DEBUG'
-        assert hidrodb.jobs.MAX_WORKERS     == 5
-        assert hidrodb.jobs.BATCH_SIZE      == 500
-        assert hidrodb.database.CLIENT_PATH == 'custom/client.db'
-        assert hidrodb.database.HIDRO_PATH  == 'custom/hidro.db'
+        assert hidrodb.config.LOG_LEVEL            == 'DEBUG'
+        assert hidrodb.jobs.MAX_WORKERS            == 5
+        assert hidrodb.jobs.BATCH_SIZE             == 500
+        assert hidrodb.database.client.CLIENT_PATH == 'custom/client.db'
+        assert hidrodb.database.hidro.HIDRO_PATH   == 'custom/hidro.db'
 
 
 def test_setup_logger_creates_custom_levels(caplog):

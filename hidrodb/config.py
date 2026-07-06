@@ -66,9 +66,13 @@ def setup_arguments():
     jobs.MAX_WORKERS = args.max_workers
     jobs.BATCH_SIZE  = args.batch_size
     jobs.SKIP_FOR    = args.skip_for
-    import hidrodb.database as db
-    db.CLIENT_PATH = args.client
-    db.HIDRO_PATH  = args.hidro
+    jobs.STATIONS    = args.stations
+
+    import hidrodb.database.hidro as hidro
+    hidro.HIDRO_PATH  = args.hidro
+    import hidrodb.database.client as client
+    client.CLIENT_PATH = args.client
+
 
 def setup_logger():
     """ Setup logger object accross application. """
@@ -97,11 +101,11 @@ def _make_logger(level):
 def setup_database():
     """ Setup Hidro and Client Database. """
 
-    import hidrodb.database as db
-    db.init_db(db.CLIENT_PATH, db.DatabaseType.CLIENT)
-    db.init_db(db.HIDRO_PATH,  db.DatabaseType.HIDRO)
-    if not db.check_credentials():
+    import hidrodb.database        as db
+    import hidrodb.database.client as client
+    db.init_db()
+    if not client.check_credentials():
         user_id = input("Enter API username: ")
         import getpass;
         password = getpass.getpass("Enter API password: ")
-        db.insert_credentials(user_id, password)
+        client.insert_credentials(user_id, password)

@@ -37,7 +37,9 @@ from datetime    import datetime, timedelta
 from enum        import Enum, auto, StrEnum
 from dataclasses import dataclass
 
-from hidrodb.database    import *
+from hidrodb.database.client import *
+from hidrodb.database.hidro  import *
+
 from hidrodb.webservices import *
 
 MAX_WORKERS      = None
