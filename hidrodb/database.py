@@ -223,14 +223,15 @@ def create_job_filters(job_name: str, status: List[int], last_check: bool) -> Li
     model   = get_job_model(job_name)
     filters = [model.HidroTable == job_name]
     if status or last_check:
-        from sqlalchemy import or_
-        or_conditions = []
+        sub_filters = []
         if status:
-            or_conditions.append(model.Status.in_(status))
+            sub_filters.append(model.Status.in_(status))
         if last_check:
             from datetime import date
-            or_conditions.append(model.LastCheck < date.today())
-        filters.append(or_(*or_conditions))
+            sub_filters.append(model.LastCheck < date.today())
+        if sub_filters:
+            from sqlalchemy import or_
+            filters.append(or_(*sub_filters))
     return filters
 
 
