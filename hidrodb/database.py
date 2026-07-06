@@ -258,6 +258,18 @@ def count_job(job_name: str, filters: List[elements]) -> int:
     client_db.close()
     return count_job
 
+def count_job_by_status(job_name: str):
+
+    client_db      = DatabaseConnection(CLIENT_PATH, DatabaseType.CLIENT)
+    client_session = client_db.get_session()
+    model          = get_job_model(job_name)
+    count_jobs     = (client_session.query(model.Status, func.count(model.ID).label('count'))
+                      .filter(model.HidroTable == job_name, model.Status != 4)
+                      .group_by(model.Status).order_by(model.Status).all())
+    client_session.close()
+    client_db.close()
+    return count_jobs
+
 
 def count_hidro(model: HidroBase):
     """ Counts a given Model in Hidro Database. """

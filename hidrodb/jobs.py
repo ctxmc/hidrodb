@@ -323,6 +323,9 @@ def trigger_job(job_config: JobConfig, filters) -> None:
     )
     write_queue.put(finish_queue)
     writer.join()
+    status_map = {1: "Pending", 2: "Failed", 5: "Completed"}
+    counts = {status_map.get(s, f"Unknown({s})"): c for s, c in count_job_by_status(job_config)}
+    logger.info(f"Pending: {counts.get('Pending', 0)}, Failed: {counts.get('Failed', 0)}, Completed: {counts.get('Completed', 0)}\n")
 
 
 token_lock = Lock()
