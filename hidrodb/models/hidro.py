@@ -23,7 +23,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """ Provides models for Hidro Database. """
 
-from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime
+from sqlalchemy import (
+    Column, Float, SmallInteger,
+    BigInteger, Integer, String,
+    DateTime, UniqueConstraint
+)
 from sqlalchemy.orm import declarative_base
 
 from datetime import datetime
@@ -34,19 +38,11 @@ class HidroBaseModel(HidroBase):
 
     __abstract__ = True
 
-    RegistroID        = Column(Float, primary_key=True)
-    Importado         = Column(SmallInteger, default=0)
-    Temporario        = Column(SmallInteger, default=0)
-    Removido          = Column(SmallInteger, default=0)
-    ImportadoRepetido = Column(SmallInteger, default=0)
-    DataIns           = Column(DateTime, default=datetime.now)
-    DataAlt           = Column(DateTime)
+    RegistroID = Column(Integer, primary_key=True, autoincrement=True)
+    DataIns    = Column(DateTime, default=datetime.now)
+    DataAlt    = Column(DateTime)
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('Importado',         0)
-        kwargs.setdefault('Temporario',        0)
-        kwargs.setdefault('Removido',          0)
-        kwargs.setdefault('ImportadoRepetido', 0)
         super().__init__(**kwargs)
 
 
@@ -313,7 +309,11 @@ class Station(HidroBaseModel):
 class Rain(HidroBaseModel):
     """ Database model for storing Rain data. """
 
-    __tablename__ = 'Chuvas'
+    __tablename__  = 'Chuvas'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_chuvas_station_date'),
+    )
 
     Data                 = Column(DateTime)
     DiaMaxima            = Column(SmallInteger)
@@ -362,6 +362,10 @@ class DischargeSummary(HidroBaseModel):
     """ Database model for storing Discharge Summary  data. """
 
     __tablename__ = 'ResumoDescarga'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_resumo_descarga_station_date'),
+    )
 
     AreaMolhada       = Column(Float)
     Cota              = Column(Float)
@@ -393,6 +397,10 @@ class Sediments(HidroBaseModel):
     """ Database model for storing Sediments data. """
 
     __tablename__ = 'Sedimentos'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_sediments_station_date'),
+    )
 
     AreaMolhada                = Column(Float)
     ConcentracaoMatSuspensao   = Column(Float)
@@ -440,6 +448,10 @@ class Stage(HidroBaseModel):
     """ Database model for storing Stage data. """
 
     __tablename__ = 'Cotas'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_cotas_station_date'),
+    )
 
     Data              = Column(DateTime)
     DiaMaxima         = Column(SmallInteger)
@@ -492,6 +504,10 @@ class DischargeFlow(HidroBaseModel):
     """ Database model for storing Discharge Flow data. """
 
     __tablename__ = 'CurvaDescarga'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'NumeroCurva', 'PeriodoValidadeInicio', 'PeriodoValidadeFim',
+                         name='uq_discharge_flow'),
+    )
 
     CoefA                 = Column(Float)
     CoefH0                = Column(Float)
@@ -539,6 +555,10 @@ class WaterQuality(HidroBaseModel):
     """ Database model for storing Water Quality data. """
 
     __tablename__ = 'QualAgua'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_qual_agua_station_date'),
+    )
 
     n245T                       = Column(Float)
     n245TP                      = Column(Float)
@@ -879,6 +899,10 @@ class Granulometry(HidroBaseModel):
     """ Database model for storing Granulometry data. """
 
     __tablename__ = 'Granulometria'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data', 'HoraInicial', 'HoraFinal',
+                         name='uq_granulometry_station_date'),
+    )
 
     EstacaoCodigo             = Column(BigInteger)
     NivelConsistencia         = Column(SmallInteger)
@@ -1183,6 +1207,10 @@ class FlowRate(HidroBaseModel):
     """ Database model for storing Flow Rate data. """
 
     __tablename__ = 'Vazoes'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_vazoes_station_date'),
+    )
 
     EstacaoCodigo        = Column(BigInteger)
     NivelConsistencia    = Column(SmallInteger)
