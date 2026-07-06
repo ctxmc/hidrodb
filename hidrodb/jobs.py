@@ -449,6 +449,13 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                 entries = handle_batch_update(job_config, items, check_keys)
                 if entries:
                     insert_hidro(entries)
+
+            case JobConfig.Series.GRANULOMETRY:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Dado',
+                              'HoraInicial': 'Hora_Inicial', 'HoraFinal': 'Hora_Final'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
             case JobConfig.Series():
                 entries = data_to_model_orm(job_config, items)
                 has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
@@ -528,10 +535,22 @@ def convert_json_items(job_config, items):
                 try:
                     item[key] = json.loads(value)
                 except (json.JSONDecodeError, ValueError):
-                    try:
-                        item[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-                    except ValueError:
-                        pass
+                    match job_config:
+                        case JobConfig.Series.GRANULOMETRY:
+                            formats = ["%Y-%m-%d %H:%M:%S.%f",
+                                       "%Y-%m-%d %H:%M:%S",
+                                       "%Y-%m-%d", "%H:%M:%S"]
+                            for fmt in formats:
+                                try:
+                                    item[key] = datetime.strptime(value, fmt)
+                                    break
+                                except Exception as e:
+                                    continue
+                        case _:
+                            try:
+                                item[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                            except ValueError:
+                                pass
     return items
 
 

@@ -906,9 +906,9 @@ class Granulometry(HidroBaseModel):
 
     EstacaoCodigo             = Column(BigInteger)
     NivelConsistencia         = Column(SmallInteger)
-    # Data                      = Column(DateTime)
-    # HoraInicial               = Column(DateTime)
-    # HoraFinal                 = Column(DateTime)
+    Data                      = Column(DateTime)
+    HoraInicial               = Column(DateTime)
+    HoraFinal                 = Column(DateTime)
     Cota                      = Column(Float)
     Largura                   = Column(Float)
     TipoAmostra               = Column(SmallInteger)
@@ -1026,9 +1026,9 @@ class Granulometry(HidroBaseModel):
         return cls(
             EstacaoCodigo             = json_data.get("codigoestacao"),
             NivelConsistencia         = json_data.get("Nivel_Consistencia"),
-            # Data                      = json_data.get("Data_Dado"),
-            # HoraInicial               = json_data.get("Hora_Final"),
-            # HoraFinal                 = json_data.get("Hora_Inicial"),
+            Data                      = json_data.get("Data_Dado"),
+            HoraInicial               = json_data.get("Hora_Final"),
+            HoraFinal                 = json_data.get("Hora_Inicial"),
             Cota                      = json_data.get("Cota_cm"),
             Largura                   = json_data.get("Largura_m"),
             TipoAmostra               = json_data.get("Tipo_Amostra"),
