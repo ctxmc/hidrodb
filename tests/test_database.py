@@ -33,39 +33,28 @@ DATABASE_PARAMS = [
     ("client.db", 'hidrodb.database.client.CLIENT_PATH', DatabaseType.CLIENT),
 ]
 
-@pytest.mark.parametrize("filename, patch_module, db_type", DATABASE_PARAMS)
-def test_setup_db_creates_tables_when_empty(tmp_path, filename, patch_module, db_type):
-    """Test that init_db creates tables when database is empty."""
-
-    db_path = str(tmp_path / filename)
-    connection = DatabaseConnection(db_path, db_type)
-    session = connection.get_session()
-    check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
-    result = session.execute(check_tables_sql)
-    tables = result.fetchall()
-    assert len(tables) == 0
-    session.close()
-    connection.close()
-
-    with patch(patch_module, db_path):
-        new_connection = _setup_db(db_path, db_type)
-        session = new_connection.get_session()
-        result = session.execute(check_tables_sql)
-        tables = result.fetchall()
-        assert len(tables) > 0
-        session.close()
-        new_connection.close()
-
-
 @pytest.fixture(params=DATABASE_PARAMS)
 def db_connection(tmp_path, request):
     """Create a temporary database connection for testing."""
 
     filename, _, db_type = request.param
-    db_path = tmp_path / filename
-    connection = DatabaseConnection(str(db_path), db_type)
+    db_path = str(tmp_path / filename)
+    connection = DatabaseConnection(db_path, db_type)
     yield connection
     connection.close()
+
+def test_init_db(tmp_path):
+    """TODO."""
+
+    import hidrodb.database.hidro as hidro
+    import hidrodb.database.client as client
+    assert hidro.HIDRO_DB is None
+    assert client.CLIENT_DB is None
+    hidro_path  = str(tmp_path / "hidro.db")
+    client_path = str(tmp_path / "client.db")
+    init_db(hidro_path, client_path)
+    assert hidro.HIDRO_DB is not None
+    assert client.CLIENT_DB is not None
 
 
 def test_get_session_returns_session(db_connection):

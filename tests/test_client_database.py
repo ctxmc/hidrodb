@@ -36,7 +36,7 @@ def client_db(tmp_path):
     db_path = str(tmp_path / "client.db")
     db_type = DatabaseType.CLIENT
     connection = _setup_db(db_path, db_type)
-    with patch('hidrodb.database.client.client_db', connection):
+    with patch('hidrodb.database.client.CLIENT_DB', connection):
         yield connection
         ClientBase.metadata.drop_all(connection.engine)
         connection.close()
@@ -71,6 +71,7 @@ def test_get_credentials(client_db):
     assert credentials is not None
     assert credentials.ID == "test_user"
     assert credentials.Password == "test_pass"
+
 
 def test_add_token(client_db):
     insert_credentials(user_id="test_user", password="test_pass")

@@ -22,17 +22,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
-logger = logging.getLogger(__name__)
-
-from sqlalchemy     import create_engine, text
+from sqlalchemy     import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from enum import StrEnum
-
-from hidrodb.models.hidro  import *
-from hidrodb.models.client import ClientBase
-
 
 class DatabaseType(StrEnum):
     """
@@ -60,23 +53,18 @@ def _setup_db(db_path, db_type) -> None:
     """ Setup an DatabaseConnection, if there is no tables, creates then"""
 
     db = DatabaseConnection(db_path, db_type)
-    session = db.get_session()
-    check_tables_sql = text("SELECT name FROM sqlite_master WHERE type='table'")
-    result = session.execute(check_tables_sql)
-    tables = result.fetchall()
-    session.close()
-    if not tables:
-        logger.info(f"No tables found for {db.type} Database. Initializing.")
-        match db.type:
-            case DatabaseType.HIDRO:
-                HidroBase.metadata.create_all(db.engine)
-            case DatabaseType.CLIENT:
-                ClientBase.metadata.create_all(db.engine)
+    match db.type:
+        case DatabaseType.HIDRO:
+            from hidrodb.models.hidro import HidroBase
+            HidroBase.metadata.create_all(db.engine)
+        case DatabaseType.CLIENT:
+            from hidrodb.models.client import ClientBase
+            ClientBase.metadata.create_all(db.engine)
     return db
 
 
-def init_db() -> None:
+def init_db(hidro_path, client_path) -> None:
     """ Init an DatabaseConnection"""
 
-    hidro.hidro_db   = _setup_db(hidro.HIDRO_PATH, DatabaseType.HIDRO)
-    client.client_db = _setup_db(client.CLIENT_PATH, DatabaseType.CLIENT)
+    hidro.HIDRO_DB   = _setup_db(hidro_path, DatabaseType.HIDRO)
+    client.CLIENT_DB = _setup_db(client_path, DatabaseType.CLIENT)

@@ -27,8 +27,7 @@ from typing import List
 
 from hidrodb.models.hidro  import *
 
-HIDRO_PATH  = None
-hidro_db    = None
+HIDRO_DB    = None
 
 _HIDRO_MODELS_MAP = {
     "Bacia":                 Basin,
@@ -59,7 +58,7 @@ def get_hidro_model(name: str):
 def insert_hidro(collection: List[HidroBase], expire = True) -> List[HidroBase]:
     """ Insert a list of Hidro ORM Model into Hidro Database"""
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     hidro_session.expire_on_commit = expire
     hidro_session.add_all(collection)
     hidro_session.flush()
@@ -71,7 +70,7 @@ def insert_hidro(collection: List[HidroBase], expire = True) -> List[HidroBase]:
 def count_hidro(model: HidroBase):
     """ Counts a given Model in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     count_model   = hidro_session.query(model).count()
     hidro_session.close()
     return count_model
@@ -80,7 +79,7 @@ def count_hidro(model: HidroBase):
 def get_states() -> State:
     """ Returns registered States in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     states = hidro_session.query(State).filter(State.CodigoIBGE.isnot(None)).all()
     hidro_session.close()
     return states
@@ -89,7 +88,7 @@ def get_states() -> State:
 def get_rain_period():
     """ Returns Stations with Rain Periods in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     rain_period = hidro_session.query(
         Station.Codigo,
         Station.PeriodoRegistradorChuvaInicio,
@@ -102,7 +101,7 @@ def get_rain_period():
 def get_discharge_period():
     """ Returns Stations with Discharge Periods in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     discharge_period = hidro_session.query(
         Station.Codigo,
         Station.PeriodoDescLiquidaInicio,
@@ -115,7 +114,7 @@ def get_discharge_period():
 def get_sediments_period():
     """ Returns Stations with Sediments Periods in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     sediments_period = hidro_session.query(
         Station.Codigo,
         Station.PeriodoSedimentosInicio,
@@ -128,7 +127,7 @@ def get_sediments_period():
 def get_water_period():
     """ Returns Stations with Water Periods in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     water_period = hidro_session.query(
         Station.Codigo,
         Station.PeriodoQualAguaInicio,
@@ -141,7 +140,7 @@ def get_water_period():
 def get_stage_period():
     """ Returns Stations with Stage Periods in Hidro Database. """
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     sql = text("""
     SELECT 
         Codigo, 
@@ -163,7 +162,7 @@ def get_stage_period():
 
 def handle_batch_update(job_name: str, items, check_keys: set):
 
-    hidro_session = hidro_db.get_session()
+    hidro_session = HIDRO_DB.get_session()
     model = get_hidro_model(job_name)
 
     filter_values = {}

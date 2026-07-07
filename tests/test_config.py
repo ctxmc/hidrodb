@@ -23,29 +23,25 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import pytest
+from unittest.mock import patch
 
 import hidrodb.config
 
 def test_setup_arguments_defaults():
     """Test default argument values"""
 
-    from unittest.mock import patch
-
     with patch('sys.argv', ['script_name']):
-        import hidrodb.jobs, hidrodb.database
-
+        import hidrodb.jobs
         hidrodb.config.setup_arguments()
-        assert hidrodb.config.LOG_LEVEL            == 'INFO'
-        assert hidrodb.jobs.MAX_WORKERS            == 10
-        assert hidrodb.jobs.BATCH_SIZE             == 1000
-        assert hidrodb.database.client.CLIENT_PATH == 'db/client.db'
-        assert hidrodb.database.hidro.HIDRO_PATH   == 'db/hidro.db'
+        assert hidrodb.config.LOG_LEVEL   == 'INFO'
+        assert hidrodb.config.CLIENT_PATH == 'db/client.db'
+        assert hidrodb.config.HIDRO_PATH  == 'db/hidro.db'
+        assert hidrodb.jobs.MAX_WORKERS   == 10
+        assert hidrodb.jobs.BATCH_SIZE    == 1000
 
 
 def test_setup_arguments_custum():
     """Test default argument values"""
-
-    from unittest.mock import patch
 
     test_arguments = ['script_name',
                       '--log-level',   'DEBUG',
@@ -58,16 +54,16 @@ def test_setup_arguments_custum():
         import hidrodb.jobs, hidrodb.database
 
         hidrodb.config.setup_arguments()
-        assert hidrodb.config.LOG_LEVEL            == 'DEBUG'
-        assert hidrodb.jobs.MAX_WORKERS            == 5
-        assert hidrodb.jobs.BATCH_SIZE             == 500
-        assert hidrodb.database.client.CLIENT_PATH == 'custom/client.db'
-        assert hidrodb.database.hidro.HIDRO_PATH   == 'custom/hidro.db'
+        assert hidrodb.config.LOG_LEVEL   == 'DEBUG'
+        assert hidrodb.config.CLIENT_PATH == 'custom/client.db'
+        assert hidrodb.config.HIDRO_PATH  == 'custom/hidro.db'
+        assert hidrodb.jobs.MAX_WORKERS   == 5
+        assert hidrodb.jobs.BATCH_SIZE    == 500
 
 
 def test_setup_logger_creates_custom_levels(caplog):
-    import logging;
 
+    import logging;
     VERBOSE = 5
     hidrodb.config.LOG_LEVEL = VERBOSE
     hidrodb.config.setup_logger()

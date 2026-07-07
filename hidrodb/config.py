@@ -26,9 +26,9 @@
 Provides general config to HidroDB application.
 """
 
-import logging
-
-LOG_LEVEL = None
+LOG_LEVEL   = None
+HIDRO_PATH  = None
+CLIENT_PATH = None
 
 def setup_arguments():
     """ Setup command line arguments. """
@@ -60,23 +60,22 @@ def setup_arguments():
 
     args = parser.parse_args()
 
-    global LOG_LEVEL
-    LOG_LEVEL = args.log_level
+    global LOG_LEVEL, HIDRO_PATH, CLIENT_PATH
+    LOG_LEVEL   = args.log_level
+    HIDRO_PATH  = args.hidro
+    CLIENT_PATH = args.client
+
+
     import hidrodb.jobs as jobs
     jobs.MAX_WORKERS = args.max_workers
     jobs.BATCH_SIZE  = args.batch_size
     jobs.SKIP_FOR    = args.skip_for
     jobs.STATIONS    = args.stations
 
-    import hidrodb.database.hidro as hidro
-    hidro.HIDRO_PATH  = args.hidro
-    import hidrodb.database.client as client
-    client.CLIENT_PATH = args.client
-
 
 def setup_logger():
     """ Setup logger object accross application. """
-
+    import logging;
     TRACE = 15
     setattr(logging.Logger, 'trace', _make_logger(TRACE))
     logging.addLevelName(TRACE, 'TRACE')
@@ -103,7 +102,7 @@ def setup_database():
 
     import hidrodb.database        as db
     import hidrodb.database.client as client
-    db.init_db()
+    db.init_db(HIDRO_PATH, CLIENT_PATH)
     if not client.check_credentials():
         user_id = input("Enter API username: ")
         import getpass;
