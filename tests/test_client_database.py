@@ -209,3 +209,25 @@ def test_create_job_filters(client_db, job_name, status, last_check):
 
     assert len(result) == (result_len)
 
+
+@pytest.mark.parametrize("job_type, jobs", [
+    (BaseJobs, [
+        BaseJobs(HidroTable="Bacia",     Status=1),
+        BaseJobs(HidroTable="SubBacia",  Status=2),
+        BaseJobs(HidroTable="Entidade",  Status=3),
+        BaseJobs(HidroTable="Municipio", Status=4),
+        BaseJobs(HidroTable="Rio",       Status=5),
+    ]),
+])
+def test_count_jobs_by_status(client_db, job_type, jobs, request):
+    hidro_tables = []
+    for job in jobs:
+        hidro_tables.append(job.HidroTable)
+    insert_jobs(jobs)
+    for index, table in enumerate(hidro_tables):
+        result = count_job_by_status(table)
+        if (index == 3):
+            assert result == []
+        else:
+            assert result == [(index+1, 1)]
+
