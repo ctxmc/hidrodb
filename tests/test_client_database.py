@@ -53,6 +53,26 @@ def test_insert_credentials_creates_entry(client_db):
     session.close()
 
 
+def test_check_credetials(client_db):
+    check_result = check_credentials()
+    assert check_result == 0
+    insert_credentials(user_id="test_user", password="test_pass")
+    check_result = check_credentials()
+    assert check_result == 1
+
+
+def test_get_credentials(client_db):
+
+    credentials = get_credentials()
+    assert credentials == None
+
+    insert_credentials(user_id="test_user", password="test_pass")
+    credentials = get_credentials()
+    assert credentials is not None
+    assert credentials.ID == "test_user"
+    assert credentials.Password == "test_pass"
+
+
 @pytest.mark.parametrize("table_name, expected_result", [
     ("Bacia",     BaseJobs), ("SubBacia",  BaseJobs),
     ("Entidade",  BaseJobs), ("Municipio", BaseJobs),
