@@ -72,6 +72,49 @@ def test_get_credentials(client_db):
     assert credentials.ID == "test_user"
     assert credentials.Password == "test_pass"
 
+def test_add_token(client_db):
+    insert_credentials(user_id="test_user", password="test_pass")
+    credential = get_credentials()
+    from datetime import datetime, timedelta;
+    expires = datetime.now() - timedelta(days=1)
+    add_token(credential.RegistroID, "test_token", expires)
+    session = client_db.get_session()
+    result = session.query(Token).filter_by(CredentialID=credential.RegistroID).first()
+    assert result is not None
+    assert result.Token == "test_token"
+    assert result.Expires is not None
+    assert isinstance(result.Expires, datetime)
+    session.close()
+
+
+def test_get_token(client_db):
+    insert_credentials(user_id="test_user", password="test_pass")
+    credential = get_credentials()
+    from datetime import datetime, timedelta;
+    expires = datetime.now() - timedelta(days=1)
+    add_token(credential.RegistroID, "test_token", expires)
+    result = get_token_model()
+    assert result is not None
+    assert result.Token == "test_token"
+    assert result.Expires is not None
+    assert isinstance(result.Expires, datetime)
+
+
+def test_update_token(client_db):
+    insert_credentials(user_id="test_user", password="test_pass")
+    credential = get_credentials()
+    from datetime import datetime, timedelta
+    expires = datetime.now() - timedelta(days=1)
+    add_token(credential.RegistroID, "test_token", expires)
+    token = get_token_model()
+    update_token(token.RegistroID, "new_token", datetime.now())
+    result = get_token_model()
+    assert result is not None
+    assert result.Token == "new_token"
+    assert result.Expires is not None
+    assert isinstance(result.Expires, datetime)
+    assert result.Expires != token.Expires
+
 
 @pytest.mark.parametrize("table_name, expected_result", [
     ("Bacia",     BaseJobs), ("SubBacia",  BaseJobs),
