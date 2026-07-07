@@ -176,3 +176,36 @@ def test_update_base_jobs(client_db, job, request):
         assert updated_job.LastCheck is not None
         assert isinstance(job.LastCheck, datetime)
     session.close()
+
+@pytest.mark.parametrize("job_name, status, last_check", [
+    ("Bacia",     None, False), ("SubBacia",  [],   False),
+    ("Entidade",  [1],  False), ("Municipio", None, True),
+    ("Rio",       [],   True),  ("Estado",    [1],  True),
+])
+def test_create_job_filters(client_db, job_name, status, last_check):
+
+    model = get_job_model(job_name)
+    result = create_job_filters(job_name, status, last_check)
+    result_len = 1
+
+    assert str(result[0]) == str(model.HidroTable == job_name)
+
+    if status and not last_check:
+        result_len += 1
+        expected_status_filter = model.Status.in_(status)
+        assert str(result[1]) == str(expected_status_filter)
+
+    if last_check and not status:
+        result_len += 1
+        from datetime import datetime
+        assert str(result[1]) == str(model.LastCheck < datetime.today())
+
+    if last_check and status:
+        result_len += 1
+        from sqlalchemy import or_
+        from datetime import datetime
+        expected = or_(model.Status.in_(status), model.LastCheck < datetime.today())
+        assert str(result[1]) == str(expected)
+
+    assert len(result) == (result_len)
+
