@@ -26,7 +26,6 @@ import pytest
 from unittest.mock import patch
 
 from hidrodb.database        import *
-from hidrodb.database        import _setup_db
 from hidrodb.database.client import *
 
 @pytest.fixture
@@ -35,6 +34,7 @@ def client_db(tmp_path):
 
     db_path = str(tmp_path / "client.db")
     db_type = DatabaseType.CLIENT
+    from hidrodb.database import _setup_db
     connection = _setup_db(db_path, db_type)
     with patch('hidrodb.database.client.CLIENT_DB', connection):
         yield connection
@@ -177,13 +177,15 @@ def test_update_base_jobs(client_db, job, request):
         assert isinstance(job.LastCheck, datetime)
     session.close()
 
-@pytest.mark.parametrize("job_name, status, last_check", [
+
+BASE_JOB_FILTERS = [
     ("Bacia",     None, False), ("SubBacia",  [],   False),
     ("Entidade",  [1],  False), ("Municipio", None, True),
     ("Rio",       [],   True),  ("Estado",    [1],  True),
-])
-def test_create_job_filters(client_db, job_name, status, last_check):
+]
 
+@pytest.mark.parametrize("job_name, status, last_check", BASE_JOB_FILTERS)
+def test_create_job_filters(client_db, job_name, status, last_check):
     model = get_job_model(job_name)
     result = create_job_filters(job_name, status, last_check)
     result_len = 1
@@ -231,3 +233,28 @@ def test_count_jobs_by_status(client_db, job_type, jobs, request):
         else:
             assert result == [(index+1, 1)]
 
+
+@pytest.mark.parametrize("job_type, jobs", [
+    (BaseJobs, "base_jobs"),
+])
+def test_count_job(client_db, job_type, jobs, request):
+    jobs = request.getfixturevalue(jobs)
+    insert_jobs(jobs)
+    for job_name, status, last_check in BASE_JOB_FILTERS:
+        filters = create_job_filters(job_name, status, last_check)
+        result = count_job(job_name, filters)
+        if status and status[0] == 1:
+            assert result == 1
+
+
+@pytest.mark.parametrize("job_type, jobs", [
+    (BaseJobs, "base_jobs"),
+])
+def test_get_jobs(client_db, job_type, jobs, request):
+    jobs = request.getfixturevalue(jobs)
+    insert_jobs(jobs)
+    for job_name, status, last_check in BASE_JOB_FILTERS:
+        filters = create_job_filters(job_name, status, last_check)
+        result = get_jobs(job_name, filters)
+        if status and status[0] == 1:
+            assert len(result) == 1
