@@ -23,9 +23,53 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import pytest
+from unittest.mock import patch, MagicMock
+
 from datetime import datetime, timedelta
 
 import hidrodb.jobs
+
+@patch('hidrodb.jobs.count_client')
+@patch('hidrodb.jobs.add_token')
+@patch('hidrodb.jobs.update_token')
+@patch('hidrodb.jobs.get_credentials')
+@patch('hidrodb.jobs.request_token')
+@patch('hidrodb.jobs.get_token_model')
+def test_get_token_add_new_token(mock_model,  mock_request, mock_creds,
+                                 mock_update, mock_add,     mock_count):
+    mock_model.return_value   = None
+    mock_creds.return_value   = MagicMock(ID="test_id", Password="test_pass")
+    mock_request.return_value = ("new_token", datetime.now() + timedelta(hours=1))
+    mock_count.return_value   = 0
+
+    result = hidrodb.jobs.get_token()
+
+    mock_model.assert_called_once()
+    mock_creds.assert_called_once()
+    mock_request.assert_called_once_with("test_id", "test_pass")
+    mock_count.assert_called_once()
+    mock_update.assert_not_called()
+    mock_add.assert_called_once()
+
+    assert result == "new_token"
+
+@patch('hidrodb.jobs.trigger_job')
+@patch('hidrodb.jobs.insert_jobs')
+@patch('hidrodb.jobs.count_job')
+@pytest.mark.parametrize("job_config", [
+    hidrodb.jobs.JobConfig.Base.BASIN,
+    hidrodb.jobs.JobConfig.Base.SUB_BASIN,
+    hidrodb.jobs.JobConfig.Base.ENTITY,
+    hidrodb.jobs.JobConfig.Base.TOWNSHIP,
+    hidrodb.jobs.JobConfig.Base.RIVER,
+    hidrodb.jobs.JobConfig.Base.STATE,
+])
+def test_check_base_job(mock_count_jobs, mock_insert_jobs, mock_trigger_job, job_config):
+
+    mock_count_jobs.side_effect = [0, 1, 1]
+    hidrodb.jobs.check_base_job(job_config)
+    mock_insert_jobs.assert_called_once()
+    mock_trigger_job.assert_called_once()
 
 
 CORRUPTED_DATES_PARAMS = [
