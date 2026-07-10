@@ -85,79 +85,15 @@ def get_states() -> State:
     return states
 
 
-def get_rain_period():
-    """ Returns Stations with Rain Periods in Hidro Database. """
+def get_period(model_name: str):
+    """ Returns stations with initial and final periods for an given table in Hidro Database. """
 
+    model = get_hidro_model(model_name)
+    statement = model.create_period_statement()
     hidro_session = HIDRO_DB.get_session()
-    rain_period = hidro_session.query(
-        Station.Codigo,
-        Station.PeriodoRegistradorChuvaInicio,
-        Station.PeriodoRegistradorChuvaFim
-    ).filter(Station.PeriodoRegistradorChuvaInicio.isnot(None)).all()
+    period_data = hidro_session.execute(statement)
     hidro_session.close()
-    return rain_period
-
-
-def get_discharge_period():
-    """ Returns Stations with Discharge Periods in Hidro Database. """
-
-    hidro_session = HIDRO_DB.get_session()
-    discharge_period = hidro_session.query(
-        Station.Codigo,
-        Station.PeriodoDescLiquidaInicio,
-        Station.PeriodoDescLiquidaFim
-    ).filter(Station.PeriodoDescLiquidaInicio.isnot(None)).all()
-    hidro_session.close()
-    return discharge_period
-
-
-def get_sediments_period():
-    """ Returns Stations with Sediments Periods in Hidro Database. """
-
-    hidro_session = HIDRO_DB.get_session()
-    sediments_period = hidro_session.query(
-        Station.Codigo,
-        Station.PeriodoSedimentosInicio,
-        Station.PeriodoSedimentosFim
-    ).filter(Station.PeriodoSedimentosInicio.isnot(None)).all()
-    hidro_session.close()
-    return sediments_period
-
-
-def get_water_period():
-    """ Returns Stations with Water Periods in Hidro Database. """
-
-    hidro_session = HIDRO_DB.get_session()
-    water_period = hidro_session.query(
-        Station.Codigo,
-        Station.PeriodoQualAguaInicio,
-        Station.PeriodoQualAguaFim
-    ).filter(Station.PeriodoQualAguaInicio.isnot(None)).all()
-    hidro_session.close()
-    return water_period
-
-
-def get_stage_period():
-    """ Returns Stations with Stage Periods in Hidro Database. """
-
-    hidro_session = HIDRO_DB.get_session()
-    sql = text("""
-    SELECT 
-        Codigo, 
-        MIN(PeriodoInicio) AS PeriodoInicio, 
-        MIN(PeriodoFim)    AS PeriodoFim
-    FROM (
-        SELECT Codigo, PeriodoEscalaInicio AS PeriodoInicio, PeriodoEscalaFim AS PeriodoFim
-        FROM Estacao WHERE PeriodoEscalaInicio IS NOT NULL
-        UNION
-        SELECT Codigo, PeriodoRegistradorNivelInicio, PeriodoRegistradorNivelFim
-        FROM Estacao WHERE PeriodoRegistradorNivelInicio IS NOT NULL
-    ) combined
-    GROUP BY Codigo;
-    """)
-    stage_period = hidro_session.execute(sql).fetchall()
-    hidro_session.close()
-    return stage_period
+    return period_data
 
 
 def handle_batch_update(job_name: str, items, check_keys: set):

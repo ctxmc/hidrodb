@@ -199,25 +199,8 @@ def check_series_job(job_config: JobConfig) -> None:
     filters = create_job_filters(job_config, None, last_check=False)
     if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}")
-        match job_config:
-            case JobConfig.Series.RAIN:
-                stations_data = [SerieStationData(code, start, end)
-                                 for code, start, end in get_rain_period()]
-            case (JobConfig.Series.DISCHARGE_SUMMARY | JobConfig.Series.DISCHARGE_FLOW |
-                  JobConfig.Series.CROSS_SECTION     | JobConfig.Series.FLOW_RATE):
-                stations_data = [SerieStationData(code, start, end)
-                                 for code, start, end in get_discharge_period()]
-            case JobConfig.Series.SEDIMENTS | JobConfig.Series.GRANULOMETRY:
-                stations_data = [SerieStationData(code, start, end)
-                                 for code, start, end in get_sediments_period()]
-            case JobConfig.Series.WATER_QUALITY:
-                stations_data = [SerieStationData(code, start, end)
-                                 for code, start, end in get_water_period()]
-            case JobConfig.Series.STAGE:
-                stations_data = [SerieStationData(code, start, end)
-                                 for code, start, end in get_stage_period()]
-        create_series_jobs(stations_data, job_config)
-        del stations_data
+        period_data = get_period(job_config).all()
+        create_series_jobs(period_data, job_config)
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
