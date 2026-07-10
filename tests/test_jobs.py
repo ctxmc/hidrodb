@@ -114,6 +114,7 @@ def test_process_period_returns_corrupted_for_future_date():
 
 @pytest.mark.parametrize("job_config", [
     hidrodb.jobs.JobConfig.Base.BASIN,
+    hidrodb.jobs.JobConfig.Series.RAIN,
 ])
 def test_convert_json_items(job_config):
     with open(f'./tests/json/{job_config}.json') as f:
@@ -126,3 +127,22 @@ def test_convert_json_items(job_config):
                 assert isinstance(item["Data_Ultima_Alteracao"], (datetime, type(None)))
                 assert isinstance(item["Nome_Bacia"], str)
                 assert isinstance(item["codigobacia"], int)
+        case hidrodb.jobs.JobConfig.Series.RAIN:
+            for item in items:
+                for i in range(1, 32):
+                    assert isinstance(item[f'Chuva_{i:02d}'], (float, type(None)))
+                    assert isinstance(item[f'Chuva_{i:02d}_Status'], (int, type(None)))
+                assert isinstance(item["Data_Ultima_Alteracao"], (datetime, type(None)))
+                assert isinstance(item["Data_Hora_Dado"], (datetime, type(None)))
+                assert isinstance(item["Maxima"], float)
+                assert isinstance(item["Maxima_Status"], int)
+                assert isinstance(item["Nivel_Consistencia"], int)
+                assert isinstance(item["Numero_Dias_de_Chuva"], int)
+                assert isinstance(item["Numero_Dias_de_Chuva_Status"], int)
+                assert isinstance(item["Tipo_Medicao_Chuvas"], int)
+                assert isinstance(item["Total"], float)
+                assert isinstance(item["Total_Anual"], float)
+                assert isinstance(item["Total_Anual_Status"], int)
+                assert isinstance(item["Total_Status"], int)
+                assert isinstance(item["codigoestacao"], int)
+
