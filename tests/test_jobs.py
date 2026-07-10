@@ -110,3 +110,19 @@ def test_process_period_returns_corrupted_for_future_date():
 
     assert len(result) == 1
     assert result[0].Status == 4
+
+
+@pytest.mark.parametrize("job_config", [
+    hidrodb.jobs.JobConfig.Base.BASIN,
+])
+def test_convert_json_items(job_config):
+    with open(f'./tests/json/{job_config}.json') as f:
+        import json;
+        items = json.load(f)
+    converted_items = hidrodb.jobs.convert_json_items(job_config, items)
+    match job_config:
+        case hidrodb.jobs.JobConfig.Base.BASIN:
+            for item in items:
+                assert isinstance(item["Data_Ultima_Alteracao"], (datetime, type(None)))
+                assert isinstance(item["Nome_Bacia"], str)
+                assert isinstance(item["codigobacia"], int)

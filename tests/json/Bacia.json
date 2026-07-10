@@ -1,0 +1,47 @@
+[
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "RIO AMAZONAS",
+    "codigobacia": "1"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "RIO TOCANTINS",
+    "codigobacia": "2"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "ATLÂNTICO,TRECHO NORTE/NORDESTE",
+    "codigobacia": "3"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "RIO SÃO FRANCISCO",
+    "codigobacia": "4"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "ATLÂNTICO,TRECHO LESTE",
+    "codigobacia": "5"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "RIO PARANÁ",
+    "codigobacia": "6"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "RIO URUGUAI",
+    "codigobacia": "7"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "ATLÂNTICO, TRECHO SUDESTE",
+    "codigobacia": "8"
+  },
+  {
+    "Data_Ultima_Alteracao": null,
+    "Nome_Bacia": "OUTRAS",
+    "codigobacia": "9"
+  }
+]
