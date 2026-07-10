@@ -174,3 +174,14 @@ def update_jobs(jobs: List[HidroJob], job_name: str) -> None:
     client_session.bulk_update_mappings(get_job_model(job_name), jobs)
     client_session.commit()
     client_session.close()
+
+def get_lesser_year(job_name: str, station_ids):
+    client_session = CLIENT_DB.get_session()
+    lesser_results = client_session.query(SeriesJobs).filter(
+        SeriesJobs.HidroTable == job_name,
+        SeriesJobs.StationID.in_(station_ids),
+        SeriesJobs.Status != 4,
+        (func.julianday(SeriesJobs.ToDate) - func.julianday(SeriesJobs.FromDate)) < 365
+    ).distinct().all()
+    client_session.close()
+    return lesser_results

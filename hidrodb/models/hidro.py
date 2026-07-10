@@ -359,10 +359,14 @@ class Rain(HidroBaseModel):
         return cls(**kwargs)
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoRegistradorChuvaInicio, Station.PeriodoRegistradorChuvaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoRegistradorChuvaInicio, Station.PeriodoRegistradorChuvaFim])
         statement = select(*columns).where(Station.PeriodoRegistradorChuvaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoRegistradorChuvaFim.is_(None))
         return statement
 
 
@@ -401,10 +405,14 @@ class DischargeSummary(HidroBaseModel):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
         statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
         return statement
 
 
@@ -459,10 +467,14 @@ class Sediments(HidroBaseModel):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim])
         statement = select(*columns).where(Station.PeriodoSedimentosInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoSedimentosFim.is_(None))
         return statement
 
 
@@ -522,10 +534,14 @@ class Stage(HidroBaseModel):
         return cls(**kwargs)
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoRegistradorNivelInicio, Station.PeriodoRegistradorNivelFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoRegistradorNivelInicio, Station.PeriodoRegistradorNivelFim])
         statement = select(*columns).where(Station.PeriodoRegistradorNivelInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoRegistradorNivelFim.is_(None))
         return statement
 
 
@@ -580,10 +596,14 @@ class DischargeFlow(HidroBaseModel):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
         statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
         return statement
 
 
@@ -910,10 +930,14 @@ class WaterQuality(HidroBaseModel):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoQualAguaInicio, Station.PeriodoQualAguaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoQualAguaInicio, Station.PeriodoQualAguaFim])
         statement = select(*columns).where(Station.PeriodoQualAguaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoQualAguaFim.is_(None))
         return statement
 
 
@@ -1187,17 +1211,26 @@ class Granulometry(HidroBaseModel):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim])
         statement = select(*columns).where(Station.PeriodoSedimentosInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoSedimentosFim.is_(None))
         return statement
 
 
+# class CrossSection(HidroBaseModel):
 class CrossSection(HidroBase):
     """ Database model for storing Cross Section data. """
 
     __tablename__ = 'PerfilTransversal'
+    # __table_args__ = (
+    #     UniqueConstraint('EstacaoCodigo', 'Data', 'NumLevantamento', 'NivelConsistencia',
+    #                     name='uq_cross_section'),
+    # )
 
     RegistroID        = Column(Float, primary_key=True)
     EstacaoCodigo     = Column(BigInteger)
@@ -1234,21 +1267,31 @@ class CrossSection(HidroBase):
         )
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
         statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
         return statement
 
 
+# class VerticalCrossSection(HidroBase):
 class VerticalCrossSection(HidroBaseModel):
     """ Database model for storing Vertical Cross Section data. """
 
     __tablename__ = 'PerfilTransversalVert'
 
+    # PerfilTransversalID = Column(Integer, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
     PerfilTransversalID = Column(Float, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
     Cota                = Column(Float)
     Distancia           = Column(Float)
+    # __table_args__ = (
+    #     UniqueConstraint('PerfilTransversalID', 'Cota', 'Distancia',
+    #                      name='uq_vertical_cross_section'),
+    # )
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -1317,8 +1360,12 @@ class FlowRate(HidroBaseModel):
         return cls(**kwargs)
 
     @classmethod
-    def create_period_statement(cls):
+    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
 
-        columns = [Station.Codigo, Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim]
+        columns = [Station.Codigo]
+        if not only_code:
+            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
         statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
+        if with_null_end_date:
+            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
         return statement

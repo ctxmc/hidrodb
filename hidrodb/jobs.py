@@ -203,7 +203,7 @@ def check_series_job(job_config: JobConfig) -> None:
         create_series_jobs(period_data, job_config)
         check_series_job(job_config)
     else:
-        logger.verbose("[TODO]: Update JOBS")
+        update_series_job(job_config)
         status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
         filters = create_job_filters(job_config, status, last_check=False)
         count = count_job(job_config, filters)
@@ -282,6 +282,20 @@ def process_period(station_code, start_date, end_date, job_config):
         else:
             break
     return jobs
+
+
+def update_series_job(job_config: JobConfig) -> None:
+    station_ids = get_period(job_config, only_code=True, with_null_end_date=True).scalars().all()
+    jobs = get_lesser_year(job_config, station_ids)
+    yesterday = (datetime.now() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    for job in jobs:
+        if job.ToDate < yesterday:
+            logger.info(f"Updating job id {job.ID} ToDate {job.ToDate} to {yesterday}")
+            job.Status = JobConfig.Status.PENDING.value
+            job.ToDate = yesterday
+        else:
+            logger.verbose(f"No updates for job id {job.ID}")
+    update_jobs(jobs, job_config)
 
 
 write_queue: Queue[QueueData] = Queue()

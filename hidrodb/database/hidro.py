@@ -85,11 +85,11 @@ def get_states() -> State:
     return states
 
 
-def get_period(model_name: str):
+def get_period(model_name: str, only_code=False, with_null_end_date=False):
     """ Returns stations with initial and final periods for an given table in Hidro Database. """
 
     model = get_hidro_model(model_name)
-    statement = model.create_period_statement()
+    statement = model.create_period_statement(only_code, with_null_end_date)
     hidro_session = HIDRO_DB.get_session()
     period_data = hidro_session.execute(statement)
     hidro_session.close()
