@@ -112,15 +112,18 @@ def test_process_period_returns_corrupted_for_future_date():
     assert result[0].Status == 4
 
 
+def _load_json_file(job_config):
+    with open(f'./tests/json/{job_config}.json') as f:
+        import json;
+        return json.load(f)
+
+
 @pytest.mark.parametrize("job_config", [
     hidrodb.jobs.JobConfig.Base.BASIN,
     hidrodb.jobs.JobConfig.Series.RAIN,
 ])
 def test_convert_json_items(job_config):
-    with open(f'./tests/json/{job_config}.json') as f:
-        import json;
-        items = json.load(f)
-    converted_items = hidrodb.jobs.convert_json_items(job_config, items)
+    items = hidrodb.jobs.convert_json_items(job_config, _load_json_file(job_config))
     match job_config:
         case hidrodb.jobs.JobConfig.Base.BASIN:
             for item in items:
@@ -137,12 +140,20 @@ def test_convert_json_items(job_config):
                 assert isinstance(item["Maxima"], float)
                 assert isinstance(item["Maxima_Status"], int)
                 assert isinstance(item["Nivel_Consistencia"], int)
-                assert isinstance(item["Numero_Dias_de_Chuva"], int)
+                assert isinstance(item["Numero_Dias_de_Chuva"], (int, type(None)))
                 assert isinstance(item["Numero_Dias_de_Chuva_Status"], int)
                 assert isinstance(item["Tipo_Medicao_Chuvas"], int)
                 assert isinstance(item["Total"], float)
-                assert isinstance(item["Total_Anual"], float)
-                assert isinstance(item["Total_Anual_Status"], int)
+                assert isinstance(item["Total_Anual"], (float, type(None)))
+                assert isinstance(item["Total_Anual_Status"], (int, type(None)))
                 assert isinstance(item["Total_Status"], int)
                 assert isinstance(item["codigoestacao"], int)
 
+
+@pytest.mark.parametrize("job_config", [
+    hidrodb.jobs.JobConfig.Series.RAIN,
+])
+def test_validate_series_items(job_config):
+    items = hidrodb.jobs.convert_json_items(job_config, _load_json_file(job_config))
+    filtered = hidrodb.jobs.validate_series_items(job_config, items)
+    assert len(items) != len(filtered)

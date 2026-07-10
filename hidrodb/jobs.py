@@ -436,6 +436,7 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
         match job_config:
             case JobConfig.Series():
                 items = validate_series_items(job_config, items)
+        convert_json_items(job_config, items)
         match job_config:
             case JobConfig.Base():
                 if job_config == "Estado":
@@ -530,7 +531,13 @@ def validate_series_items(job_config: JobConfig, items):
             dict_len = None
 
     if dict_len:
-        items = [item for item in items if len(item) == dict_len]
+        valid = []
+        for item in items:
+            if len(item) == dict_len:
+                valid.append(item)
+            else:
+                logger.verbose(f"Item {item} has length {len(item)}, expected {dict_len}")
+        items = valid
 
     match job_config:
         case JobConfig.Series.CROSS_SECTION:
