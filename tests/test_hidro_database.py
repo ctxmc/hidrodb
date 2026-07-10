@@ -23,7 +23,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import pytest
-from hidrodb.models.hidro import *
+from unittest.mock import patch
 
-def test_dummy():
-    assert True
+from hidrodb.database import *
+from hidrodb.database import _setup_db
+from hidrodb.database.hidro import *
+
+@pytest.fixture
+def hidro_db(tmp_path):
+
+    db_path = str(tmp_path / "hidro.db")
+    db_type = DatabaseType.HIDRO
+    connection = _setup_db(db_path, db_type)
+    with patch('hidrodb.database.hidro.HIDRO_DB', connection):
+        yield connection
+        HidroBase.metadata.drop_all(connection.engine)
+        connection.close()

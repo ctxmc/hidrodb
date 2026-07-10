@@ -29,19 +29,22 @@ Provides routines to request and sync data on database.
 import logging, time
 logger = logging.getLogger(__name__)
 
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-from queue              import Queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading          import Thread, Lock
+from queue              import Queue
 
 from datetime    import datetime, timedelta
 from enum        import Enum, auto, StrEnum
 from dataclasses import dataclass
 
-from hidrodb.database    import *
+from hidrodb.database.client import *
+from hidrodb.database.hidro  import *
+
 from hidrodb.webservices import *
 
-MAX_WORKERS = None
-BATCH_SIZE  = None
+MAX_WORKERS      = None
+BATCH_SIZE       = None
+SKIP_FOR         = []
 
 class JobConfig:
     # """ TODO """
@@ -55,11 +58,11 @@ class JobConfig:
         TOWNSHIP          = "Municipio"
         RIVER             = "Rio"
         STATE             = "Estado"
+        STATION           = "Estacao"
 
-    class Serial(StrEnum):
+    class Series(StrEnum):
         """ Enum to hold Hidro Jobs that will run with threads. """
 
-        STATION           = "Estacao"
         RAIN              = "Chuvas"
         DISCHARGE_SUMMARY = "ResumoDescarga"
         DISCHARGE_FLOW    = "CurvaDescarga"
@@ -70,35 +73,12 @@ class JobConfig:
         CROSS_SECTION     = "PerfilTransversal"
         FLOW_RATE         = "Vazoes"
 
-
-class JobStatus(Enum):
-    """ Enum to control job status."""
-
-    PENDING   = auto()
-    """Job is queued and waiting to be processed."""
-
-    FAILED    = auto()
-    """Job request failed."""
-
-    INVALID   = auto()
-    """Job request returned item had incorrect fields."""
-
-    CORRUPTED = auto()
-    """Job with incorrect start date."""
-
-    COMPLETED = auto()
-    """Job successfully completed."""
-
-    def get_label(self) -> str:
-        """ :returns: a string label for each status."""
-        mapping = {
-            JobStatus.PENDING:   "Pending",
-            JobStatus.FAILED:    "Failed",
-            JobStatus.INVALID:   "Invalid",
-            JobStatus.CORRUPTED: "Corrupted",
-            JobStatus.COMPLETED: "Completed"
-        }
-        return mapping[self]
+    class Status(Enum):
+        PENDING   = auto()
+        FAILED    = auto()
+        INVALID   = auto()
+        CORRUPTED = auto()
+        COMPLETED = auto()
 
 
 @dataclass
@@ -117,6 +97,24 @@ class SerieStationData:
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+@dataclass
+class QueueData:
+
+    job_config:  JobConfig
+    job:         HidroJob
+    items:       dict
+    worker_time: float
+    stop_signal: bool
+
+    def __iter__(self):
+        return iter((
+            self.job_config,
+            self.job,
+            self.items,
+            self.worker_time,
+            self.stop_signal
+        ))
+
 
 from typing import Optional
 _token_cache: Optional[Token] = None
@@ -129,8 +127,6 @@ def get_token() -> Token.Token:
     """
 
     global _token_cache
-    logger.verbose("Cheking Token.")
-
     if _token_cache is None:
         _token_cache = get_token_model()
 
@@ -155,51 +151,44 @@ def get_token() -> Token.Token:
     return token
 
 
-def check_base_job(job: JobConfig.Base) -> None:
+def check_base_job(job_config: JobConfig.Base) -> None:
     """Checks each HidroJob and request/update them.
 
     :param job: Current Job to check, insert and update.
     :returns: Nothing.
     """
 
-    model    = get_hidro_model(job)
-    logger.verbose(f"Checking {job}.")
-    if not count_hidro(model):
-        logger.info(f"{job} has no Entries, requesting data.")
-        token = get_token()
-        if (token):
-            success, items = request_job_data(job, token, {})
-            entries = [model.from_json(item) for item in items]
-            insert_hidro(entries)
+    filters = create_job_filters(job_config, None, last_check=False)
+    if not count_job(job_config, filters):
+        logger.info(f"Creating jobs for {job_config}.")
+        job_model = get_job_model(job_config)
+        jobs = []
+        match job_config:
+            case JobConfig.Base.STATION:
+                for state in get_states():
+                    job = job_model(
+                        HidroTable = job_config,
+                        Status     = JobConfig.Status.PENDING.value,
+                        UF         = state.Sigla
+                    )
+                    jobs.append(job)
+            case _:
+                job = job_model(
+                    HidroTable = job_config,
+                    Status     = JobConfig.Status.PENDING.value
+                )
+                jobs.append(job)
+        insert_jobs(jobs)
+        check_base_job(job_config)
     else:
-        logger.info(f"Checking updates for {job}.")
-
-
-def check_stations_jobs() -> None:
-    """Checks if there is Stations entries on database.
-    Request all national stations by UF if there isnt.
-    """
-    if not count_client(StationJobs):
-        logger.info(f"Creating jobs for Stations.")
-        stations_jobs = []
-        for state in get_states():
-            station_job = StationJobs(
-                HidroTable = "Estacao",
-                Status     = JobStatus.PENDING.value,
-                UF         = state.Sigla
-            )
-            stations_jobs.append(station_job)
-        insert_jobs(stations_jobs)
-        check_stations_jobs()
-    else:
-        logger.trace(f"Stations has jobs.")
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        count = count_job(JobConfig.Serial.STATION, status)
+        status  = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
+        filters = create_job_filters(job_config, status, last_check=True)
+        count   = count_job(job_config, filters)
         if count:
-            logger.info(f"Initiating {count} jobs for {JobConfig.Serial.STATION}")
-            trigger_job(JobConfig.Serial.STATION)
+            logger.info(f"Initiating jobs for {job_config}")
+            trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for Stations")
+            logger.info(f"No pending jobs for {job_config}.\n")
 
 
 def check_series_job(job_config: JobConfig) -> None:
@@ -207,27 +196,24 @@ def check_series_job(job_config: JobConfig) -> None:
     Create jobs if there is no entries and start pending jobs requisition.
     """
 
-    logger.trace(f"Checking Job for {job_config}")
-    if not count_job(job_config):
+    filters = create_job_filters(job_config, None, last_check=False)
+    if not count_job(job_config, filters):
         logger.info(f"Creating jobs for {job_config}")
         match job_config:
-            case JobConfig.Serial.RAIN:
+            case JobConfig.Series.RAIN:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_rain_period()]
-            case (JobConfig.Serial.DISCHARGE_SUMMARY
-                  | JobConfig.Serial.DISCHARGE_FLOW
-                  | JobConfig.Serial.CROSS_SECTION
-                  | JobConfig.Serial.FLOW_RATE
-            ):
+            case (JobConfig.Series.DISCHARGE_SUMMARY | JobConfig.Series.DISCHARGE_FLOW |
+                  JobConfig.Series.CROSS_SECTION     | JobConfig.Series.FLOW_RATE):
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_discharge_period()]
-            case JobConfig.Serial.SEDIMENTS | JobConfig.GRANULOMETRY:
+            case JobConfig.Series.SEDIMENTS | JobConfig.Series.GRANULOMETRY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_sediments_period()]
-            case JobConfig.Serial.WATER_QUALITY:
+            case JobConfig.Series.WATER_QUALITY:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_water_period()]
-            case JobConfig.Serial.STAGE:
+            case JobConfig.Series.STAGE:
                 stations_data = [SerieStationData(code, start, end)
                                  for code, start, end in get_stage_period()]
         create_series_jobs(stations_data, job_config)
@@ -235,132 +221,144 @@ def check_series_job(job_config: JobConfig) -> None:
         check_series_job(job_config)
     else:
         logger.verbose("[TODO]: Update JOBS")
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        count = count_job(job_config, status)
+        status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
+        filters = create_job_filters(job_config, status, last_check=False)
+        count = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
-            trigger_job(job_config)
+            trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for {job_config}")
+            logger.info(f"No pending jobs for {job_config}.\n")
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
     """ Creates Series Jobs for each SerieStationData received for a given JobConfig.
     Preprocess all years from "Start Date" to "End Date" that will become a job request.
     """
+    start = time.time()
+    jobs = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_period, *data, job_config)
+                   for data in stations_data]
+        for future in as_completed(futures):
+            try:
+                processed_jobs = future.result()
+                jobs.extend(processed_jobs)
+            except Exception as e:
+                logger.error(f"Error processing period: {e}")
+    insert_jobs(jobs)
+    elapsed = time.time() - start
+    logger.info(f"Created {len(jobs)} jobs for {job_config} in {elapsed:.2f} seconds")
 
-    total_jobs_count = 0
-    for station_code, start_date, end_date in stations_data:
-        jobs = []
-        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
+
+def process_period(station_code, start_date, end_date, job_config):
+    jobs = []
+    formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
+    for fmt in formats:
+        try:
+            start_date = datetime.strptime(start_date, fmt)
+            break
+        except Exception as e:
+            continue
+    if end_date is None:
+        end_date = datetime.today() - timedelta(days=1)
+        end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
         for fmt in formats:
             try:
-                start_date = datetime.strptime(start_date, fmt)
+                end_date = datetime.strptime(end_date, fmt)
                 break
             except Exception as e:
                 continue
-        if end_date is None:
-            end_date = datetime.today() - timedelta(days=1)
-            end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        else:
-            for fmt in formats:
-                try:
-                    end_date = datetime.strptime(end_date, fmt)
-                    break
-                except Exception as e:
-                    continue
-        if start_date > datetime.today():
-            logger.warning(f"Corrupted start date {start_date} for station {station_code}")
-            jobs.append(SeriesJobs(
-                StationID  = station_code,
-                FromDate   = start_date,
-                ToDate     = end_date,
-                Status     = JobStatus.CORRUPTED.value,
-                HidroTable = job_config
-            ))
-            continue
-        total_years  = end_date.year - start_date.year
-        current_year = start_date
-        for count_year in range(1, total_years+1):
-            next_year = current_year.replace(year=current_year.year+1)
-            if next_year > end_date:
-                next_year = end_date
-            jobs.append(SeriesJobs(
-                StationID  = station_code,
-                FromDate   = current_year,
-                ToDate     = next_year,
-                Status     = JobStatus.PENDING.value,
-                HidroTable = job_config
-            ))
+
+    if start_date > end_date:
+        logger.trace(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
+        jobs.append(SeriesJobs(
+            StationID  = station_code,
+            FromDate   = start_date,
+            ToDate     = end_date,
+            Status     = JobConfig.Status.CORRUPTED.value,
+            HidroTable = job_config
+        ))
+        return jobs
+    total_years  = end_date.year - start_date.year
+    current_year = start_date
+    for count_year in range(1, total_years+1):
+        next_year = current_year.replace(year=current_year.year+1)
+        if next_year > end_date:
+            next_year = end_date
+        jobs.append(SeriesJobs(
+            StationID  = station_code,
+            FromDate   = current_year,
+            ToDate     = next_year,
+            Status     = JobConfig.Status.PENDING.value,
+            HidroTable = job_config
+        ))
+        if next_year < end_date:
             current_year = next_year
-        insert_jobs(jobs)
-        logger.verbose(f"Inserted {len(jobs)} jobs for station {station_code} over the period {start_date}-{end_date}")
-        total_jobs_count += len(jobs)
-    logger.info(f"Created {total_jobs_count} jobs for {job_config}")
+        else:
+            break
+    return jobs
 
 
-write_queue      = Queue()
-queue_data_size  = 0
-def trigger_job(job_config: JobConfig) -> None:
+write_queue: Queue[QueueData] = Queue()
+def trigger_job(job_config: JobConfig, filters) -> None:
     """ Triggers an Thread Worker for each pending or falied job entrie in DB for a given JobConfig."""
 
-    global queue_data_size
     writer = Thread(target=db_writer, daemon=True)
     writer.start()
-    futures = set()
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        status = [JobStatus.FAILED.value, JobStatus.PENDING.value]
-        for index, job in enumerate(get_jobs_yield(job_config, status)):
-            if queue_data_size > BATCH_SIZE * 2:
-                logger.warning(f"[WORKER {job_config}]: Queue data size limit reached on job {index}")
-                while queue_data_size  > BATCH_SIZE * 2:
-                    _, futures = wait(futures, return_when=FIRST_COMPLETED)
-                    time.sleep(0.01)
+        futures = [executor.submit(handle_job_request, job, job_config)
+                   for job in get_jobs(job_config, filters)]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logger.error(f"[WORKER]: {e}")
 
-            futures.add(executor.submit(handle_job, job, job_config))
-
-            if len(futures) >= MAX_WORKERS:
-                logger.trace(f"Max futures reached on job {index}")
-                _, futures = wait(futures, return_when=FIRST_COMPLETED)
-            wait(futures)
-    write_queue.put((job_config, None, None, True))
+    finish_queue = QueueData(
+        job_config  = job_config,
+        job         = None,
+        items       = None,
+        worker_time = 0,
+        stop_signal = True
+    )
+    write_queue.put(finish_queue)
     writer.join()
+    status_map = {1: "Pending", 2: "Failed", 5: "Completed"}
+    counts = {status_map.get(s, f"Unknown({s})"): c for s, c in count_job_by_status(job_config)}
+    logger.info(f"Pending: {counts.get('Pending', 0)}, Failed: {counts.get('Failed', 0)}, Completed: {counts.get('Completed', 0)}\n")
 
 
 token_lock = Lock()
-def handle_job(job: HidroJob, job_config: JobConfig) -> None:
+def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
     """ Request data of an HidroJob.
     Validate data on success return, and convert to ORM model before writing on Queue.
     """
 
-    global queue_data_size
-
+    start = time.time()
     with token_lock:
         token = get_token()
     success, items = request_job_data(job_config, token, job.to_params())
 
     if success:
+        job.Status = JobConfig.Status.COMPLETED.value
         match job_config:
-            case JobConfig.Serial.STATION:
-                job.Status    = JobStatus.COMPLETED
+            case JobConfig.Base():
                 job.LastCheck = datetime.now()
-            case _:
-                job, items = validate_data(job_config, items, job)
     else:
-        job.Status = JobStatus.FAILED
-
-    if job.Status == JobStatus.COMPLETED and len(items) > 0:
-        data = data_to_model_orm(job_config, items)
-    else:
-        data = []
-
-    if isinstance(job, SeriesJobs):
-        logger.verbose(f"""[JOB {job_config} {job.ID}]: {job.Status.get_label()} """
-                       f"""request for station {job.StationID} """
-                       f"""on period ({job.FromDate})-({job.ToDate})""")
-
-    queue_data_size += len(data)
-    write_queue.put((job_config, job, data, False))
+        job.Status = JobConfig.Status.FAILED.value
+    elapsed = time.time() - start
+    logger.verbose(f"[WORKER]: Job {job.ID} completed in {elapsed:.2f} seconds")
+    queue_data = QueueData(
+        job_config  = job_config,
+        job         = job,
+        items       = items,
+        worker_time = elapsed,
+        stop_signal = False
+    )
+    write_queue.put(queue_data)
 
 
 def db_writer() -> None:
@@ -368,115 +366,247 @@ def db_writer() -> None:
     Consumes an Queue writen by each worker and write data in batches.
     """
 
-    global queue_data_size
     batch_buffer = {"jobs": [], "data": []}
-    total_data    = 0
-    total_jobs    = 0
-    total_elapsed = 0
+    total_data     = 0
+    total_jobs     = 0
+
+    worker_elapsed = 0
+    total_elapsed  = 0
+    insert_elapsed = 0
+    batch_elapsed  = 0
+    batch_start_time = None
     while True:
         try:
-            if write_queue.empty():
-                time.sleep(0.01)
-                continue
-
-            job_config, job, data, stop_signal = write_queue.get()
-            if data:
-                queue_data_size -= len(data)
-
+            job_config, job, data, worker_time, stop_signal = write_queue.get()
+            worker_elapsed += worker_time
             if job:
                 batch_buffer["jobs"].append(job)
-            if data and len(data) > 0:
+            if data:
                 batch_buffer["data"].extend(data)
+                if batch_start_time is None:
+                    batch_start_time = time.time()
 
             if len(batch_buffer["data"]) >= BATCH_SIZE or stop_signal:
-                total_data    += len(batch_buffer["data"])
-                total_jobs    += len(batch_buffer["jobs"])
-                total_elapsed += write_data(job_config, batch_buffer["jobs"], batch_buffer["data"])
-                logger.info(f"""[WRITER {job_config}]: Total Data: {total_data}, """
-                            f"""Total Jobs: {total_jobs}, """
-                            f"""Total thread elapsed: {total_elapsed}""")
+                if batch_start_time is not None:
+                    batch_elapsed = time.time() - batch_start_time
+                total_data     += len(batch_buffer["data"])
+                total_jobs     += len(batch_buffer["jobs"])
+                insert_elapsed  = write_data(job_config,
+                                             batch_buffer["jobs"],
+                                             batch_buffer["data"])
+                total_elapsed += batch_elapsed + insert_elapsed
+
+                logger.verbose(f"""[TIMER {job_config}]: """
+                               f"""Time to reach batch: {batch_elapsed}, """
+                               f"""Time to insert batch: {insert_elapsed}. """)
+
+                logger.info(f"""[WRITER {job_config}]: """
+                            f"""Total processed Data: {total_data}, """
+                            f"""Total finished Jobs: {total_jobs}. """)
+                logger.trace(f"""[TIMER {job_config}]: """
+                            f"""Total worker elapsed: {worker_elapsed}, """
+                            f"""Total writer elapsed: {total_elapsed}.""")
+
                 batch_buffer["jobs"].clear()
                 batch_buffer["data"].clear()
+                batch_start_time = None
 
             if stop_signal:
-                write_queue.task_done()
-                logger.info(f"""Finished jobs for {job_config}""")
+                logger.info(f"""[WRITER]: Finished jobs for {job_config} """
+                            f"""Total processed Data: {total_data}, """
+                            f"""Total finished Jobs: {total_jobs}.""")
+                logger.info(f"""[WRITER]: Total worker elapsed: {worker_elapsed}, """
+                            f"""Total writer elapsed: {total_elapsed}.""")
                 break;
 
         except Exception as e:
             logger.error(f"[WRITER]: db_writer exception: {e}")
             raise
 
+        finally:
+            write_queue.task_done()
 
-def write_data(job_config: JobConfig, jobs: List[HidroJob], hidro_data: dict) -> float:
+
+def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
     """Insert data into DB and update the jobs as well. """
 
     start_time = time.perf_counter()
-    if len(hidro_data) > 0:
-        logger.trace(f"[WRITER {job_config}]: Inserting {len(hidro_data)} entries")
-        has_id = True if job_config == JobConfig.Serial.CROSS_SECTION else False
-        insert_hidro(hidro_data, has_id)
+    entries = []
+    if len(items) > 0:
+        match job_config:
+            case JobConfig.Series():
+                items = validate_series_items(job_config, items)
+        convert_json_items(job_config, items)
+        match job_config:
+            case JobConfig.Base():
+                if job_config == "Estado":
+                    check_keys = {"Codigo": "codigouf"}
+                else:
+                    check_keys = {f"Codigo": f'codigo{job_config.lower()}'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
+            case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
+                  JobConfig.Series.FLOW_RATE | JobConfig.Series.SEDIMENTS         |
+                  JobConfig.Series.STAGE):
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Hora_Dado'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
+
+            case JobConfig.Series.GRANULOMETRY:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Dado',
+                              'HoraInicial': 'Hora_Inicial', 'HoraFinal': 'Hora_Final'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
+
+            case JobConfig.Series.DISCHARGE_FLOW:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'NumeroCurva': 'Numero_Curva',
+                              'PeriodoValidadeInicio': 'Periodo_Validade_Inicio',
+                              'PeriodoValidadeFim': 'Periodo_Validade_Fim'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    insert_hidro(entries)
+
+            case JobConfig.Series.WATER_QUALITY:
+                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Hora_Dado'}
+                entries = handle_batch_update(job_config, items, check_keys)
+                if entries:
+                    entries = insert_hidro(entries, False)
+                    entry_lookup = {}
+                    for entry in entries:
+                        key = (getattr(entry, 'EstacaoCodigo'), getattr(entry, 'Data'))
+                        entry_lookup[key] = entry
+                    for item in items:
+                        key = (item['codigoestacao'], item['Data_Hora_Dado'])
+                        if key in entry_lookup:
+                            item['Registro_ID'] = entry_lookup[key].RegistroID
+                    check_keys = {f'{job_config}ID': 'Registro_ID'}
+                    water_status_entries = handle_batch_update(f'{job_config}Status', items, check_keys)
+                    if water_status_entries:
+                        insert_hidro(water_status_entries)
+
+            case JobConfig.Series.CROSS_SECTION:
+                current_id = None
+                for item in items:
+                    item_id = item.get("Registro_ID")
+                    if current_id != item_id:
+                        current_id = item_id
+                        if not any(entry.RegistroID == current_id for entry in entries):
+                            entries.append(get_hidro_model(job_config).from_json(item))
+                    entries.append(VerticalCrossSection.from_json(item))
+                insert_hidro(entries)
+
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
         logger.trace(f"[WRITER {job_config}]: Updated {len(jobs)} jobs")
     elapsed_time = time.perf_counter() - start_time
-    logger.trace(f"[WRITER {job_config}]: Inserted {len(hidro_data)} entries in {elapsed_time} seconds")
+    if entries:
+        logger.trace(f"[WRITER {job_config}]: Inserted {len(entries)} entries in {elapsed_time} seconds")
     return elapsed_time
 
 
-def validate_data(job_config: JobConfig, items: dict, job: HidroJob) -> (HidroJob, dict):
+def validate_series_items(job_config: JobConfig, items):
     """Validate returned data by the API. """
 
-    #TODO: VALIDATE EACH JSON KEY FOR EACH TABLE?
-    job.Status = JobStatus.COMPLETED
-
     match job_config:
-        case JobConfig.Serial.RAIN:
+        case JobConfig.Series.RAIN:
             dict_len = 76
-        case JobConfig.Serial.DISCHARGE_SUMMARY:
+        case JobConfig.Series.DISCHARGE_SUMMARY:
             dict_len = 10
-        case JobConfig.Serial.DISCHARGE_FLOW:
+        case JobConfig.Series.DISCHARGE_FLOW:
             dict_len = 18
-        case JobConfig.Serial.STAGE:
+        case JobConfig.Series.STAGE:
             dict_len = 78
-        case JobConfig.Serial.GRANULOMETRY:
+        case JobConfig.Series.GRANULOMETRY:
             dict_len = 117
-        case JobConfig.Serial.CROSS_SECTION:
+        case JobConfig.Series.CROSS_SECTION:
             dict_len = 18
-        case JobConfig.Serial.WATER_QUALITY:
+        case JobConfig.Series.WATER_QUALITY:
             dict_len = 303
+        case JobConfig.Series.SEDIMENTS:
+            dict_len = 18
         case _:
-            #TODO: CHECK LEN FOR EVERY TABLE?
-            return (job, items)
+            dict_len = None
 
-    for item in items:
-        if (len(item) != dict_len):
-            items   = []
-            job.Status = JobStatus.INVALID
-            logger.verbose(f"[VALIDATE JOB {job.ID}] Invalid item: {item}")
-            break
+    if dict_len:
+        valid = []
+        for item in items:
+            if len(item) == dict_len:
+                valid.append(item)
+            else:
+                logger.verbose(f"Item {item} has length {len(item)}, expected {dict_len}")
+        items = valid
 
-    return (job, items)
-
-
-def data_to_model_orm(job_config: JobConfig, hidro_data: dict):
-    """Convert returned data by the API into the correspondent ORM Model of the job. """
-
-    model_data = []
     match job_config:
-        case JobConfig.Serial.WATER_QUALITY:
-            for item in hidro_data:
-                model_data.append(WaterQuality.from_json(item))
-                model_data.append(WaterQualityStatus.from_json(item))
-        case JobConfig.Serial.CROSS_SECTION:
-            current_id      = None
-            for item in hidro_data:
-                item_id = item.get("Registro_ID")
-                if current_id != item_id:
-                    current_id = item_id
-                    model_data.append(get_hidro_model(job_config).from_json(item))
-                model_data.append(VerticalCrossSection.from_json(item, current_id))
-        case _:
-            for data in hidro_data:
-                model_data.append(get_hidro_model(job_config).from_json(data))
-    return model_data
+        case JobConfig.Series.CROSS_SECTION:
+            return items
+
+    seen = set()
+    filtered = []
+    for index, item in enumerate(items):
+        try:
+            match job_config:
+                case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
+                      JobConfig.Series.STAGE     | JobConfig.Series.WATER_QUALITY     |
+                      JobConfig.Series.SEDIMENTS | JobConfig.Series.FLOW_RATE):
+                    key = (item['codigoestacao'], item['Data_Hora_Dado'])
+                case JobConfig.Series.GRANULOMETRY:
+                    key = (item['codigoestacao'], item['Data_Dado'],
+                           item['Hora_Inicial'], item['Hora_Final'])
+                case JobConfig.Series.DISCHARGE_FLOW:
+                    key = (item['codigoestacao'], item['Numero_Curva'],
+                           item['Periodo_Validade_Inicio'], item['Periodo_Validade_Fim'])
+
+            if key not in seen:
+                seen.add(key)
+                filtered.append(item)
+            else:
+                logger.verbose(f"[VALIDATE JOB]: Duplicated item: {key}")
+
+        except Exception as e:
+            logger.error(f"Error at index {index}: {e}")
+            logger.error(f"Item: {item}, type: {type(item)}")
+            pass
+
+    if filtered:
+        items = filtered
+
+    return items
+
+
+def convert_json_items(job_config, items):
+    for item in items:
+        for key, value in item.items():
+            if isinstance(value, str):
+                try:
+                    item[key] = json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    match job_config:
+                        case JobConfig.Series.GRANULOMETRY:
+                            formats = ["%Y-%m-%d %H:%M:%S.%f",
+                                       "%Y-%m-%d %H:%M:%S",
+                                       "%Y-%m-%d", "%H:%M:%S"]
+                            for fmt in formats:
+                                try:
+                                    item[key] = datetime.strptime(value, fmt)
+                                    break
+                                except Exception as e:
+                                    continue
+                        case _:
+                            try:
+                                item[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                            except ValueError:
+                                pass
+    return items
+
+
+def run():
+    for job in JobConfig.Base:
+        check_base_job(job)
+    for job in JobConfig.Series:
+        if job in SKIP_FOR:
+            logger.info(f"Skiping job for {job}.\n")
+            continue
+        check_series_job(job)

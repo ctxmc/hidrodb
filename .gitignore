@@ -7,3 +7,4 @@ json/*
 
 HidroDB.egg-info/
 build/
+.coverage

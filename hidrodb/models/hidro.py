@@ -23,19 +23,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """ Provides models for Hidro Database. """
 
-from sqlalchemy import Column, Float, SmallInteger, BigInteger, Integer, String, DateTime, func
+from sqlalchemy import (
+    Column, Float, SmallInteger,
+    BigInteger, Integer, String,
+    DateTime, UniqueConstraint,
+    ForeignKey
+)
 from sqlalchemy.orm import declarative_base
 
 from datetime import datetime
-
-def str_to_datetime(date_str):
-    """ Converts string to datetime. """
-
-    if date_str:
-        return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S.%f")
-    else:
-        return None
-
 
 HidroBase = declarative_base()
 class HidroBaseModel(HidroBase):
@@ -43,19 +39,11 @@ class HidroBaseModel(HidroBase):
 
     __abstract__ = True
 
-    RegistroID        = Column(Float, primary_key=True)
-    Importado         = Column(SmallInteger, default=0)
-    Temporario        = Column(SmallInteger, default=0)
-    Removido          = Column(SmallInteger, default=0)
-    ImportadoRepetido = Column(SmallInteger, default=0)
-    DataIns           = Column(DateTime, default=func.now())
-    DataAlt           = Column(DateTime)
+    RegistroID = Column(Integer, primary_key=True, autoincrement=True)
+    DataIns    = Column(DateTime, default=datetime.now)
+    DataAlt    = Column(DateTime)
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('Importado',         0)
-        kwargs.setdefault('Temporario',        0)
-        kwargs.setdefault('Removido',          0)
-        kwargs.setdefault('ImportadoRepetido', 0)
         super().__init__(**kwargs)
 
 
@@ -72,7 +60,7 @@ class Basin(HidroBaseModel):
         return cls(
             Nome    = json_data.get("Nome_Bacia"),
             Codigo  = json_data.get("codigobacia"),
-            DataAlt = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
+            DataAlt = json_data.get("Data_Ultima_Alteracao")
         )
 
 
@@ -90,7 +78,7 @@ class SubBasin(HidroBaseModel):
         return cls(
             Nome        = json_data.get("Sub_Bacia_Nome"),
             Codigo      = json_data.get("codigosubbacia"),
-            DataAlt     = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt     = json_data.get("Data_Ultima_Alteracao"),
             BaciaCodigo = json_data.get("Bacia_Codigo")
         )
 
@@ -110,7 +98,7 @@ class Entity(HidroBaseModel):
             Nome    = json_data.get("Entidade_Nome"),
             Sigla   = json_data.get("Entidade_Sigla"),
             Codigo  = json_data.get("codigoentidade"),
-            DataAlt = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt = json_data.get("Data_Ultima_Alteracao"),
         )
 
 
@@ -129,7 +117,7 @@ class Township(HidroBaseModel):
             Nome       = json_data.get("Municipio_Nome"),
             Codigo     = json_data.get("codigomunicipio"),
             CodigoIBGE = json_data.get("Municipio_Codigo_IBGE"),
-            DataAlt    = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt    = json_data.get("Data_Ultima_Alteracao"),
         )
 
 
@@ -149,7 +137,7 @@ class River(HidroBaseModel):
         return cls(
             Nome           = json_data.get("Nome_Rio"),
             Codigo         = json_data.get("codigorio"),
-            DataAlt        = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt        = json_data.get("Data_Ultima_Alteracao"),
             Jurisdicao     = json_data.get("Rio_Jurisdicao"),
             BaciaCodigo    = json_data.get("Bacia_Codigo"),
             SubBaciaCodigo = json_data.get("Sub_Bacia_Codigo"),
@@ -173,7 +161,7 @@ class State(HidroBaseModel):
             Sigla      = json_data.get("Estado_Sigla"),
             Codigo     = json_data.get("codigouf"),
             CodigoIBGE = json_data.get("Estado_Codigo_IBGE"),
-            DataAlt    = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt    = json_data.get("Data_Ultima_Alteracao"),
         )
 
 
@@ -243,7 +231,7 @@ class Station(HidroBaseModel):
     TipoRedeQualAgua              = Column(SmallInteger)
     TipoRedeSedimentos            = Column(SmallInteger)
     BaciaCodigo                   = Column(BigInteger)
-    Codigo                        = Column(BigInteger)
+    Codigo                        = Column(BigInteger, unique=True)
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -252,29 +240,29 @@ class Station(HidroBaseModel):
             AreaDrenagem                  = json_data.get("Area_Drenagem"),
             CodigoAdicional               = json_data.get("Codigo_Adicional"),
             OperadoraUnidade              = json_data.get("Codigo_Operadora_Unidade_UF"),
-            PeriodoClimatologicaFim       = str_to_datetime(json_data.get("Data_Periodo_Climatologica_Fim")),
-            PeriodoClimatologicaInicio    = str_to_datetime(json_data.get("Data_Periodo_Climatologica_Inicio")),
-            PeriodoDescLiquidaFim         = str_to_datetime(json_data.get("Data_Periodo_Desc_Liquida_Fim")),
-            PeriodoDescLiquidaInicio      = str_to_datetime(json_data.get("Data_Periodo_Desc_liquida_Inicio")),
-            PeriodoEscalaFim              = str_to_datetime(json_data.get("Data_Periodo_Escala_Fim")),
-            PeriodoEscalaInicio           = str_to_datetime(json_data.get("Data_Periodo_Escala_Inicio")),
-            PeriodoPiezometriaFim         = str_to_datetime(json_data.get("Data_Periodo_Piezometria_Fim")),
-            PeriodoPiezometriaInicio      = str_to_datetime(json_data.get("Data_Periodo_Piezometria_Inicio")),
-            PeriodoPluviometroFim         = str_to_datetime(json_data.get("Data_Periodo_Pluviometro_Fim")),
-            PeriodoPluviometroInicio      = str_to_datetime(json_data.get("Data_Periodo_Pluviometro_Inicio")),
-            PeriodoQualAguaFim            = str_to_datetime(json_data.get("Data_Periodo_Qual_Agua_Fim")),
-            PeriodoQualAguaInicio         = str_to_datetime(json_data.get("Data_Periodo_Qual_Agua_Inicio")),
-            PeriodoRegistradorChuvaFim    = str_to_datetime(json_data.get("Data_Periodo_Registrador_Chuva_Fim")),
-            PeriodoRegistradorChuvaInicio = str_to_datetime(json_data.get("Data_Periodo_Registrador_Chuva_Inicio")),
-            PeriodoRegistradorNivelFim    = str_to_datetime(json_data.get("Data_Periodo_Registrador_Nivel_Fim")),
-            PeriodoRegistradorNivelInicio = str_to_datetime(json_data.get("Data_Periodo_Registrador_Nivel_Inicio")),
-            PeriodoSedimentosFim          = str_to_datetime(json_data.get("Data_Periodo_Sedimento_Fim")),
-            PeriodoSedimentosInicio       = str_to_datetime(json_data.get("Data_Periodo_Sedimento_Inicio")),
-            PeriodoTanqueEvapoFim         = str_to_datetime(json_data.get("Data_Periodo_Tanque_Evapo_Fim")),
-            PeriodoTanqueEvapoInicio      = str_to_datetime(json_data.get("Data_Periodo_Tanque_Evapo_Inicio")),
-            PeriodoTelemetricaFim         = str_to_datetime(json_data.get("Data_Periodo_Telemetrica_Fim")),
-            PeriodoTelemetricaInicio      = str_to_datetime(json_data.get("Data_Periodo_Telemetrica_Inicio")),
-            UltimaAtualizacao             = str_to_datetime(json_data.get("Data_Ultima_Atualizacao")),
+            PeriodoClimatologicaFim       = json_data.get("Data_Periodo_Climatologica_Fim"),
+            PeriodoClimatologicaInicio    = json_data.get("Data_Periodo_Climatologica_Inicio"),
+            PeriodoDescLiquidaFim         = json_data.get("Data_Periodo_Desc_Liquida_Fim"),
+            PeriodoDescLiquidaInicio      = json_data.get("Data_Periodo_Desc_liquida_Inicio"),
+            PeriodoEscalaFim              = json_data.get("Data_Periodo_Escala_Fim"),
+            PeriodoEscalaInicio           = json_data.get("Data_Periodo_Escala_Inicio"),
+            PeriodoPiezometriaFim         = json_data.get("Data_Periodo_Piezometria_Fim"),
+            PeriodoPiezometriaInicio      = json_data.get("Data_Periodo_Piezometria_Inicio"),
+            PeriodoPluviometroFim         = json_data.get("Data_Periodo_Pluviometro_Fim"),
+            PeriodoPluviometroInicio      = json_data.get("Data_Periodo_Pluviometro_Inicio"),
+            PeriodoQualAguaFim            = json_data.get("Data_Periodo_Qual_Agua_Fim"),
+            PeriodoQualAguaInicio         = json_data.get("Data_Periodo_Qual_Agua_Inicio"),
+            PeriodoRegistradorChuvaFim    = json_data.get("Data_Periodo_Registrador_Chuva_Fim"),
+            PeriodoRegistradorChuvaInicio = json_data.get("Data_Periodo_Registrador_Chuva_Inicio"),
+            PeriodoRegistradorNivelFim    = json_data.get("Data_Periodo_Registrador_Nivel_Fim"),
+            PeriodoRegistradorNivelInicio = json_data.get("Data_Periodo_Registrador_Nivel_Inicio"),
+            PeriodoSedimentosFim          = json_data.get("Data_Periodo_Sedimento_Fim"),
+            PeriodoSedimentosInicio       = json_data.get("Data_Periodo_Sedimento_Inicio"),
+            PeriodoTanqueEvapoFim         = json_data.get("Data_Periodo_Tanque_Evapo_Fim"),
+            PeriodoTanqueEvapoInicio      = json_data.get("Data_Periodo_Tanque_Evapo_Inicio"),
+            PeriodoTelemetricaFim         = json_data.get("Data_Periodo_Telemetrica_Fim"),
+            PeriodoTelemetricaInicio      = json_data.get("Data_Periodo_Telemetrica_Inicio"),
+            UltimaAtualizacao             = json_data.get("Data_Ultima_Atualizacao"),
             Nome                          = json_data.get("Estacao_Nome"),
             Latitude                      = json_data.get("Latitude"),
             Longitude                     = json_data.get("Longitude"),
@@ -322,7 +310,11 @@ class Station(HidroBaseModel):
 class Rain(HidroBaseModel):
     """ Database model for storing Rain data. """
 
-    __tablename__ = 'Chuvas'
+    __tablename__  = 'Chuvas'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_chuvas_station_date'),
+    )
 
     Data                 = Column(DateTime)
     DiaMaxima            = Column(SmallInteger)
@@ -345,8 +337,8 @@ class Rain(HidroBaseModel):
     @classmethod
     def from_json(cls, json_data: dict):
         kwargs = {
-            'Data':                 str_to_datetime(json_data.get("Data_Hora_Dado")),
-            'DataAlt':              str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            'Data':                 json_data.get("Data_Hora_Dado"),
+            'DataAlt':              json_data.get("Data_Ultima_Alteracao"),
             'DiaMaxima':            json_data.get("Dia_Maxima"),
             'Maxima':               json_data.get("Maxima"),
             'MaximaStatus':         json_data.get("Maxima_Status"),
@@ -371,6 +363,10 @@ class DischargeSummary(HidroBaseModel):
     """ Database model for storing Discharge Summary  data. """
 
     __tablename__ = 'ResumoDescarga'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_resumo_descarga_station_date'),
+    )
 
     AreaMolhada       = Column(Float)
     Cota              = Column(Float)
@@ -387,8 +383,8 @@ class DischargeSummary(HidroBaseModel):
         return cls(
             AreaMolhada       = json_data.get("Area_Molhada"),
             Cota              = json_data.get("Cota (cm)"),
-            Data              = str_to_datetime(json_data.get("Data_Hora_Dado")),
-            DataAlt           = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            Data              = json_data.get("Data_Hora_Dado"),
+            DataAlt           = json_data.get("Data_Ultima_Alteracao"),
             Largura           = json_data.get("Largura (m)"),
             NivelConsistencia = json_data.get("Nivel_Consistencia"),
             Profundidade      = json_data.get("Profundidade (m)"),
@@ -402,6 +398,10 @@ class Sediments(HidroBaseModel):
     """ Database model for storing Sediments data. """
 
     __tablename__ = 'Sedimentos'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_sediments_station_date'),
+    )
 
     AreaMolhada                = Column(Float)
     ConcentracaoMatSuspensao   = Column(Float)
@@ -430,9 +430,9 @@ class Sediments(HidroBaseModel):
             CondutividadeEletrica      = json_data.get("Condutividade_Eletrica"),
             Cota                       = json_data.get("Cota_cm"),
             CotaDeMedicao              = json_data.get("Cota_de_Mediacao"),
-            Data                       = str_to_datetime(json_data.get("Data_Hora_Dado")),
-            DataLiq                    = str_to_datetime(json_data.get("Data_Hora_Medicao_Liquida")),
-            DataAlt                    = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            Data                       = json_data.get("Data_Hora_Dado"),
+            DataLiq                    = json_data.get("Data_Hora_Medicao_Liquida"),
+            DataAlt                    = json_data.get("Data_Ultima_Alteracao"),
             Largura                    = json_data.get("Largura"),
             NivelConsistencia          = json_data.get("Nivel_Consistencia"),
             NumMedicao                 = json_data.get("Numero_Medicao"),
@@ -449,6 +449,10 @@ class Stage(HidroBaseModel):
     """ Database model for storing Stage data. """
 
     __tablename__ = 'Cotas'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_cotas_station_date'),
+    )
 
     Data              = Column(DateTime)
     DiaMaxima         = Column(SmallInteger)
@@ -473,8 +477,8 @@ class Stage(HidroBaseModel):
     @classmethod
     def from_json(cls, json_data: dict):
         kwargs = {
-            "Data":              str_to_datetime(json_data.get("Data_Hora_Dado")),
-            "DataAlt":           str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            "Data":              json_data.get("Data_Hora_Dado"),
+            "DataAlt":           json_data.get("Data_Ultima_Alteracao"),
             "DiaMaxima":         json_data.get("Dia_Maxima"),
             "DiaMinima":         json_data.get("Dia_Minima"),
             "Maxima":            json_data.get("Maxima"),
@@ -501,6 +505,10 @@ class DischargeFlow(HidroBaseModel):
     """ Database model for storing Discharge Flow data. """
 
     __tablename__ = 'CurvaDescarga'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'NumeroCurva', 'PeriodoValidadeInicio', 'PeriodoValidadeFim',
+                         name='uq_discharge_flow'),
+    )
 
     CoefA                 = Column(Float)
     CoefH0                = Column(Float)
@@ -532,11 +540,11 @@ class DischargeFlow(HidroBaseModel):
             CoefA3                = json_data.get("Coefa_3"),
             CotaMaxima            = json_data.get("Cota_Maxima"),
             CotaMinima            = json_data.get("Cota_Minima"),
-            DataAlt               = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            DataAlt               = json_data.get("Data_Ultima_Alteracao"),
             NivelConsistencia     = json_data.get("Nivel_Consistencia"),
             NumeroCurva           = json_data.get("Numero_Curva"),
-            PeriodoValidadeFim    = str_to_datetime(json_data.get("Periodo_Validade_Fim")),
-            PeriodoValidadeInicio = str_to_datetime(json_data.get("Periodo_Validade_Inicio")),
+            PeriodoValidadeFim    = json_data.get("Periodo_Validade_Fim"),
+            PeriodoValidadeInicio = json_data.get("Periodo_Validade_Inicio"),
             TabelaPassoCota       = json_data.get("Tabela_Passo_Cota"),
             TipoCurva             = json_data.get("Tipo_Curva"),
             TipoEquacao           = json_data.get("Tipo_Equacao"),
@@ -548,6 +556,10 @@ class WaterQuality(HidroBaseModel):
     """ Database model for storing Water Quality data. """
 
     __tablename__ = 'QualAgua'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_qual_agua_station_date'),
+    )
 
     n245T                       = Column(Float)
     n245TP                      = Column(Float)
@@ -852,8 +864,8 @@ class WaterQuality(HidroBaseModel):
             n12Dicloroetano             = json_data.get("99_1_2_Dicloroetano_mgl"),
             DQO                         = json_data.get("9_DQO_mgl_02)"),
             Choveu                      = json_data.get("Choveu"),
-            Data                        = str_to_datetime(json_data.get("Data_Hora_Dado")),
-            DataAlt                     = str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            Data                        = json_data.get("Data_Hora_Dado"),
+            DataAlt                     = json_data.get("Data_Ultima_Alteracao"),
             NivelConsistencia           = json_data.get("Nilvel_ConsistÃªncia"),
             NumMedicao                  = json_data.get("Num_Medicao"),
             PosHorizColeta              = json_data.get("Posicao_Horizontal_Coleta"),
@@ -863,13 +875,12 @@ class WaterQuality(HidroBaseModel):
         )
 
 
-class WaterQualityStatus(HidroBase):
+class WaterQualityStatus(HidroBaseModel):
     """ Database model for storing Water Quality Status data. """
 
     __tablename__ = 'QualAguaStatus'
 
-    RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger, default=0)
+    QualAguaID = Column(Integer, ForeignKey("QualAgua.RegistroID"), nullable=False)
     locals().update({
         f'QualAgua{i:03d}Status': Column(f'QualAgua{i:03d}Status', SmallInteger)
         for i in range(1, 148)
@@ -878,6 +889,7 @@ class WaterQualityStatus(HidroBase):
     @classmethod
     def from_json(cls, json_data: dict):
         kwargs = {}
+        kwargs["QualAguaID"] = json_data.get("Registro_ID")
         for i in range(1, 148):
             kwargs[f"QualAgua{i:03d}Status"] = json_data.get(f"{i}_Status")
 
@@ -888,12 +900,16 @@ class Granulometry(HidroBaseModel):
     """ Database model for storing Granulometry data. """
 
     __tablename__ = 'Granulometria'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data', 'HoraInicial', 'HoraFinal',
+                         name='uq_granulometry_station_date'),
+    )
 
     EstacaoCodigo             = Column(BigInteger)
     NivelConsistencia         = Column(SmallInteger)
-    # Data                      = Column(DateTime)
-    # HoraInicial               = Column(DateTime)
-    # HoraFinal                 = Column(DateTime)
+    Data                      = Column(DateTime)
+    HoraInicial               = Column(DateTime)
+    HoraFinal                 = Column(DateTime)
     Cota                      = Column(Float)
     Largura                   = Column(Float)
     TipoAmostra               = Column(SmallInteger)
@@ -1011,9 +1027,9 @@ class Granulometry(HidroBaseModel):
         return cls(
             EstacaoCodigo             = json_data.get("codigoestacao"),
             NivelConsistencia         = json_data.get("Nivel_Consistencia"),
-            # Data                      = json_data.get("Data_Dado"),
-            # HoraInicial               = json_data.get("Hora_Final"),
-            # HoraFinal                 = json_data.get("Hora_Inicial"),
+            Data                      = json_data.get("Data_Dado"),
+            HoraInicial               = json_data.get("Hora_Final"),
+            HoraFinal                 = json_data.get("Hora_Inicial"),
             Cota                      = json_data.get("Cota_cm"),
             Largura                   = json_data.get("Largura_m"),
             TipoAmostra               = json_data.get("Tipo_Amostra"),
@@ -1125,15 +1141,16 @@ class Granulometry(HidroBaseModel):
             MatSuspD65                = json_data.get("MatSusp_D65_mm"),
             MatSuspD84                = json_data.get("MatSusp_D84_mm"),
             MatSuspD90                = json_data.get("MatSusp_D90_mm"),
-            DataAlt                   = str_to_datetime(json_data.get("Data_Ultima_Alteracao"))
+            DataAlt                   = json_data.get("Data_Ultima_Alteracao")
         )
 
 
-class CrossSection(HidroBaseModel):
+class CrossSection(HidroBase):
     """ Database model for storing Cross Section data. """
 
     __tablename__ = 'PerfilTransversal'
 
+    RegistroID        = Column(Float, primary_key=True)
     EstacaoCodigo     = Column(BigInteger)
     NivelConsistencia = Column(SmallInteger)
     Data              = Column(DateTime)
@@ -1154,7 +1171,7 @@ class CrossSection(HidroBaseModel):
             RegistroID        = json_data.get("Registro_ID"),
             EstacaoCodigo     = json_data.get("codigoestacao"),
             NivelConsistencia = json_data.get("Nivel_Consistencia"),
-            Data              = str_to_datetime(json_data.get("Data_Hora_Medicao")),
+            Data              = json_data.get("Data_Hora_Medicao"),
             NumLevantamento   = json_data.get("Num_Levantamento"),
             TipoSecao         = json_data.get("Tipo_Secao"),
             NumVerticais      = json_data.get("Num_Verticais"),
@@ -1168,23 +1185,21 @@ class CrossSection(HidroBaseModel):
         )
 
 
-class VerticalCrossSection(HidroBase):
+class VerticalCrossSection(HidroBaseModel):
     """ Database model for storing Vertical Cross Section data. """
 
     __tablename__ = 'PerfilTransversalVert'
 
-    RegistroID = Column(Float, primary_key=True)
-    Removido   = Column(SmallInteger, default=0)
-    Cota       = Column(Float)
-    Distancia  = Column(Float)
+    PerfilTransversalID = Column(Float, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
+    Cota                = Column(Float)
+    Distancia           = Column(Float)
 
     @classmethod
-    def from_json(cls, json_data: dict, reg_id):
+    def from_json(cls, json_data: dict):
         return cls(
-            RegistroID = reg_id,
-            Removido   = 0,
-            Cota       = json_data.get("Cota"),
-            Distancia  = json_data.get("Distancia")
+            PerfilTransversalID = json_data.get("Registro_ID"),
+            Cota                = json_data.get("Cota"),
+            Distancia           = json_data.get("Distancia")
         )
 
 
@@ -1192,6 +1207,10 @@ class FlowRate(HidroBaseModel):
     """ Database model for storing Flow Rate data. """
 
     __tablename__ = 'Vazoes'
+    __table_args__ = (
+        UniqueConstraint('EstacaoCodigo', 'Data',
+                         name='uq_vazoes_station_date'),
+    )
 
     EstacaoCodigo        = Column(BigInteger)
     NivelConsistencia    = Column(SmallInteger)
@@ -1220,8 +1239,8 @@ class FlowRate(HidroBaseModel):
         kwargs = {
             "EstacaoCodigo":        json_data.get("codigoestacao"),
             "NivelConsistencia":    json_data.get("Nivel_Consistencia"),
-            "Data":                 str_to_datetime(json_data.get("Data_Hora_Dado")),
-            # "Hora":                 
+            "Data":                 json_data.get("Data_Hora_Dado"),
+            # "Hora":               json_data.get("?"),
             "MediaDiaria":          json_data.get("Mediadiaria"),
             "MetodoObtencaoVazoes": json_data.get("Metodo_Obtencao_Vazoes"),
             "Maxima":               json_data.get("Maxima"),
@@ -1234,7 +1253,7 @@ class FlowRate(HidroBaseModel):
             "MediaStatus":          json_data.get("Media_Status"),
             "MediaAnual":           json_data.get("Media_Anual"),
             "MediaAnualStatus":     json_data.get("Media_Anual_Status"),
-            "DataAlt":              str_to_datetime(json_data.get("Data_Ultima_Alteracao")),
+            "DataAlt":              json_data.get("Data_Ultima_Alteracao"),
         }
         for i in range(1, 32):
             kwargs[f'Vazao{i:02d}']       = json_data.get(f"Vazao_{i:02d}")

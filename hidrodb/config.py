@@ -26,11 +26,13 @@
 Provides general config to HidroDB application.
 """
 
-import logging
-
-LOG_LEVEL = None
+LOG_LEVEL   = None
+HIDRO_PATH  = None
+CLIENT_PATH = None
 
 def setup_arguments():
+    """ Setup command line arguments. """
+
     import argparse;
     parser = argparse.ArgumentParser()
 
@@ -46,22 +48,34 @@ def setup_arguments():
     batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
     parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
 
-    parser.add_argument('--log-level', default='INFO', choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
+    parser.add_argument('--log-level', default='INFO',
+                        choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help='Set logging level')
+
+    parser.add_argument('--skip-for', default=[], nargs='*',
+                        choices=['Chuvas', 'ResumoDescarga', 'Sedimentos',
+                                 'Cotas', 'Vazoes', 'Granulometria',
+                                 'CurvaDescarga', 'QualAgua', 'PerfilTransversal'],
+                        help='Skip job creation and requesition for the given choices')
 
     args = parser.parse_args()
 
-    global LOG_LEVEL
-    LOG_LEVEL = args.log_level
+    global LOG_LEVEL, HIDRO_PATH, CLIENT_PATH
+    LOG_LEVEL   = args.log_level
+    HIDRO_PATH  = args.hidro
+    CLIENT_PATH = args.client
+
+
     import hidrodb.jobs as jobs
     jobs.MAX_WORKERS = args.max_workers
     jobs.BATCH_SIZE  = args.batch_size
-    import hidrodb.database as db
-    db.CLIENT_PATH = args.client
-    db.HIDRO_PATH  = args.hidro
+    jobs.SKIP_FOR    = args.skip_for
+    jobs.STATIONS    = args.stations
+
 
 def setup_logger():
     """ Setup logger object accross application. """
-
+    import logging;
     TRACE = 15
     setattr(logging.Logger, 'trace', _make_logger(TRACE))
     logging.addLevelName(TRACE, 'TRACE')
@@ -86,11 +100,11 @@ def _make_logger(level):
 def setup_database():
     """ Setup Hidro and Client Database. """
 
-    import hidrodb.database as db
-    db.init_db(db.CLIENT_PATH, db.DatabaseType.CLIENT)
-    db.init_db(db.HIDRO_PATH,  db.DatabaseType.HIDRO)
-    if not db.check_credentials():
+    import hidrodb.database        as db
+    import hidrodb.database.client as client
+    db.init_db(HIDRO_PATH, CLIENT_PATH)
+    if not client.check_credentials():
         user_id = input("Enter API username: ")
         import getpass;
         password = getpass.getpass("Enter API password: ")
-        db.insert_credentials(user_id, password)
+        client.insert_credentials(user_id, password)
