@@ -52,11 +52,15 @@ def setup_arguments():
                         choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'],
                         help='Set logging level')
 
+    parser.add_argument('--skip-series-jobs', action='store_true', default=False)
+
     parser.add_argument('--skip-for', default=[], nargs='*',
                         choices=['Chuvas', 'ResumoDescarga', 'Sedimentos',
                                  'Cotas', 'Vazoes', 'Granulometria',
                                  'CurvaDescarga', 'QualAgua', 'PerfilTransversal'],
                         help='Skip job creation and requesition for the given choices')
+
+    parser.add_argument('--stations', default=[], nargs='*')
 
     args = parser.parse_args()
 
@@ -67,10 +71,11 @@ def setup_arguments():
 
 
     import hidrodb.jobs as jobs
-    jobs.MAX_WORKERS = args.max_workers
-    jobs.BATCH_SIZE  = args.batch_size
-    jobs.SKIP_FOR    = args.skip_for
-    jobs.STATIONS    = args.stations
+    jobs.SKIP_SERIES_JOBS = args.skip_series_jobs
+    jobs.SKIP_FOR         = args.skip_for
+    jobs.STATIONS         = args.stations
+    jobs.MAX_WORKERS      = args.max_workers
+    jobs.BATCH_SIZE       = args.batch_size
 
 
 def setup_logger():

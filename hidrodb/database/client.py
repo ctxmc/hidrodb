@@ -108,12 +108,12 @@ def get_job_model(name: str):
             return SeriesJobs
 
 
-def create_job_filters(job_name: str, status: List[int], last_check: bool, max_retries=False) -> List[elements]:
+def create_job_filters(job_name: str, status: List[int], last_check: bool, stations=[]) -> List[elements]:
 
     model   = get_job_model(job_name)
     filters = [model.HidroTable == job_name]
-    if max_retries:
-        filters.append(model.Retries < 3)
+    if stations:
+        filters.append(model.StationID.in_(stations))
     if status or last_check:
         sub_filters = []
         if status:

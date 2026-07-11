@@ -44,7 +44,9 @@ from hidrodb.webservices import *
 
 MAX_WORKERS      = None
 BATCH_SIZE       = None
+SKIP_SERIES_JOBS = False
 SKIP_FOR         = []
+STATIONS         = []
 
 class JobConfig:
     # """ TODO """
@@ -205,7 +207,7 @@ def check_series_job(job_config: JobConfig) -> None:
     else:
         update_series_job(job_config)
         status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        filters = create_job_filters(job_config, status, last_check=False)
+        filters = create_job_filters(job_config, status, last_check=False, stations=STATIONS)
         count = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
@@ -602,6 +604,9 @@ def convert_json_items(job_config, items):
 def run():
     for job in JobConfig.Base:
         check_base_job(job)
+    if SKIP_SERIES_JOBS:
+        logger.info(f"Skiping series jobs.\n")
+        return
     for job in JobConfig.Series:
         if job in SKIP_FOR:
             logger.info(f"Skiping job for {job}.\n")
