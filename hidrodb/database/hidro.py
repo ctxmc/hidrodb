@@ -96,10 +96,11 @@ def get_period(model_name: str, only_code=False, with_null_end_date=False):
     return period_data
 
 
-def handle_batch_update(job_name: str, items, check_keys: set):
+def handle_batch_update(job_name: str, items):
 
     hidro_session = HIDRO_DB.get_session()
     model = get_hidro_model(job_name)
+    check_keys = get_verify_keys(job_name)
 
     filter_values = {}
     for model_key, json_key in check_keys.items():
@@ -135,3 +136,30 @@ def handle_batch_update(job_name: str, items, check_keys: set):
             logger.verbose(f"New {model.__tablename__} entry code {key}.")
     hidro_session.close()
     return new_entries
+
+
+def get_verify_keys(name: str):
+    match name:
+        case ("Bacia"     | "SubBacia" | "Entidade" |
+              "Municipio" | "Rio"      | "Estacao"):
+            return {"Codigo": f"codigo{name.lower()}"}
+        case "Estado":
+            return {"Codigo": "codigouf"}
+        case ("Chuvas" | "ResumoDescarga" |
+              "Vazoes" | "Sedimentos"     | "Cotas"):
+            return {'EstacaoCodigo': 'codigoestacao',
+                    'Data': 'Data_Hora_Dado'}
+        case "Granulometria":
+            return {'EstacaoCodigo': 'codigoestacao',
+                    'Data': 'Data_Dado',
+                    'HoraInicial': 'Hora_Inicial',
+                    'HoraFinal': 'Hora_Final'}
+        case "CurvaDescarga":
+            return {'EstacaoCodigo': 'codigoestacao',
+                    'NumeroCurva': 'Numero_Curva',
+                    'PeriodoValidadeInicio': 'Periodo_Validade_Inicio',
+                    'PeriodoValidadeFim': 'Periodo_Validade_Fim'}
+        case "QualAgua":
+            return {'EstacaoCodigo': 'codigoestacao',
+                    'Data': 'Data_Hora_Dado'}
+

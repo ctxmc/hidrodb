@@ -437,40 +437,16 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                 items = validate_series_items(job_config, items)
         convert_json_items(job_config, items)
         match job_config:
-            case JobConfig.Base():
-                if job_config == "Estado":
-                    check_keys = {"Codigo": "codigouf"}
-                else:
-                    check_keys = {f"Codigo": f'codigo{job_config.lower()}'}
-                entries = handle_batch_update(job_config, items, check_keys)
-                if entries:
-                    insert_hidro(entries)
-            case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
-                  JobConfig.Series.FLOW_RATE | JobConfig.Series.SEDIMENTS         |
-                  JobConfig.Series.STAGE):
-                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Hora_Dado'}
-                entries = handle_batch_update(job_config, items, check_keys)
-                if entries:
-                    insert_hidro(entries)
-
-            case JobConfig.Series.GRANULOMETRY:
-                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Dado',
-                              'HoraInicial': 'Hora_Inicial', 'HoraFinal': 'Hora_Final'}
-                entries = handle_batch_update(job_config, items, check_keys)
-                if entries:
-                    insert_hidro(entries)
-
-            case JobConfig.Series.DISCHARGE_FLOW:
-                check_keys = {'EstacaoCodigo': 'codigoestacao', 'NumeroCurva': 'Numero_Curva',
-                              'PeriodoValidadeInicio': 'Periodo_Validade_Inicio',
-                              'PeriodoValidadeFim': 'Periodo_Validade_Fim'}
-                entries = handle_batch_update(job_config, items, check_keys)
+            case (JobConfig.Base()                   | JobConfig.Series.RAIN           |
+                  JobConfig.Series.DISCHARGE_SUMMARY | JobConfig.Series.FLOW_RATE      |
+                  JobConfig.Series.SEDIMENTS         | JobConfig.Series.STAGE          |
+                  JobConfig.Series.GRANULOMETRY      | JobConfig.Series.DISCHARGE_FLOW):
+                entries = handle_batch_update(job_config, items)
                 if entries:
                     insert_hidro(entries)
 
             case JobConfig.Series.WATER_QUALITY:
-                check_keys = {'EstacaoCodigo': 'codigoestacao', 'Data': 'Data_Hora_Dado'}
-                entries = handle_batch_update(job_config, items, check_keys)
+                entries = handle_batch_update(job_config, items)
                 if entries:
                     entries = insert_hidro(entries, False)
                     entry_lookup = {}
