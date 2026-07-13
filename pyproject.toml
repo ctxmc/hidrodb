@@ -38,9 +38,14 @@ name     = "jobs"
 contents = ['jobs.*']
 
 [[tool.pydoc-markdown.renderer.pages]]
-title    = "Database"
-name     = "database"
-contents = ['database.*']
+title    = "Client Database"
+name     = "client database"
+contents = ['database.client.*']
+
+[[tool.pydoc-markdown.renderer.pages]]
+title    = "Hidro Database"
+name     = "hidro database"
+contents = ['database.hidro.*']
 
 [[tool.pydoc-markdown.renderer.pages]]
 title    = "WebServices"
