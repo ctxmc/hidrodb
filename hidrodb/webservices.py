@@ -103,33 +103,10 @@ def request_job_data(job_name: str, token: str, params: dict) -> (bool, dict):
     }
     endpoint = _DATA_ENDPOINTS_MAP[job_name]
     try:
-        file_path = _get_file_path(job_name, params)
-        items = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                items = json.load(f)
-        else:
-            items = request_hidro_ws(endpoint, headers, params).get("items", {})
-            with open(file_path, 'w') as f:
-                json.dump(items, f, indent=2, ensure_ascii=False)
+        items = request_hidro_ws(endpoint, headers, params).get("items", {})
         return (True, items)
     except Exception as e:
             logger.verbose(f"[REQUEST_DATA]: (exception): {e}")
             return (False, [])
 
 
-def _get_file_path(job_name: str, params: dict) -> str:
-    """ Returns file path to save returned json. """
-
-    match job_name:
-        case ("Bacia"     | "SubBacia" | "Entidade" |
-              "Municipio" | "Rio"      | "Estado"):
-            return f"./json/{job_name}.json"
-        case "Estacao":
-            UF = params["Unidade Federativa"]
-            return f"./json/{job_name}/{job_name}_{UF}.json"
-        case ("Chuvas"        | "ResumoDescarga"    | "CurvaDescarga" |
-              "Sedimentos"    | "QualAgua"          | "Cotas"         |
-              "Granulometria" | "PerfilTransversal" | "Vazoes"):
-            station_code, _, ymd_start, ymd_end = params.values()
-            return f"./json/{job_name}/station_{station_code}_{ymd_start}_{ymd_end}.json"

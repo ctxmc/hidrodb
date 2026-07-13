@@ -1222,15 +1222,10 @@ class Granulometry(HidroBaseModel):
         return statement
 
 
-# class CrossSection(HidroBaseModel):
 class CrossSection(HidroBase):
     """ Database model for storing Cross Section data. """
 
     __tablename__ = 'PerfilTransversal'
-    # __table_args__ = (
-    #     UniqueConstraint('EstacaoCodigo', 'Data', 'NumLevantamento', 'NivelConsistencia',
-    #                     name='uq_cross_section'),
-    # )
 
     RegistroID        = Column(Float, primary_key=True)
     EstacaoCodigo     = Column(BigInteger)
@@ -1278,20 +1273,14 @@ class CrossSection(HidroBase):
         return statement
 
 
-# class VerticalCrossSection(HidroBase):
 class VerticalCrossSection(HidroBaseModel):
     """ Database model for storing Vertical Cross Section data. """
 
     __tablename__ = 'PerfilTransversalVert'
 
-    # PerfilTransversalID = Column(Integer, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
     PerfilTransversalID = Column(Float, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
     Cota                = Column(Float)
     Distancia           = Column(Float)
-    # __table_args__ = (
-    #     UniqueConstraint('PerfilTransversalID', 'Cota', 'Distancia',
-    #                      name='uq_vertical_cross_section'),
-    # )
 
     @classmethod
     def from_json(cls, json_data: dict):

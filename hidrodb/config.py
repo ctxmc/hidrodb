@@ -36,23 +36,23 @@ def setup_arguments():
     import argparse;
     parser = argparse.ArgumentParser()
 
-    hidro_help_message = "Path to Hidro Database file"
-    parser.add_argument('--hidro',       type=str, default='db/hidro.db', help=hidro_help_message)
+    parser.add_argument('--hidro', type=str, default='db/hidro.db',
+                        help='Path to Hidro Database file')
 
-    client_help_message = "Path to Client Database file"
-    parser.add_argument('--client',      type=str, default='db/client.db', help=client_help_message)
+    parser.add_argument('--client', type=str, default='db/client.db',
+                        help='Path to Client Database file')
 
-    max_workers_help_message = "Maximum number of worker threads"
-    parser.add_argument('--max-workers', type=int, default=10)
+    parser.add_argument('--max-workers', type=int, default=10, help='Maximum number of worker threads')
 
-    batch_size_help_message = "Batch size threshold to write job data on Hidro Database"
-    parser.add_argument('--batch-size',  type=int, default=1000, help=batch_size_help_message)
+    parser.add_argument('--batch-size',  type=int, default=1000,
+                        help='Batch size threshold to write job data on Hidro Database')
 
     parser.add_argument('--log-level', default='INFO',
                         choices=['TRACE', 'VERBOSE', 'DEBUG', 'INFO', 'WARNING', 'ERROR'],
                         help='Set logging level')
 
-    parser.add_argument('--skip-series-jobs', action='store_true', default=False)
+    parser.add_argument('--skip-series-jobs', action='store_true', default=False,
+                        help='Skip all series jobs when present')
 
     parser.add_argument('--skip-for', default=[], nargs='*',
                         choices=['Chuvas', 'ResumoDescarga', 'Sedimentos',
@@ -60,7 +60,8 @@ def setup_arguments():
                                  'CurvaDescarga', 'QualAgua', 'PerfilTransversal'],
                         help='Skip job creation and requesition for the given choices')
 
-    parser.add_argument('--stations', default=[], nargs='*')
+    parser.add_argument('--stations', default=[], nargs='*',
+                        help='Stations codes to request data')
 
     args = parser.parse_args()
 

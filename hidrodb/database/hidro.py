@@ -27,7 +27,7 @@ from typing import List
 
 from hidrodb.models.hidro  import *
 
-HIDRO_DB    = None
+HIDRO_DB = None
 
 _HIDRO_MODELS_MAP = {
     "Bacia":                 Basin,

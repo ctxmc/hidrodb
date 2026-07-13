@@ -23,7 +23,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """ Provides models for Client Database. """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, SmallInteger
+from sqlalchemy import (
+    Column, Integer, String,
+    DateTime, ForeignKey, BigInteger,
+    SmallInteger, UniqueConstraint
+)
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 

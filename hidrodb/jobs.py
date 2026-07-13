@@ -26,7 +26,7 @@
 Provides routines to request and sync data on database.
 """
 
-import logging, time
+import logging, time, json
 logger = logging.getLogger(__name__)
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -49,33 +49,35 @@ SKIP_FOR         = []
 STATIONS         = []
 
 class JobConfig:
-    # """ TODO """
+    """ Hold basic config data for jobs. """
 
     class Base(StrEnum):
         """ Enum to hold basic resources data that does not require Threads. """
 
-        BASIN             = "Bacia"
-        SUB_BASIN         = "SubBacia"
-        ENTITY            = "Entidade"
-        TOWNSHIP          = "Municipio"
-        RIVER             = "Rio"
-        STATE             = "Estado"
-        STATION           = "Estacao"
+        BASIN     = "Bacia"
+        SUB_BASIN = "SubBacia"
+        ENTITY    = "Entidade"
+        TOWNSHIP  = "Municipio"
+        RIVER     = "Rio"
+        STATE     = "Estado"
+        STATION   = "Estacao"
 
     class Series(StrEnum):
         """ Enum to hold Hidro Jobs that will run with threads. """
 
         RAIN              = "Chuvas"
         DISCHARGE_SUMMARY = "ResumoDescarga"
-        DISCHARGE_FLOW    = "CurvaDescarga"
         SEDIMENTS         = "Sedimentos"
-        WATER_QUALITY     = "QualAgua"
-        STAGE             = "Cotas"
-        GRANULOMETRY      = "Granulometria"
-        CROSS_SECTION     = "PerfilTransversal"
         FLOW_RATE         = "Vazoes"
+        GRANULOMETRY      = "Granulometria"
+        DISCHARGE_FLOW    = "CurvaDescarga"
+        WATER_QUALITY     = "QualAgua"
+        CROSS_SECTION     = "PerfilTransversal"
+        STAGE             = "Cotas"
 
     class Status(Enum):
+        """ Enum to hold the result status of a job. """
+
         PENDING   = auto()
         FAILED    = auto()
         INVALID   = auto()
@@ -90,17 +92,19 @@ class SerieStationData:
     station_code: int
     """ Station code which data will be requested."""
 
-    start_date:   DateTime
+    start_date: DateTime
     """ Start date which data will be requested"""
 
-    end_date:     DateTime
+    end_date: DateTime
     """ End date which data will be requested"""
 
     def __iter__(self):
         return iter((self.station_code, self.start_date, self.end_date))
 
+
 @dataclass
 class QueueData:
+    """ Data class to hold expected interface data by writer thread."""
 
     job_config:  JobConfig
     job:         HidroJob
@@ -237,6 +241,10 @@ def create_series_jobs(stations_data: List[SerieStationData], job_config: JobCon
 
 
 def process_period(station_code, start_date, end_date, job_config):
+    """ Creates Series Jobs for each SerieStationData received for a given JobConfig.
+    Preprocess all years from "Start Date" to "End Date" that will become a job request.
+    """
+
     jobs = []
     formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"]
     for fmt in formats:
@@ -259,11 +267,11 @@ def process_period(station_code, start_date, end_date, job_config):
     if start_date > end_date:
         logger.trace(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
         jobs.append(SeriesJobs(
-            StationID  = station_code,
-            FromDate   = start_date,
-            ToDate     = end_date,
-            Status     = JobConfig.Status.CORRUPTED.value,
-            HidroTable = job_config
+            HidroTable    = job_config,
+            StationID     = station_code,
+            FromDate      = start_date,
+            ToDate        = end_date,
+            Status        = JobConfig.Status.CORRUPTED.value,
         ))
         return jobs
     total_years  = end_date.year - start_date.year
@@ -538,11 +546,11 @@ def validate_series_items(job_config: JobConfig, items):
                 seen.add(key)
                 filtered.append(item)
             else:
-                logger.verbose(f"[VALIDATE JOB]: Duplicated item: {key}")
+                logger.trace(f"[VALIDATE JOB]: Duplicated item: {key}")
 
         except Exception as e:
-            logger.error(f"Error at index {index}: {e}")
-            logger.error(f"Item: {item}, type: {type(item)}")
+            logger.error(f"Error at index {index}: {e}, item type: {type(item)}")
+            logger.verbose(f"Item: {item}")
             pass
 
     if filtered:
@@ -552,6 +560,8 @@ def validate_series_items(job_config: JobConfig, items):
 
 
 def convert_json_items(job_config, items):
+    """Convert returned data by API to python types. """
+
     for item in items:
         for key, value in item.items():
             if isinstance(value, str):
