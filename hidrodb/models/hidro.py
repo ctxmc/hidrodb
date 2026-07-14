@@ -312,8 +312,7 @@ class Rain(HidroBaseModel):
 
     __tablename__  = 'Chuvas'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_chuvas_station_date'),
+        UniqueConstraint('EstacaoCodigo', 'Data', name='uq_rain'),
     )
 
     Data                 = Column(DateTime)
@@ -375,8 +374,11 @@ class DischargeSummary(HidroBaseModel):
 
     __tablename__ = 'ResumoDescarga'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_resumo_descarga_station_date'),
+        UniqueConstraint(
+            'EstacaoCodigo',
+            'Data',
+            name='uq_discharge_summary'
+        ),
     )
 
     AreaMolhada       = Column(Float)
@@ -421,8 +423,7 @@ class Sediments(HidroBaseModel):
 
     __tablename__ = 'Sedimentos'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_sediments_station_date'),
+        UniqueConstraint('EstacaoCodigo', 'Data', name='uq_sediments'),
     )
 
     AreaMolhada                = Column(Float)
@@ -483,8 +484,7 @@ class Stage(HidroBaseModel):
 
     __tablename__ = 'Cotas'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_cotas_station_date'),
+        UniqueConstraint('EstacaoCodigo', 'Data', name='uq_stage'),
     )
 
     Data              = Column(DateTime)
@@ -550,8 +550,13 @@ class DischargeFlow(HidroBaseModel):
 
     __tablename__ = 'CurvaDescarga'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'NumeroCurva', 'PeriodoValidadeInicio', 'PeriodoValidadeFim',
-                         name='uq_discharge_flow'),
+        UniqueConstraint(
+            'EstacaoCodigo',
+            'NumeroCurva',
+            'PeriodoValidadeInicio',
+            'PeriodoValidadeFim',
+            name='uq_discharge_flow'
+        ),
     )
 
     CoefA                 = Column(Float)
@@ -612,8 +617,11 @@ class WaterQuality(HidroBaseModel):
 
     __tablename__ = 'QualAgua'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_qual_agua_station_date'),
+        UniqueConstraint(
+            'EstacaoCodigo',
+            'Data',
+            name='uq_qual_agua'
+        ),
     )
 
     n245T                       = Column(Float)
@@ -967,8 +975,13 @@ class Granulometry(HidroBaseModel):
 
     __tablename__ = 'Granulometria'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data', 'HoraInicial', 'HoraFinal',
-                         name='uq_granulometry_station_date'),
+        UniqueConstraint(
+            'EstacaoCodigo',
+            'Data',
+            'HoraInicial',
+            'HoraFinal',
+            name='uq_granulometry'
+        ),
     )
 
     EstacaoCodigo             = Column(BigInteger)
@@ -1296,8 +1309,11 @@ class FlowRate(HidroBaseModel):
 
     __tablename__ = 'Vazoes'
     __table_args__ = (
-        UniqueConstraint('EstacaoCodigo', 'Data',
-                         name='uq_vazoes_station_date'),
+        UniqueConstraint(
+            'EstacaoCodigo',
+            'Data',
+            name='uq_flow_rate'
+        ),
     )
 
     EstacaoCodigo        = Column(BigInteger)
@@ -1316,7 +1332,6 @@ class FlowRate(HidroBaseModel):
     MediaStatus          = Column(SmallInteger)
     MediaAnual           = Column(Float)
     MediaAnualStatus     = Column(SmallInteger)
-
 
     for i in range(1, 32):
         locals()[f'Vazao{i:02d}'] = Column(f'Vazao{i:02d}', Float)
