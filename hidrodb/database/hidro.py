@@ -162,4 +162,6 @@ def get_verify_keys(name: str):
         case "QualAgua":
             return {'EstacaoCodigo': 'codigoestacao',
                     'Data': 'Data_Hora_Dado'}
+        case "QualAguaStatus":
+            return {'QualAguaID': 'Registro_ID'}
 

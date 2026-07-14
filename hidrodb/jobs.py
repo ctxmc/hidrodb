@@ -465,8 +465,7 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                         key = (item['codigoestacao'], item['Data_Hora_Dado'])
                         if key in entry_lookup:
                             item['Registro_ID'] = entry_lookup[key].RegistroID
-                    check_keys = {f'{job_config}ID': 'Registro_ID'}
-                    water_status_entries = handle_batch_update(f'{job_config}Status', items, check_keys)
+                    water_status_entries = handle_batch_update(f'{job_config}Status', items)
                     if water_status_entries:
                         insert_hidro(water_status_entries)
 
