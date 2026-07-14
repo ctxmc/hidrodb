@@ -27,14 +27,12 @@ options:
   --max-workers MAX_WORKERS
                         Maximum number of worker threads
   --batch-size BATCH_SIZE
-                        Batch size threshold to write job data on Hidro
-                        Database
+                        Batch size threshold to write job data on Hidro Database
   --log-level {TRACE,VERBOSE,DEBUG,INFO,WARNING,ERROR}
                         Set logging level
   --skip-series-jobs    Skip all series jobs when present
   --skip-for [{Chuvas,ResumoDescarga,Sedimentos,Cotas,Vazoes,Granulometria,CurvaDescarga,QualAgua,PerfilTransversal} ...]
-                        Skip job creation and requesition for the given
-                        choices
+                        Skip job creation and requesition for the given choices
   --stations [STATIONS ...]
                         Stations codes to request data
 
