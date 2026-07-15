@@ -211,7 +211,7 @@ class Station(HidroBaseModel):
     TipoEstacaoDescLiquida        = Column(SmallInteger)
     PeriodoDescLiquidaFim         = Column(SmallInteger)
     PeriodoDescLiquidaInicio      = Column(SmallInteger)
-    # TipoEstacao                 = Column(SmallInteger) # TODO
+    TipoEstacao                   = Column(SmallInteger)
     TipoEstacaoEscala             = Column(SmallInteger)
     TipoEstacaoPiezometria        = Column(SmallInteger)
     TipoEstacaoPluviometro        = Column(SmallInteger)
@@ -235,6 +235,14 @@ class Station(HidroBaseModel):
 
     @classmethod
     def from_json(cls, json_data: dict):
+        station_type_json = json_data.get("Tipo_Estacao")
+        match station_type_json:
+            case "Fluviometrica":
+                station_type = 1
+            case "Pluviometrica":
+                station_type = 2
+            case _:
+                raise ValueError(f"Unknown station type: {station_type_json}")
         return cls(
             Altitude                      = json_data.get("Altitude"),
             AreaDrenagem                  = json_data.get("Area_Drenagem"),
@@ -274,7 +282,7 @@ class Station(HidroBaseModel):
             ResponsavelUnidade            = json_data.get("Responsavel_Unidade_UF"),
             RioCodigo                     = json_data.get("Rio_Codigo"),
             SubBaciaCodigo                = json_data.get("Sub_Bacia_Codigo"),
-            # TipoEstacao                 = json.get("Tipo_Estacao"), # TODO
+            TipoEstacao                   = station_type,
             TipoEstacaoClimatologica      = json_data.get("Tipo_Estacao_Climatologica"),
             TipoEstacaoDescLiquida        = json_data.get("Tipo_Estacao_Desc_Liquida"),
             TipoEstacaoEscala             = json_data.get("Tipo_Estacao_Escala"),
