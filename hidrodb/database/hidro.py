@@ -88,12 +88,49 @@ def get_states() -> State:
 def get_period(model_name: str, only_code=False, with_null_end_date=False):
     """ Returns stations with initial and final periods for an given table in Hidro Database. """
 
-    model = get_hidro_model(model_name)
-    statement = model.create_period_statement(only_code, with_null_end_date)
+    statement = create_period_statement(model_name, only_code, with_null_end_date)
     hidro_session = HIDRO_DB.get_session()
     period_data = hidro_session.execute(statement)
     hidro_session.close()
     return period_data
+
+
+def create_period_statement(model_name, only_code: bool, with_null_end_date: bool):
+    columns = [Station.Codigo]
+    match model_name:
+        case "Chuvas":
+            if not only_code:
+                columns.extend([Station.PeriodoRegistradorChuvaInicio, Station.PeriodoRegistradorChuvaFim])
+            statement = select(*columns).where(Station.PeriodoRegistradorChuvaInicio.isnot(None))
+            if with_null_end_date:
+                statement = statement.where(Station.PeriodoRegistradorChuvaFim.is_(None))
+        case ("ResumoDescarga" | "CurvaDescarga" | "PerfilTransversal" | "Vazoes"):
+            if not only_code:
+                columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
+            statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
+            if with_null_end_date:
+                statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
+        case ("Sedimentos" | "Granulometria"):
+            if not only_code:
+                columns.extend([Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim])
+            statement = select(*columns).where(Station.PeriodoSedimentosInicio.isnot(None))
+            if with_null_end_date:
+                statement = statement.where(Station.PeriodoSedimentosFim.is_(None))
+        case "Cotas":
+            if not only_code:
+                columns.extend([Station.PeriodoRegistradorNivelInicio, Station.PeriodoRegistradorNivelFim])
+            statement = select(*columns).where(Station.PeriodoRegistradorNivelInicio.isnot(None))
+            if with_null_end_date:
+                statement = statement.where(Station.PeriodoRegistradorNivelFim.is_(None))
+        case "QualAgua":
+            if not only_code:
+                columns.extend([Station.PeriodoQualAguaInicio, Station.PeriodoQualAguaFim])
+            statement = select(*columns).where(Station.PeriodoQualAguaInicio.isnot(None))
+            if with_null_end_date:
+                statement = statement.where(Station.PeriodoQualAguaFim.is_(None))
+    # print(type(statement))
+    # sqlalchemy.sql.selectable.Select
+    return statement
 
 
 def handle_batch_update(job_name: str, items):
@@ -164,4 +201,3 @@ def get_verify_keys(name: str):
                     'Data': 'Data_Hora_Dado'}
         case "QualAguaStatus":
             return {'QualAguaID': 'Registro_ID'}
-

@@ -365,17 +365,6 @@ class Rain(HidroBaseModel):
 
         return cls(**kwargs)
 
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoRegistradorChuvaInicio, Station.PeriodoRegistradorChuvaFim])
-        statement = select(*columns).where(Station.PeriodoRegistradorChuvaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoRegistradorChuvaFim.is_(None))
-        return statement
-
 
 class DischargeSummary(HidroBaseModel):
     """ Database model for storing Discharge Summary  data. """
@@ -413,17 +402,6 @@ class DischargeSummary(HidroBaseModel):
             VelMedia          = json_data.get("Vel_Media (m/s)"),
             EstacaoCodigo     = json_data.get("codigoestacao"),
         )
-
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
-        statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
-        return statement
 
 
 class Sediments(HidroBaseModel):
@@ -474,17 +452,6 @@ class Sediments(HidroBaseModel):
             Velmedia                   = json_data.get("Vel_Media"),
             EstacaoCodigo              = json_data.get("codigoestacao")
         )
-
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim])
-        statement = select(*columns).where(Station.PeriodoSedimentosInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoSedimentosFim.is_(None))
-        return statement
 
 
 class Stage(HidroBaseModel):
@@ -541,17 +508,6 @@ class Stage(HidroBaseModel):
 
         return cls(**kwargs)
 
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoRegistradorNivelInicio, Station.PeriodoRegistradorNivelFim])
-        statement = select(*columns).where(Station.PeriodoRegistradorNivelInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoRegistradorNivelFim.is_(None))
-        return statement
-
 
 class DischargeFlow(HidroBaseModel):
     """ Database model for storing Discharge Flow data. """
@@ -607,17 +563,6 @@ class DischargeFlow(HidroBaseModel):
             TipoEquacao           = json_data.get("Tipo_Equacao"),
             EstacaoCodigo         = json_data.get("codigoestacao")
         )
-
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
-        statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
-        return statement
 
 
 class WaterQuality(HidroBaseModel):
@@ -945,17 +890,6 @@ class WaterQuality(HidroBaseModel):
             EstacaoCodigo               = json_data.get("codigoestacao")
         )
 
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoQualAguaInicio, Station.PeriodoQualAguaFim])
-        statement = select(*columns).where(Station.PeriodoQualAguaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoQualAguaFim.is_(None))
-        return statement
-
 
 class WaterQualityStatus(HidroBaseModel):
     """ Database model for storing Water Quality Status data. """
@@ -1231,17 +1165,6 @@ class Granulometry(HidroBaseModel):
             DataAlt                   = json_data.get("Data_Ultima_Alteracao")
         )
 
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoSedimentosInicio, Station.PeriodoSedimentosFim])
-        statement = select(*columns).where(Station.PeriodoSedimentosInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoSedimentosFim.is_(None))
-        return statement
-
 
 class CrossSection(HidroBase):
     """ Database model for storing Cross Section data. """
@@ -1281,17 +1204,6 @@ class CrossSection(HidroBase):
             ElmGeomPassoCota  = json_data.get("Elm_Geom_Passo_Cota"),
             Observacoes       = json_data.get("Observacoes")
         )
-
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
-        statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
-        return statement
 
 
 class VerticalCrossSection(HidroBaseModel):
@@ -1370,14 +1282,3 @@ class FlowRate(HidroBaseModel):
             kwargs[f'Vazao{i:02d}']       = json_data.get(f"Vazao_{i:02d}")
             kwargs[f'Vazao{i:02d}Status'] = json_data.get(f"Vazao_{i:02d}_Status")
         return cls(**kwargs)
-
-    @classmethod
-    def create_period_statement(cls, only_code: bool, with_null_end_date: bool):
-
-        columns = [Station.Codigo]
-        if not only_code:
-            columns.extend([Station.PeriodoDescLiquidaInicio, Station.PeriodoDescLiquidaFim])
-        statement = select(*columns).where(Station.PeriodoDescLiquidaInicio.isnot(None))
-        if with_null_end_date:
-            statement = statement.where(Station.PeriodoDescLiquidaFim.is_(None))
-        return statement
