@@ -109,16 +109,18 @@ class SeriesJobs(HidroJob):
 
     __tablename__ = 'SeriesJobs'
 
-    StationID  = Column(BigInteger, nullable=False)
-    FromDate   = Column(DateTime, nullable=False)
-    ToDate     = Column(DateTime, nullable=False)
+    StationID = Column(BigInteger, nullable=False)
+    FromDate  = Column(DateTime, nullable=False)
+    ToDate    = Column(DateTime, nullable=False)
+    Retries   = Column(Integer, default=0)
 
     def __iter__(self):
         yield from super().__iter__()
         yield from {
             "StationID": self.StationID,
             "FromDate":  self.FromDate,
-            "ToDate":    self.ToDate
+            "ToDate":    self.ToDate,
+            "Retries":   self.Retries
         }.items()
 
     def to_params(self):

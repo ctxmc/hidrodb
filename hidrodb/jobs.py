@@ -211,7 +211,8 @@ def check_series_job(job_config: JobConfig) -> None:
     else:
         update_series_job(job_config)
         status = [JobConfig.Status.FAILED.value, JobConfig.Status.PENDING.value]
-        filters = create_job_filters(job_config, status, last_check=False, stations=STATIONS)
+        filters = create_job_filters(job_config, status, last_check=False,
+                                     stations=STATIONS, max_retries=True)
         count = count_job(job_config, filters)
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
@@ -356,6 +357,9 @@ def handle_job_request(job: HidroJob, job_config: JobConfig) -> None:
                 job.LastCheck = datetime.now()
     else:
         job.Status = JobConfig.Status.FAILED.value
+        match job_config:
+            case JobConfig.Series():
+                job.Retries += 1
     elapsed = time.time() - start
     logger.verbose(f"[WORKER]: Job {job.ID} completed in {elapsed:.2f} seconds")
     queue_data = QueueData(
