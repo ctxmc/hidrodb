@@ -301,7 +301,7 @@ def update_series_job(job_config: JobConfig) -> None:
     yesterday = (datetime.now() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     for job in jobs:
         if job.ToDate < yesterday:
-            logger.info(f"Updating job id {job.ID} ToDate {job.ToDate} to {yesterday}")
+            logger.trace(f"Updating job id {job.ID} ToDate {job.ToDate} to {yesterday}")
             job.Status = JobConfig.Status.PENDING.value
             job.ToDate = yesterday
         else:
