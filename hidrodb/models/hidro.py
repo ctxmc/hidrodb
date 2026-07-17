@@ -391,7 +391,7 @@ class DischargeSummary(HidroBaseModel):
     @classmethod
     def from_json(cls, json_data: dict):
         return cls(
-            AreaMolhada       = json_data.get("Area_Molhada"),
+            AreaMolhada       = json_data.get("Area_Molhada (m2)"),
             Cota              = json_data.get("Cota (cm)"),
             Data              = json_data.get("Data_Hora_Dado"),
             DataAlt           = json_data.get("Data_Ultima_Alteracao"),
