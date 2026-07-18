@@ -55,7 +55,10 @@ def request_hidro_ws(endpoint, headers, params={}):
 
     url = "https://www.ana.gov.br/hidrowebservice"
     logger.verbose(f"[REQUEST]: Endpoint: {endpoint}\nHeaders: {headers}\nParams: {params}")
-    response = requests.get(f"{url}{endpoint}", headers=headers, params=params)
+    try:
+        response = requests.get(f"{url}{endpoint}", headers=headers, params=params, timeout=300)
+    except requests.exceptions.Timeout:
+        logger.warning(f"[REQUEST]: Timeout reached for {endpoint}, params: {params}")
     if response.ok:
         try:
             return response.json()
