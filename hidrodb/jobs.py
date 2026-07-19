@@ -643,9 +643,9 @@ def filter_repeated_series_items(job_config: JobConfig, items):
                     key = (item['codigoestacao'], item['Data_Dado'],
                            item['Hora_Inicial'], item['Hora_Final'])
                 case JobConfig.Series.DISCHARGE_FLOW:
+                    item['Numero_Curva'] = str(item['Numero_Curva'])
                     key = (item['codigoestacao'], item['Numero_Curva'],
                            item['Periodo_Validade_Inicio'], item['Periodo_Validade_Fim'])
-
             if key not in seen:
                 seen.add(key)
                 filtered.append(item)
