@@ -153,7 +153,7 @@ def test_convert_json_items(job_config):
 @pytest.mark.parametrize("job_config", [
     hidrodb.jobs.JobConfig.Series.RAIN,
 ])
-def test_validate_series_items(job_config):
+def test_filter_repeated_series_items(job_config):
     items = hidrodb.jobs.convert_json_items(job_config, _load_json_file(job_config))
-    filtered = hidrodb.jobs.validate_series_items(job_config, items)
+    filtered = hidrodb.jobs.filter_repeated_series_items(job_config, items)
     assert len(items) != len(filtered)
