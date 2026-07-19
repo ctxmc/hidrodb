@@ -46,6 +46,7 @@ MAX_WORKERS      = None
 BATCH_SIZE       = None
 SKIP_SERIES_JOBS = False
 SKIP_FOR         = []
+RUN_FOR          = []
 STATIONS         = []
 
 class JobConfig:
@@ -706,7 +707,13 @@ def run():
     for job in JobConfig.Series:
         logger.info(f"====================================")
         if job in SKIP_FOR:
-            logger.info(f"Skiping job for {job}.\n")
+            logger.info(f"Skiping job for {job}.")
+            logger.info(f"====================================\n")
             continue
+        if len(RUN_FOR) > 0:
+            if job not in RUN_FOR:
+                logger.info(f"Skiping job for {job}.")
+                logger.info(f"====================================\n")
+                continue
         check_series_job(job)
         logger.info(f"====================================\n")
