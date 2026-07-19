@@ -665,6 +665,9 @@ def filter_repeated_series_items(job_config: JobConfig, items):
 def convert_json_items(job_config, items):
     """Convert returned data by API to python types. """
 
+    if isinstance(items, dict):
+        items = [items]
+
     for item in items:
         for key, value in item.items():
             if isinstance(value, str):
