@@ -194,7 +194,7 @@ def check_base_job(job_config: JobConfig.Base) -> None:
             logger.info(f"Initiating jobs for {job_config}")
             trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for {job_config}.\n")
+            logger.info(f"No pending jobs for {job_config}.")
 
 
 def check_series_job(job_config: JobConfig) -> None:
@@ -218,7 +218,7 @@ def check_series_job(job_config: JobConfig) -> None:
             logger.info(f"Initiating {count} jobs for {job_config}")
             trigger_job(job_config, filters)
         else:
-            logger.info(f"No pending jobs for {job_config}.\n")
+            logger.info(f"No pending jobs for {job_config}.")
 
 
 def create_series_jobs(stations_data: List[SerieStationData], job_config: JobConfig) -> None:
@@ -266,7 +266,7 @@ def process_period(station_code, start_date, end_date, job_config):
                 continue
 
     if start_date > end_date:
-        logger.trace(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
+        logger.verbose(f"Bigger start date {start_date} than end date {end_date} for station {station_code}")
         jobs.append(SeriesJobs(
             HidroTable    = job_config,
             StationID     = station_code,
@@ -549,11 +549,10 @@ def validate_series_items(job_config: JobConfig, items):
                 seen.add(key)
                 filtered.append(item)
             else:
-                logger.trace(f"[VALIDATE JOB]: Duplicated item: {key}")
+                logger.verbose(f"[VALIDATE JOB]: Duplicated item: {key}")
 
         except Exception as e:
-            logger.error(f"Error at index {index}: {e}, item type: {type(item)}")
-            logger.verbose(f"Item: {item}")
+            logger.error(f"[FILTER] Error at index {index}: {e}")
             pass
 
     if filtered:
@@ -592,12 +591,18 @@ def convert_json_items(job_config, items):
 
 def run():
     for job in JobConfig.Base:
+        logger.info(f"====================================")
         check_base_job(job)
+        logger.info(f"====================================\n")
+
     if SKIP_SERIES_JOBS:
         logger.info(f"Skiping series jobs.\n")
         return
+
     for job in JobConfig.Series:
+        logger.info(f"====================================")
         if job in SKIP_FOR:
             logger.info(f"Skiping job for {job}.\n")
             continue
         check_series_job(job)
+        logger.info(f"====================================\n")
