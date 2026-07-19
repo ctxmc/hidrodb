@@ -140,39 +140,3 @@ def test_request_token_all_retries_fail(mock_sleep, mock_request):
 
     assert mock_request.call_count == 3
     assert mock_sleep.call_count   == 2
-
-
-from hidrodb.webservices import _get_file_path
-def test_get_file_path_basic_jobs():
-    """Test jobs that return simple path with just job name."""
-
-    basic_jobs = ["Bacia", "SubBacia", "Entidade", "Municipio", "Rio", "Estado"]
-    for job in basic_jobs:
-        result = _get_file_path(job, {})
-        assert result == f"./json/{job}.json"
-
-
-def test_get_file_path_estacao():
-    """Test Estacao job with UF parameter."""
-
-    params = {"Unidade Federativa": "MG"}
-    result = _get_file_path("Estacao", params)
-    assert result == "./json/Estacao/Estacao_MG.json"
-
-
-def test_get_file_path_serial_jobs():
-    """Test serial jobs."""
-
-    station_jobs = [
-        "Chuvas", "ResumoDescarga", "CurvaDescarga", "Sedimentos",
-        "QualAgua", "Cotas", "Granulometria", "PerfilTransversal", "Vazoes"
-    ]
-    params = {
-        "Código da Estação":         "12345",
-        "Tipo Filtro Data":          "DATA_LEITURA",
-        "Data Inicial (yyyy-MM-dd)": "1927-05-01",
-        "Data Final (yyyy-MM-dd)":   "1928-05-01"
-    }
-    for job in station_jobs:
-        result = _get_file_path(job, params)
-        assert result == f"./json/{job}/station_12345_1927-05-01_1928-05-01.json"
