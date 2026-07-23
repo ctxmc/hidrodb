@@ -194,6 +194,7 @@ def check_base_job(job_config: JobConfig.Base) -> None:
         if count:
             logger.info(f"Initiating jobs for {job_config}")
             trigger_job(job_config, filters)
+            check_base_job(job_config)
         else:
             logger.info(f"No pending jobs for {job_config}.")
 
@@ -218,6 +219,7 @@ def check_series_job(job_config: JobConfig) -> None:
         if count:
             logger.info(f"Initiating {count} jobs for {job_config}")
             trigger_job(job_config, filters)
+            check_series_job(job_config)
         else:
             logger.info(f"No pending jobs for {job_config}.")
 
@@ -466,9 +468,9 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
                 if entries:
                     insert_hidro(entries)
 
-            case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
-                      JobConfig.Series.FLOW_RATE | JobConfig.Series.SEDIMENTS     |
-                      JobConfig.Series.STAGE     | JobConfig.Series.GRANULOMETRY  |
+            case (JobConfig.Series.RAIN          | JobConfig.Series.DISCHARGE_SUMMARY |
+                      JobConfig.Series.FLOW_RATE | JobConfig.Series.SEDIMENTS         |
+                      JobConfig.Series.STAGE     | JobConfig.Series.GRANULOMETRY      |
                       JobConfig.Series.DISCHARGE_FLOW):
                 entries = handle_batch_update(job_config, filtered_items)
                 if entries:

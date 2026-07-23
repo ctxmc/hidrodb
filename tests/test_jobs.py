@@ -66,7 +66,7 @@ def test_get_token_add_new_token(mock_model,  mock_request, mock_creds,
 ])
 def test_check_base_job(mock_count_jobs, mock_insert_jobs, mock_trigger_job, job_config):
 
-    mock_count_jobs.side_effect = [0, 1, 1]
+    mock_count_jobs.side_effect = [0, 1, 1, 1, 0]
     hidrodb.jobs.check_base_job(job_config)
     mock_insert_jobs.assert_called_once()
     mock_trigger_job.assert_called_once()
