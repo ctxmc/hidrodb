@@ -201,3 +201,5 @@ def get_verify_keys(name: str):
                     'Data': 'Data_Hora_Dado'}
         case "QualAguaStatus":
             return {'QualAguaID': 'Registro_ID'}
+        case "PerfilTransversal":
+            return {'RegistroID': 'Registro_ID'}

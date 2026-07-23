@@ -458,43 +458,46 @@ def write_data(job_config: JobConfig, jobs: List[HidroJob], items) -> float:
 
         match job_config:
             case JobConfig.Series():
-                items = filter_repeated_series_items(job_config, items)
+                filtered_items = filter_repeated_series_items(job_config, items)
 
         match job_config:
-            case (JobConfig.Base()                   | JobConfig.Series.RAIN           |
-                  JobConfig.Series.DISCHARGE_SUMMARY | JobConfig.Series.FLOW_RATE      |
-                  JobConfig.Series.SEDIMENTS         | JobConfig.Series.STAGE          |
-                  JobConfig.Series.GRANULOMETRY      | JobConfig.Series.DISCHARGE_FLOW):
+            case JobConfig.Base():
                 entries = handle_batch_update(job_config, items)
                 if entries:
                     insert_hidro(entries)
 
+            case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
+                      JobConfig.Series.FLOW_RATE | JobConfig.Series.SEDIMENTS     |
+                      JobConfig.Series.STAGE     | JobConfig.Series.GRANULOMETRY  |
+                      JobConfig.Series.DISCHARGE_FLOW):
+                entries = handle_batch_update(job_config, filtered_items)
+                if entries:
+                    insert_hidro(entries)
+
             case JobConfig.Series.WATER_QUALITY:
-                entries = handle_batch_update(job_config, items)
+                entries = handle_batch_update(job_config, filtered_items)
                 if entries:
                     entries = insert_hidro(entries, False)
                     entry_lookup = {}
                     for entry in entries:
                         key = (getattr(entry, 'EstacaoCodigo'), getattr(entry, 'Data'))
                         entry_lookup[key] = entry
-                    for item in items:
+                    for item in filtered_items:
                         key = (item['codigoestacao'], item['Data_Hora_Dado'])
                         if key in entry_lookup:
                             item['Registro_ID'] = entry_lookup[key].RegistroID
-                    water_status_entries = handle_batch_update(f'{job_config}Status', items)
+                    water_status_entries = handle_batch_update(f'{job_config}Status', filtered_items)
                     if water_status_entries:
                         insert_hidro(water_status_entries)
 
             case JobConfig.Series.CROSS_SECTION:
-                current_id = None
+                entries = handle_batch_update(job_config, filtered_items)
+                if entries:
+                    insert_hidro(entries, False)
+                vertical_entries = []
                 for item in items:
-                    item_id = item.get("Registro_ID")
-                    if current_id != item_id:
-                        current_id = item_id
-                        if not any(entry.RegistroID == current_id for entry in entries):
-                            entries.append(get_hidro_model(job_config).from_json(item))
-                    entries.append(VerticalCrossSection.from_json(item))
-                insert_hidro(entries)
+                    vertical_entries.append(VerticalCrossSection.from_json(item))
+                insert_hidro(vertical_entries)
 
     if len(jobs) > 0:
         update_jobs(jobs, job_config)
@@ -627,10 +630,6 @@ def validate_series_items_date(job, job_config: JobConfig, items):
 def filter_repeated_series_items(job_config: JobConfig, items):
     """Filter repeated items before writing on database. """
 
-    match job_config:
-        case JobConfig.Series.CROSS_SECTION:
-            return items
-
     seen = set()
     filtered = []
     for index, item in enumerate(items):
@@ -647,6 +646,8 @@ def filter_repeated_series_items(job_config: JobConfig, items):
                     item['Numero_Curva'] = str(item['Numero_Curva'])
                     key = (item['codigoestacao'], item['Numero_Curva'],
                            item['Periodo_Validade_Inicio'], item['Periodo_Validade_Fim'])
+                case JobConfig.Series.CROSS_SECTION:
+                    key = (item['Registro_ID'])
             if key not in seen:
                 seen.add(key)
                 filtered.append(item)
