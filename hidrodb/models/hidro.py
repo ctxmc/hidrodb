@@ -78,8 +78,13 @@ class SubBasin(HidroBaseModel):
     __tablename__ = 'SubBacia'
 
     Nome        = Column(String)
+    """string: name of the hydrographic sub-basin."""
+
     Codigo      = Column(Integer, unique=True)
+    """int: unique identifier of hydrographic sub-basin."""
+
     BaciaCodigo = Column(Integer)
+    """int: identifier of which basin the given sub-basin belongs."""
 
     @classmethod
     def from_json(cls, json_data: dict):
