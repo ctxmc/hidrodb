@@ -126,8 +126,13 @@ class Township(HidroBaseModel):
     __tablename__ = 'Municipio'
 
     Nome       = Column(String)
+    """string: name of the town. """
+
     Codigo     = Column(Integer, unique=True)
+    """int: unique identifier of the town on Hidro."""
+
     CodigoIBGE = Column(Integer)
+    """int: identifier of the town based on IBGE."""
 
     @classmethod
     def from_json(cls, json_data: dict):
