@@ -102,8 +102,13 @@ class Entity(HidroBaseModel):
     __tablename__ = 'Entidade'
 
     Nome    = Column(String)
+    """string: name of the entity."""
+
     Sigla   = Column(String)
+    """string: acronym of the entity."""
+
     Codigo  = Column(Integer, unique=True)
+    """int: unique identifier of the entity."""
 
     @classmethod
     def from_json(cls, json_data: dict):
