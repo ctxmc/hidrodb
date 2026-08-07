@@ -53,3 +53,4 @@ options:
 - [Client Models](https://github.com/ctxmc/hidrodb/wiki/client-models)
 - [Config](https://github.com/ctxmc/hidrodb/wiki/config)
 - [Jobs](https://github.com/ctxmc/hidrodb/wiki/jobs)
+- [Use Cases](https://github.com/ctxmc/hidrodb/wiki/Use-Cases)
