@@ -40,8 +40,13 @@ class HidroBaseModel(HidroBase):
     __abstract__ = True
 
     RegistroID = Column(Integer, primary_key=True, autoincrement=True)
+    """int: unique record identifier."""
+
     DataIns    = Column(DateTime, default=datetime.now)
+    """datetime: date of insertion of the record."""
+
     DataAlt    = Column(DateTime)
+    """datetime: date of last modification of the record."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
