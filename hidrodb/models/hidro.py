@@ -58,7 +58,10 @@ class Basin(HidroBaseModel):
     __tablename__ = 'Bacia'
 
     Nome    = Column(String)
+    """string: name of the hydrographic basin."""
+
     Codigo  = Column(Integer, unique=True)
+    """int: unique identifier of hydrographic basin."""
 
     @classmethod
     def from_json(cls, json_data: dict):
