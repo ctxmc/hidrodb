@@ -187,9 +187,16 @@ class State(HidroBaseModel):
     __tablename__ = 'Estado'
 
     Nome       = Column(String)
+    """string: name of the state."""
+
     Sigla      = Column(String)
+    """int: acronym of the state."""
+
     Codigo     = Column(Integer, unique=True)
+    """int: unique identifier of the state on Hidro."""
+
     CodigoIBGE = Column(Integer)
+    """int: identifier of the state on IBGE."""
 
     @classmethod
     def from_json(cls, json_data: dict):
