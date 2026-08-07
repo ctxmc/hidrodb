@@ -150,10 +150,24 @@ class River(HidroBaseModel):
     __tablename__ = 'Rio'
 
     Nome              = Column(String)
+    """string: the name of the river. """
+
     Codigo            = Column(Integer, unique=True)
+    """int: unique identifier of the river. """
+
     Jurisdicao        = Column(SmallInteger)
+    """
+    int: river jurisdiction.
+    1 - Federal
+    2 - State
+    3 - Undefined
+    """
+
     BaciaCodigo       = Column(Integer)
+    """int: identifier of which basin the given river belongs."""
+
     SubBaciaCodigo    = Column(Integer)
+    """int: identifier of which sub-basin the given river belongs."""
 
     @classmethod
     def from_json(cls, json_data: dict):
