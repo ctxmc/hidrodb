@@ -532,18 +532,80 @@ class Rain(HidroBaseModel):
     )
 
     Data                 = Column(DateTime)
+    """ datetime: date of measurements. """
+
     DiaMaxima            = Column(SmallInteger)
+    """ int: day where rained most. """
+
     Maxima               = Column(Float)
+    """ float: maximum value of rain in the month """
+
     MaximaStatus         = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of maximum value.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Accumulated value.
+    """
+
     NivelConsistencia    = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     NumDiasDeChuva       = Column(SmallInteger)
+    """ int: number of days that rained in the month. """
+
     NumDiasDeChuvaStatus = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of rain days.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Accumulated value.
+    """
+
     TipoMedicaoChuvas    = Column(SmallInteger)
+    """
+    int: indicates the measurement procedure.
+    1 - Pluviometry.
+    2 - Pluviograph.
+    3 - Data logger.
+    """
+
     Total                = Column(Float)
+    """ float: total value of rain in month. """
+
     TotalAnual           = Column(Float)
+    """ float: total vazlue of rain in the year. """
+
     TotalAnualStatus     = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of total year value of rain.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Accumulated value.
+    """
+
     TotalStatus          = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of month value of rain.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Accumulated value.
+    """
+
     EstacaoCodigo        = Column(BigInteger)
+    """int: station code indifier of the registrie."""
 
     for i in range(1, 32):
         locals()[f'Chuva{i:02d}'] = Column(f'Chuva{i:02d}', Float)
