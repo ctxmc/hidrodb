@@ -794,20 +794,90 @@ class Stage(HidroBaseModel):
     )
 
     Data              = Column(DateTime)
+    """ datetime: date of measurements. """
+
     DiaMaxima         = Column(SmallInteger)
+    """ int: day with maximum measured stage value. """
+
     DiaMinima         = Column(SmallInteger)
+    """ int: day with minimum measured stage value. """
+
     Maxima            = Column(Float)
+    """ float: maximum measured stage value in the month. """
+
     MaximaStatus      = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of maximum value.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Dry spell.
+    """
+
     Media             = Column(Float)
+    """ float: average measured stage value in the month. """
+
     MediaAnual        = Column(Float)
+    """ float: average measured stage value in the year. """
+
     MediaAnualStatus  = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of year average value.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Dry spell.
+    """
+
     MediaStatus       = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of average value.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Dry spell.
+    """
+
     MediaDiaria       = Column(SmallInteger)
+    """
+    int: indicates if the measurement is a daily average or snapshot.
+    1 - Snapshot.
+    2 - Daily average.
+    """
+
     Minima            = Column(Float)
+    """ float: minimum measured stage value in the month. """
+
     MinimaStatus      = Column(SmallInteger)
+    """
+    int: indicate availability, precision and reliability of minimum value.
+    0 - No value.
+    1 - Real value.
+    2 - Estimated value.
+    3 - Doubtful value.
+    4 - Dry spell.
+    """
+
     TipoMedicaoCotas  = Column(SmallInteger)
+    """
+    int: indicates measurement procedure.
+    1 - Scale.
+    2 - Linigraph.
+    3 - Data logger.
+    """
+
     EstacaoCodigo     = Column(BigInteger)
+    """int: station code indifier of the registrie."""
+
     NivelConsistencia = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
 
     for i in range(1, 32):
         locals()[f'Cota{i:02d}'] = Column(f'Cota{i:02d}', Float)
