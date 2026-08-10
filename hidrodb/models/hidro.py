@@ -27,7 +27,7 @@ from sqlalchemy import (
     Column, Float, SmallInteger,
     BigInteger, Integer, String,
     DateTime, UniqueConstraint,
-    ForeignKey, select
+    ForeignKey
 )
 from sqlalchemy.orm import declarative_base
 
@@ -226,6 +226,12 @@ class Station(HidroBaseModel):
     OperadoraUnidade              = Column(Integer)
     """int: code of the operator unity of the station."""
 
+    PeriodoDescLiquidaFim         = Column(SmallInteger)
+    """datetime: final date of observation of discharge flow on the station."""
+
+    PeriodoDescLiquidaInicio      = Column(SmallInteger)
+    """datetime: final date of observation of discharge flow on the station."""
+
     PeriodoClimatologicaFim       = Column(DateTime)
     """datetime: final date of observation of climatology on the station."""
 
@@ -329,13 +335,8 @@ class Station(HidroBaseModel):
     """int: identifies if the station makes climatological measurements. 0 - No. 1 - Yes. """
 
     TipoEstacaoDescLiquida        = Column(SmallInteger)
-<<<<<<< HEAD
-    PeriodoDescLiquidaFim         = Column(SmallInteger)
-    PeriodoDescLiquidaInicio      = Column(SmallInteger)
-=======
     """int: identifies if the station makes discharge flow measurements. 0 - No. 1 - Yes. """
 
->>>>>>> 51ce72a (doc: Station Model columns attributes)
     TipoEstacao                   = Column(SmallInteger)
     """int: type of the station. 1 - Pluviometry. 2 - Fluviometry. """
 
@@ -527,6 +528,8 @@ class Rain(HidroBaseModel):
     """ Database model for storing Rain data. """
 
     __tablename__  = 'Chuvas'
+
+
     __table_args__ = (
         UniqueConstraint('EstacaoCodigo', 'Data', name='uq_rain'),
     )
@@ -925,22 +928,74 @@ class DischargeFlow(HidroBaseModel):
     )
 
     CoefA                 = Column(Float)
+    """ float: coefficient of the exponential equation. """
+
     CoefH0                = Column(Float)
+    """ float: coefficient of the exponential equation. """
+
     CoefN                 = Column(Float)
+    """ float: coefficient of the exponential equation. """
+
     CoefA0                = Column(Float)
+    """ float: coefficient of the polynomial equation (linear, parabolic or cubic). """
+
     CoefA1                = Column(Float)
+    """ float: coefficient of the polynomial equation (linear, parabolic or cubic). """
+
     CoefA2                = Column(Float)
+    """ float: coefficient of the polynomial equation (linear, parabolic or cubic). """
+
     CoefA3                = Column(Float)
+    """ float: coefficient of the polynomial equation (linear, parabolic or cubic). """
+
     CotaMaxima            = Column(Float)
+    """ float: maximum valid stage for the discharge. """
+
     CotaMinima            = Column(Float)
+    """ float: minimun valid stage for the discharge. """
+
     NivelConsistencia     = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     NumeroCurva           = Column(String(5))
+    """string: number that identifies the discharge, e.g: 1/2, 2/2, 3/4, etc."""
+
     PeriodoValidadeFim    = Column(DateTime)
+    """ datetime: final date of vality of the discharge. """
+
     PeriodoValidadeInicio = Column(DateTime)
+    """ datetime: Initial date of vality of the discharge. """
+
     TabelaPassoCota       = Column(Float)
+    """
+    float: amount to be added incrementally to the minimum quota to obtain
+    the quotas from the discharge table.
+    """
+
     TipoCurva             = Column(SmallInteger)
+    """
+    int: indicates whether the curve should be represented by an equation or
+    by a discharge table.
+    1 - Equation.
+    2 - Table.
+    """
+
     TipoEquacao           = Column(SmallInteger)
+    """
+    int: Indicates the type of equation that represents the curve (in the case that the
+    curve is represented by an equation).
+    1 - Power.
+    2 - Linear.
+    3 - Parabolic.
+    4 - Cubic.
+    """
+
     EstacaoCodigo         = Column(BigInteger)
+    """int: station code indifier of the registrie."""
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -979,158 +1034,463 @@ class WaterQuality(HidroBaseModel):
     )
 
     n245T                       = Column(Float)
+    """ float: measured levels of 2,4,5-T. """
+
     n245TP                      = Column(Float)
+    """ float: measured levels of 2,4,5-TP. """
+
     n246Triclorofenol           = Column(Float)
+    """ float: measured levels of 2,4,6-Trichlorophenol. """
+
     Acido24Diclorofenoxiacetico = Column(Float)
+    """ float: measured levels of 2,4-Dichlorophenoxyacetic acid. """
+
     Aldrin                      = Column(Float)
+    """ float: measured levels of Aldrin. """
+
     AzinfosEtil                 = Column(Float)
+    """ float: measured levels of Azinphos-ethyl. """
+
     Benzeno                     = Column(Float)
+    """ float: measured levels of Benzene. """
+
     BenzoAPireno                = Column(Float)
+    """ float: measured levels of Bezon[a]pyrene. """
+
     BHC                         = Column(Float)
+    """ float: measured levels of BHC. """
+
     BifenilasPolicloradas       = Column(Float)
+    """ float: measured levels of BPC. """
+
     Escherichia                 = Column(Float)
+    """ float: measured levels of Escherichia. """
+
     Carbaril                    = Column(Float)
+    """ float: measured levels of Carbaryl. """
+
     Clordano                    = Column(Float)
+    """ float: measured levels of Chlordane. """
+
     DDEPP                       = Column(Float)
+    """ float: measured levels of ?. """
+
     DDT                         = Column(Float)
+    """ float: measured levels of DDT. """
+
     Demeton                     = Column(Float)
+    """ float: measured levels of Demeton. """
+
     Diazinon                    = Column(Float)
+    """ float: measured levels of Diazinon. """
+
     Dieldrin                    = Column(Float)
+    """ float: measured levels of Dieldrin. """
+
     DodecacloroNonacloro        = Column(Float)
+    """ float: measured levels of ?. """
+
     DySystonDisulfton           = Column(Float)
+    """ float: measured levels of Dy-Syston Dissulfoton. """
+
     Endossulfan                 = Column(Float)
+    """ float: measured levels of Endosulfan. """
+
     FitoplanctonQuantitativo    = Column(Float)
+    """ float: measured levels of Phytoplankton. """
+
     Endrin                      = Column(Float)
+    """ float: measured levels of Endrin. """
+
     EpoxidoHeptacloro           = Column(Float)
+    """ float: measured levels of Heptachlor Epoxide. """
+
     Ethion                      = Column(Float)
+    """ float: measured levels of Ethion. """
+
     Gution                      = Column(Float)
+    """ float: measured levels of Gution. """
+
     Heptacloro                  = Column(Float)
+    """ float: measured levels of Heptachlor. """
+
     Lindano                     = Column(Float)
+    """ float: measured levels of Lindane. """
+
     Malation                    = Column(Float)
+    """ float: measured levels of Malathion. """
+
     MetilParation               = Column(Float)
+    """ float: measured levels of Parathion methyl. """
+
     Metoxicloro                 = Column(Float)
+    """ float: measured levels of Methoxychlor. """
+
     Paration                    = Column(Float)
+    """ float: measured levels of Parathion. """
+
     FosforoTotal                = Column(Float)
+    """ float: measured levels of Phosprorus. """
+
     Pentaclorofenol             = Column(Float)
+    """ float: measured levels of PCP. """
+
     Phosdrin                    = Column(Float)
+    """ float: measured levels of Fosdrin. """
+
     TetracloretoCarbono         = Column(Float)
+    """ float: measured levels of Caborn Tetrachloride. """
+
     Tetracloroeteno             = Column(Float)
+    """ float: measured levels of Tetrachloroethylene. """
+
     Toxafeno                    = Column(Float)
+    """ float: measured levels of Toxaphene. """
+
     Tricloroeteno               = Column(Float)
+    """ float: measured levels of 1,1,2-Trichloroethane. """
+
     Algas                       = Column(Float)
+    """ float: measured levels of Algae. """
+
     Amoniaco                    = Column(Float)
+    """ float: measured levels of Ammonia. """
+
     BacteriasHeterotroficas     = Column(Float)
+    """ float: measured levels of Heterotroph. """
+
     CloroResidual               = Column(Float)
+    """ float: measured levels of Chlorine. """
+
     Nitratos                    = Column(Float)
+    """ float: measured levels of Nitrates. """
+
     Colifagos                   = Column(Float)
+    """ float: measured levels of Coliphage. """
+
     ContagemBacteriasPlaca      = Column(Float)
+    """ float: measured levels of ?. """
+
     EnteroBacteriasPatogenicas  = Column(Float)
+    """ float: measured levels of Enterobacter. """
+
     Fungos                      = Column(Float)
+    """ float: measured levels of Fungae. """
+
     NitrogenioAlbuminoide       = Column(Float)
+    """ float: measured levels of Albuminoid nitrogen. """
+
     Protozoarios                = Column(Float)
+    """ float: measured levels of protozoa. """
+
     Salmonelas                  = Column(Float)
+    """ float: measured levels of Salmonella. """
+
     ZooplanctonTotal            = Column(Float)
+    """ float: measured levels of Zooplankton. """
+
     NitrogenioAmoniacal         = Column(Float)
+    """ float: measured levels of Ammoniacal Nitrogen. """
+
     NitrogenioTotal             = Column(Float)
+    """ float: measured levels of Nitrogen. """
+
     OrtofosfatoTotal            = Column(Float)
+    """ float: measured levels of Orthophosphate. """
+
     OD                          = Column(Float)
+    """ float: measured levels of OD. """
+
     pH                          = Column(Float)
+    """ float: measured levels of pH. """
+
     SolDissolvidosTotais        = Column(Float)
+    """ float: measured levels of dissolved solids. """
+
     AlcalinidadeTotal           = Column(Float)
+    """ float: measured levels of Alkalines. """
+
     SolSuspensaoTotais          = Column(Float)
+    """ float: measured levels of suspended solids. """
+
     TempAmostra                 = Column(Float)
+    """ float: measured levels of sample temperature. """
+
     TempAr                      = Column(Float)
+    """ float: measured levels of air temperature. """
+
     Transparencia               = Column(Float)
+    """ float: measured levels of water transparecy. """
+
     Turbidez                    = Column(Float)
+    """ float: measured levels of water turbity. """
+
     Acidez                      = Column(Float)
+    """ float: measured levels of water acidity. """
+
     AlcalinidadeCO3             = Column(Float)
+    """ float: measured levels of cabornate ions. """
+
     AlcalinidadeHCO3            = Column(Float)
+    """ float: measured levels of bicarbonates. """
+
     AlcalinidadeOH              = Column(Float)
+    """ float: measured levels of TODO. """
+
     Aluminiodissolvido          = Column(Float)
+    """ float: measured levels of TODO. """
+
     CarbonoOrganicoTotal        = Column(Float)
+    """ float: measured levels of TODO. """
+
     Aluminio                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     AmoniaNaoIonizavel          = Column(Float)
+    """ float: measured levels of TODO. """
+
     Arsenio                     = Column(Float)
+    """ float: measured levels of TODO. """
+
     Bario                       = Column(Float)
+    """ float: measured levels of TODO. """
+
     Berilio                     = Column(Float)
+    """ float: measured levels of TODO. """
+
     BismutoTotal                = Column(Float)
+    """ float: measured levels of TODO. """
+
     Borodissolvido              = Column(Float)
+    """ float: measured levels of TODO. """
+
     Boro                        = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cadmio                      = Column(Float)
+    """ float: measured levels of TODO. """
+
     CalcioTotal                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cloretos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     Chumbo                      = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cianetolivre                = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cianetos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cobalto                     = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cobredissolvido             = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cobre                       = Column(Float)
+    """ float: measured levels of TODO. """
+
     ColiformesFecais            = Column(Float)
+    """ float: measured levels of TODO. """
+
     ColiformesTotais            = Column(Float)
+    """ float: measured levels of TODO. """
+
     CompostosOrganoclorados     = Column(Float)
+    """ float: measured levels of TODO. """
+
     CompostosOrganofosforados   = Column(Float)
+    """ float: measured levels of TODO. """
+
     CondutividadeEletrica       = Column(Float)
+    """ float: measured levels of TODO. """
+
     Cor                         = Column(Float)
+    """ float: measured levels of TODO. """
+
     CromoHexavalente            = Column(Float)
+    """ float: measured levels of TODO. """
+
     CromoTotal                  = Column(Float)
+    """ float: measured levels of TODO. """
+
     CromoTrivalente             = Column(Float)
+    """ float: measured levels of TODO. """
+
     Densidadecianobacterias     = Column(Float)
+    """ float: measured levels of TODO. """
+
     Detergentes                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     Dureza                      = Column(Float)
+    """ float: measured levels of TODO. """
+
     Durezamagnesio              = Column(Float)
+    """ float: measured levels of TODO. """
+
     DurezaTotal                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     ColiformesTermotolerantes   = Column(Float)
+    """ float: measured levels of TODO. """
+
     EstreptococosFecais         = Column(Float)
+    """ float: measured levels of TODO. """
+
     FerroDissolvido             = Column(Float)
+    """ float: measured levels of TODO. """
+
     FerroTotal                  = Column(Float)
+    """ float: measured levels of TODO. """
+
     Fluoretos                   = Column(Float)
+    """ float: measured levels of TODO. """
+
     FosfatoTotal                = Column(Float)
+    """ float: measured levels of TODO. """
+
     Hidrocarbonetos             = Column(Float)
+    """ float: measured levels of TODO. """
+
     IndiceFenois                = Column(Float)
+    """ float: measured levels of TODO. """
+
     IQA                         = Column(Float)
+    """ float: measured levels of TODO. """
+
     Litio                       = Column(Float)
+    """ float: measured levels of TODO. """
+
     CondutividadeEspecifica     = Column(Float)
+    """ float: measured levels of TODO. """
+
     MagnesioTotal               = Column(Float)
+    """ float: measured levels of TODO. """
+
     Manganes                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     Mercurio                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     Niquel                      = Column(Float)
+    """ float: measured levels of TODO. """
+
     Nitritos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     NitrogenioOrganico          = Column(Float)
+    """ float: measured levels of TODO. """
+
     NitrogenioTotalKJELDAHL     = Column(Float)
+    """ float: measured levels of TODO. """
+
     OleosGraxas                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     ODsaturacao                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     PotassioTotal               = Column(Float)
+    """ float: measured levels of TODO. """
+
     DBO                         = Column(Float)
+    """ float: measured levels of TODO. """
+
     Prata                       = Column(Float)
+    """ float: measured levels of TODO. """
+
     ParametroProfundidade       = Column(Float)
+    """ float: measured levels of TODO. """
+
     Selenio                     = Column(Float)
+    """ float: measured levels of TODO. """
+
     SilicaDissolvida            = Column(Float)
+    """ float: measured levels of TODO. """
+
     SodioTotal                  = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolDissolvidosFixos         = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolDissolvidosVolateis      = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolSuspensaoFixos           = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolSuspensaoVolateis        = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolFixos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     DescargaLiquida             = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolSedimentaveis            = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolTotais                   = Column(Float)
+    """ float: measured levels of TODO. """
+
     SolVolateis                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     Sulfatos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     Sulfetos                    = Column(Float)
+    """ float: measured levels of TODO. """
+
     UranioTotal                 = Column(Float)
+    """ float: measured levels of TODO. """
+
     Vanadio                     = Column(Float)
+    """ float: measured levels of TODO. """
+
     Zinco                       = Column(Float)
+    """ float: measured levels of TODO. """
+
     n11Dicloroeteno             = Column(Float)
+    """ float: measured levels of TODO. """
+
     n12Dicloroetano             = Column(Float)
+    """ float: measured levels of TODO. """
+
     DQO                         = Column(Float)
+    """ float: measured levels of TODO. """
+
     Choveu                      = Column(SmallInteger)
+    """ float: measured levels of TODO. """
+
     Data                        = Column(DateTime)
+    """ datetime: date of measurements. """
+
     NivelConsistencia           = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     NumMedicao                  = Column(BigInteger)
+
     PosHorizColeta              = Column(SmallInteger)
+
     PosVertColeta               = Column(SmallInteger)
+
     Profundidade                = Column(Float)
+
     EstacaoCodigo               = Column(BigInteger)
+    """int: station code indifier of the registrie."""
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -1298,6 +1658,8 @@ class WaterQualityStatus(HidroBaseModel):
     __tablename__ = 'QualAguaStatus'
 
     QualAguaID = Column(Integer, ForeignKey("QualAgua.RegistroID"), nullable=False)
+    """ int: foreign water quality ientifier.  """
+    
     locals().update({
         f'QualAgua{i:03d}Status': Column(f'QualAgua{i:03d}Status', SmallInteger)
         for i in range(1, 148)
@@ -1328,121 +1690,244 @@ class Granulometry(HidroBaseModel):
     )
 
     EstacaoCodigo             = Column(BigInteger)
+    """int: station code indifier of the registrie."""
+
     NivelConsistencia         = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     Data                      = Column(DateTime)
+    """ datetime: date of measurements. """
+
     HoraInicial               = Column(DateTime)
+
     HoraFinal                 = Column(DateTime)
+
     Cota                      = Column(Float)
+
     Largura                   = Column(Float)
+
     TipoAmostra               = Column(SmallInteger)
+
     TipoColeta                = Column(String(50))
+
     TipoEquip                 = Column(String(50))
+
     ProfTotal                 = Column(Float)
+
     OrdemColeta               = Column(BigInteger)
+
     DistPTOInicial            = Column(Float)
+
     ChuvaUlt48                = Column(SmallInteger)
+
     MatFundo15_9              = Column(Float)
+
     MatFundo8_0               = Column(Float)
+
     MatFundo4_0               = Column(Float)
+
     MatFundo2_0               = Column(Float)
+
     MatFundo1_0               = Column(Float)
+
     MatFundo0_5               = Column(Float)
+
     MatFundo0_25              = Column(Float)
+
     MatFundo0_125             = Column(Float)
+
     MatFundo0_0625            = Column(Float)
+
     MatFundoArgila            = Column(Float)
+
     MatFundoSilte             = Column(Float)
+
     MatFundoAreia             = Column(Float)
+
     MatFundoPedregulho        = Column(Float)
+
     MatFundo0_0_a_0_0156      = Column(Float)
+
     MatFundo0_0157_a_0_02     = Column(Float)
+
     MatFundo0_0201_a_0_0625   = Column(Float)
+
     MatFundo0_0626_a_0_1250   = Column(Float)
+
     MatFundo0_1251_a_0_25     = Column(Float)
+
     MatFundo0_2501_a_0_5      = Column(Float)
+
     MatFundo0_501_a_1_0       = Column(Float)
+
     MatFundo1_0001_a_2_0      = Column(Float)
+
     MatFundo2_0001_a_4_0      = Column(Float)
+
     MatFundo4_0001_a_8_0      = Column(Float)
+
     MatFundo8_0001_a_16_000   = Column(Float)
+
     MatFundoD10               = Column(Float)
+
     MatFundoD16               = Column(Float)
+
     MatFundoD35               = Column(Float)
+
     MatFundoD50               = Column(Float)
+
     MatFundoD65               = Column(Float)
+
     MatFundoD84               = Column(Float)
+
     MatFundoD90               = Column(Float)
+
     MatArrasteVazao           = Column(Float)
+
     MatArrasteLargRio         = Column(Float)
+
     MatArrasteLargEquip       = Column(Float)
+
     MatArrastePesoMat         = Column(Float)
+
     MatArrasteVelMedia        = Column(Float)
+
     MatArrasteTempAgua        = Column(Float)
+
     MatArrasteTempAr          = Column(Float)
+
     MatArrasteTempoColeta     = Column(Float)
+
     MatArrasteArraste         = Column(Float)
+
     MatArraste15_9            = Column(Float)
+
     MatArraste8_0             = Column(Float)
+
     MatArraste4_0             = Column(Float)
+
     MatArraste2_0             = Column(Float)
+
     MatArraste1_0             = Column(Float)
+
     MatArraste0_5             = Column(Float)
+
     MatArraste0_25            = Column(Float)
+
     MatArraste0_125           = Column(Float)
+
     MatArraste0_0625          = Column(Float)
+
     MatArrasteArgila          = Column(Float)
+
     MatArrasteSilte           = Column(Float)
+
     MatArrasteAreia           = Column(Float)
+
     MatArrastePedregulho      = Column(Float)
+
     MatArraste0_0_a_0_0156    = Column(Float)
+
     MatArraste0_0157_a_0_02   = Column(Float)
+
     MatArraste0_0201_a_0_0625 = Column(Float)
+
     MatArraste0_0626_a_0_1250 = Column(Float)
+
     MatArraste0_1251_a_0_25   = Column(Float)
+
     MatArraste0_2501_a_0_5    = Column(Float)
+
     MatArraste0_501_a_1_0     = Column(Float)
+
     MatArraste1_0001_a_2_0    = Column(Float)
+
     MatArraste2_0001_a_4_0    = Column(Float)
+
     MatArraste4_0001_a_8_0    = Column(Float)
+
     MatArraste8_0001_a_16_000 = Column(Float)
+
     MatArrasteD10             = Column(Float)
+
     MatArrasteD16             = Column(Float)
+
     MatArrasteD35             = Column(Float)
+
     MatArrasteD50             = Column(Float)
+
     MatArrasteD65             = Column(Float)
+
     MatArrasteD84             = Column(Float)
+
     MatArrasteD90             = Column(Float)
+
     MatSusp15_9               = Column(Float)
+
     MatSusp8_0                = Column(Float)
+
     MatSusp4_0                = Column(Float)
+
     MatSusp2_0                = Column(Float)
+
     MatSusp1_0                = Column(Float)
+
     MatSusp0_5                = Column(Float)
+
     MatSusp0_25               = Column(Float)
+
     MatSusp0_125              = Column(Float)
+
     MatSusp0_0625             = Column(Float)
+
     MatSuspArgila             = Column(Float)
+
     MatSuspSilte              = Column(Float)
+
     MatSuspAreia              = Column(Float)
+
     MatSuspPedregulho         = Column(Float)
+
     MatSusp0_0_a_0_0156       = Column(Float)
+
     MatSusp0_0157_a_0_02      = Column(Float)
+
     MatSusp0_0201_a_0_0625    = Column(Float)
+
     MatSusp0_0626_a_0_1250    = Column(Float)
+
     MatSusp0_1251_a_0_25      = Column(Float)
+
     MatSusp0_2501_a_0_5       = Column(Float)
+
     MatSusp0_501_a_1_0        = Column(Float)
+
     MatSusp1_0001_a_2_0       = Column(Float)
+
     MatSusp2_0001_a_4_0       = Column(Float)
+
     MatSusp4_0001_a_8_0       = Column(Float)
+
     MatSusp8_0001_a_16_000    = Column(Float)
+
     MatSuspD10                = Column(Float)
+
     MatSuspD16                = Column(Float)
+
     MatSuspD35                = Column(Float)
+
     MatSuspD50                = Column(Float)
+
     MatSuspD65                = Column(Float)
+
     MatSuspD84                = Column(Float)
+
     MatSuspD90                = Column(Float)
+
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -1573,19 +2058,40 @@ class CrossSection(HidroBase):
     __tablename__ = 'PerfilTransversal'
 
     RegistroID        = Column(Float, primary_key=True)
+
     EstacaoCodigo     = Column(BigInteger)
+    """int: station code indifier of the registrie."""
+
     NivelConsistencia = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     Data              = Column(DateTime)
+    """ datetime: date of measurements. """
+
     NumLevantamento   = Column(BigInteger)
+
     TipoSecao         = Column(SmallInteger)
+
     NumVerticais      = Column(BigInteger)
+
     DistanciaPIPF     = Column(Float)
+
     EixoXDistMaxima   = Column(Float)
+
     EixoXDistMinima   = Column(Float)
+
     EixoYCotaMaxima   = Column(Float)
+
     EixoYCotaMinima   = Column(Float)
+
     ElmGeomPassoCota  = Column(Float)
+
     Observacoes       = Column(String)
+
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -1613,8 +2119,11 @@ class VerticalCrossSection(HidroBaseModel):
     __tablename__ = 'PerfilTransversalVert'
 
     PerfilTransversalID = Column(Float, ForeignKey("PerfilTransversal.RegistroID"), nullable=False)
+
     Cota                = Column(Float)
+
     Distancia           = Column(Float)
+
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -1638,21 +2147,44 @@ class FlowRate(HidroBaseModel):
     )
 
     EstacaoCodigo        = Column(BigInteger)
+    """int: station code indifier of the registrie."""
+
     NivelConsistencia    = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     Data                 = Column(DateTime)
-    # Hora                 = Column(DateTime)
+    """ datetime: date of measurements. """
+    
     MediaDiaria          = Column(SmallInteger)
+
     MetodoObtencaoVazoes = Column(SmallInteger)
+
     Maxima               = Column(Float)
+
     Minima               = Column(Float)
+
     Media                = Column(Float)
+
     DiaMaxima            = Column(SmallInteger)
+
     DiaMinima            = Column(SmallInteger)
+
     MaximaStatus         = Column(SmallInteger)
+
     MinimaStatus         = Column(SmallInteger)
+
     MediaStatus          = Column(SmallInteger)
+
     MediaAnual           = Column(Float)
+
     MediaAnualStatus     = Column(SmallInteger)
+
+    # Hora                 = Column(DateTime)
+
 
     for i in range(1, 32):
         locals()[f'Vazao{i:02d}'] = Column(f'Vazao{i:02d}', Float)
@@ -1664,7 +2196,6 @@ class FlowRate(HidroBaseModel):
             "EstacaoCodigo":        json_data.get("codigoestacao"),
             "NivelConsistencia":    json_data.get("Nivel_Consistencia"),
             "Data":                 json_data.get("Data_Hora_Dado"),
-            # "Hora":               json_data.get("?"),
             "MediaDiaria":          json_data.get("Mediadiaria"),
             "MetodoObtencaoVazoes": json_data.get("Metodo_Obtencao_Vazoes"),
             "Maxima":               json_data.get("Maxima"),
@@ -1678,6 +2209,7 @@ class FlowRate(HidroBaseModel):
             "MediaAnual":           json_data.get("Media_Anual"),
             "MediaAnualStatus":     json_data.get("Media_Anual_Status"),
             "DataAlt":              json_data.get("Data_Ultima_Alteracao"),
+            # "Hora":               json_data.get("?"),
         }
         for i in range(1, 32):
             kwargs[f'Vazao{i:02d}']       = json_data.get(f"Vazao_{i:02d}")
