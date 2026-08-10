@@ -704,22 +704,62 @@ class Sediments(HidroBaseModel):
     )
 
     AreaMolhada                = Column(Float)
+    """ float: wet area of corresponding discharge flow measurement. """
+
     ConcentracaoMatSuspensao   = Column(Float)
+    """ float: quantity of sediments by water volume (mg/1) measured in a determinated section of a river. """
+
     ConcentracaoDaAmostraExtra = Column(Float)
+    """ float: quantity of sediments by water volume (mg/1) measured in a determinated section of a river. """
+
     CondutividadeEletrica      = Column(Float)
+    """ float: uS/cm at 20 celsius. """
+
     Cota                       = Column(Float)
+    """ float: associated stage of the corresponding discharge flow measurement. """
+
     CotaDeMedicao              = Column(Float)
+    """ float: associated stage of the corresponding discharge flow measurement. """
+
     Data                       = Column(DateTime)
+    """ datetime: date of measurements. """
+
     DataLiq                    = Column(DateTime)
+    """ datetime: date of corresponding discharge flow measurement. """
+
     Largura                    = Column(Float)
+    """ float: width of the measurement. """
+
     NivelConsistencia          = Column(SmallInteger)
+    """
+    int: indicate the consistency of the registrie.
+    0 - Brute.
+    1 - Consisted.
+    """
+
     NumMedicao                 = Column(BigInteger)
+    """ int: number of measurement of sediments. """
+
     NumMedicaoLiq              = Column(BigInteger)
+    """ int: number of corresponding discharge flow measurement. """
+
     Observacoes                = Column(String)
+    """ string: observations of the measurement. """
+
     TemperaturaDaAgua          = Column(Float)
+    """
+    float: temperature of the water in Celsius measured with manual thermometer
+    in contact with water sample in situ.
+    """
+
     Vazao                      = Column(Float)
+    """ float: associated flow of the corresponding discharge flow measurement. """
+
     Velmedia                   = Column(Float)
+    """ float: average speed of the corresponding discharge flow measurement. """
+
     EstacaoCodigo              = Column(BigInteger)
+    """int: station code indifier of the registrie."""
 
     @classmethod
     def from_json(cls, json_data: dict):
