@@ -21,7 +21,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-""" Provides models for Hidro Database. """
+""" Provides ORM models for Hidro Database. """
 
 from sqlalchemy import (
     Column, Float, SmallInteger,
@@ -215,67 +215,231 @@ class Station(HidroBaseModel):
     __tablename__ = 'Estacao'
 
     Altitude                      = Column(Float)
+    """float: altitude of the station. """
+
     AreaDrenagem                  = Column(Float)
+    """float: drainage area of the station in km2."""
+
     CodigoAdicional               = Column(String(15))
+    """string: original or additional identifier of the station."""
+
     OperadoraUnidade              = Column(Integer)
+    """int: code of the operator unity of the station."""
+
     PeriodoClimatologicaFim       = Column(DateTime)
+    """datetime: final date of observation of climatology on the station."""
+
     PeriodoClimatologicaInicio    = Column(DateTime)
+    """datetime: start date of observation of climatology on the station."""
+
     PeriodoEscalaFim              = Column(DateTime)
+    """datetime: final date of observation of scale on the station."""
+
     PeriodoEscalaInicio           = Column(DateTime)
+    """datetime: start date of observation of scale the station."""
+
     PeriodoPiezometriaFim         = Column(DateTime)
+    """datetime: final date of observation of piezometry on the station."""
+
     PeriodoPiezometriaInicio      = Column(DateTime)
+    """datetime: start date of observation of piezometry on the station."""
+
     PeriodoPluviometroFim         = Column(DateTime)
+    """datetime: final date of observation of pluviometry on the station."""
+
     PeriodoPluviometroInicio      = Column(DateTime)
+    """datetime: start date of observation of pluviometry on the station."""
+
     PeriodoQualAguaFim            = Column(DateTime)
+    """datetime: final date of observation of water quality on the station."""
+
     PeriodoQualAguaInicio         = Column(DateTime)
+    """datetime: start date of observation of water quality on the station."""
+
     PeriodoRegistradorChuvaFim    = Column(DateTime)
+    """datetime: final date of observation of rain on the station."""
+
     PeriodoRegistradorChuvaInicio = Column(DateTime)
+    """datetime: start date of observation of rain on the station."""
+
     PeriodoRegistradorNivelFim    = Column(DateTime)
+    """datetime: final date of observation of level registry on the station."""
+
     PeriodoRegistradorNivelInicio = Column(DateTime)
+    """datetime: start date of observation of level registry on the station."""
+
     PeriodoSedimentosFim          = Column(DateTime)
+    """datetime: final date of observation of sediments on the station."""
+
     PeriodoSedimentosInicio       = Column(DateTime)
+    """datetime: start date of observation of sediments on the station."""
+
     PeriodoTanqueEvapoFim         = Column(DateTime)
+    """datetime: final date of observation of tank evaporation on the station."""
+
     PeriodoTanqueEvapoInicio      = Column(DateTime)
+    """datetime: start date of observation of tank evaporation on the station."""
+
     PeriodoTelemetricaFim         = Column(DateTime)
+    """datetime: final date of observation of telemetry on the station."""
+
     PeriodoTelemetricaInicio      = Column(DateTime)
+    """datetime: start date of observation of telemetry on the station."""
+
     UltimaAtualizacao             = Column(DateTime)
+    """ datetime: date of last alteration of station data."""
+
     Nome                          = Column(String(50))
+    """string: name of the station."""
+
     Latitude                      = Column(Float)
+    """float: latitude of the station."""
+
     Longitude                     = Column(Float)
+    """float: longitude of the station."""
+
     MunicipioCodigo               = Column(Integer)
+    """int: identifier of the town which the station is located."""
+
     EstadoCodigo                  = Column(Integer)
+    """int: identifier of the state which the station is located."""
+
     OperadoraCodigo               = Column(BigInteger)
+    """int: identifier of the operator of the station."""
+
     OperadoraSubUnidade           = Column(Integer)
+    """int: identifier of the operator sub-unity of the station."""
+
     Operando                      = Column(SmallInteger)
+    """int: identifies if the station still operating. 0 - No. 1 - Yes. """
+
     ResponsavelCodigo             = Column(BigInteger)
+    """int: identifier of who owns jurisdiction over the station. """
+
     ResponsavelUnidade            = Column(Integer)
+    """int: identifier of the unity which belongs the station. """
+
     RioCodigo                     = Column(BigInteger)
+    """int: identifier of the river where is the station."""
+
     SubBaciaCodigo                = Column(BigInteger)
+    """int: identifier of the sub-basin where is the station."""
+
     TipoEstacaoClimatologica      = Column(SmallInteger)
+    """int: identifies if the station makes climatological measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoDescLiquida        = Column(SmallInteger)
+<<<<<<< HEAD
     PeriodoDescLiquidaFim         = Column(SmallInteger)
     PeriodoDescLiquidaInicio      = Column(SmallInteger)
+=======
+    """int: identifies if the station makes discharge flow measurements. 0 - No. 1 - Yes. """
+
+>>>>>>> 51ce72a (doc: Station Model columns attributes)
     TipoEstacao                   = Column(SmallInteger)
+    """int: type of the station. 1 - Pluviometry. 2 - Fluviometry. """
+
     TipoEstacaoEscala             = Column(SmallInteger)
+    """int: identifies if the station measures stage with scale. 0 - No. 1 - Yes. """
+
     TipoEstacaoPiezometria        = Column(SmallInteger)
+    """int: identifies if the station makes piezometric measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoPluviometro        = Column(SmallInteger)
+    """int: identifies if the station makes pluviometric measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoQualAgua           = Column(SmallInteger)
+    """int: identifies if the station makes water quality measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoRegistradorChuva   = Column(SmallInteger)
+    """int: identifies if the station makes rain registries measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoRegistradorNivel   = Column(SmallInteger)
+    """int: identifies if the station measures stage with level registries. 0 - No. 1 - Yes. """
+
     TipoEstacaoSedimentos         = Column(SmallInteger)
+    """int: identifies if the station makes sediments measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoTanqueEvapo        = Column(SmallInteger)
+    """int: identifies if the station makes tank evaporation measurements. 0 - No. 1 - Yes. """
+
     TipoEstacaoTelemetrica        = Column(SmallInteger)
+    """int: identifies if the station makes telemetric measurements. 0 - No. 1 - Yes. """
+
     TipoRedeBasica                = Column(SmallInteger)
+    """int: identifies if the station is basic type. 0 - No. 1 - Yes. """
+
     TipoRedeCaptacao              = Column(SmallInteger)
+    """
+    int: identifies if the station has captation.
+    0 - No.
+    1 - Domestic use.
+    2 - Industrial use.
+    3 - Irrigation use.
+    4 - Recreational use.
+    5 - Fish farming.
+    6 - Generation.
+    7 - General.
+    """
+
     TipoRedeClasseVazao           = Column(SmallInteger)
+    """int:
+    0 - No.
+    1 - Observated flow rate.
+    2 - Natural flow rate.
+    3 - Equivalent flow rate.
+    4 - Turbinated flow rate.
+    5 - Poured flow rate.
+    6 - Afluent flow rate.
+    7 - Bottom flow rate.
+    """
+
     TipoRedeCursoDagua            = Column(SmallInteger)
+    """int:
+    0 - No.
+    1 - Water source.
+    2 - Main course.
+    3 - Afluent.
+    4 - Sub-afluent.
+    5 - Other afluent.
+    6 - Storm drain.
+    7 - Domestic sewer.
+    8 - Industrial sewer.
+    9 - Other.
+    """
+
     TipoRedeEnergetica            = Column(SmallInteger)
+    """int: identifies if the station is energy-related type. 0 - No. 1 - Yes. """
+
     TipoRedeEstrategica           = Column(SmallInteger)
+    """int: identifies if the station is strategical type. 0 - No. 1 - Yes. """
+
     TipoRedeNavegacao             = Column(SmallInteger)
+    """int: identifies if the station is navigational type. 0 - No. 1 - Yes. """
+
     TipoRedeQualAgua              = Column(SmallInteger)
+    """int:
+    0 - No.
+    1 - Special.
+    2 - Freshwater class 1
+    3 - Freshwater class 2
+    4 - Freshwater class 3
+    5 - Freshwater class 4
+    6 - Salt water (1)
+    7 - Salt water (2)
+    8 - Brackish water (1)
+    9 - Brackish water (2)
+    10 - No classification.
+    """
+
     TipoRedeSedimentos            = Column(SmallInteger)
+    """int: identifies if the station is sediment type. 0 - No. 1 - Yes. """
+
     BaciaCodigo                   = Column(BigInteger)
+    """int: identifier of the basin where is the station."""
+
     Codigo                        = Column(BigInteger, unique=True)
+    """int: unique identifier of the station."""
 
     @classmethod
     def from_json(cls, json_data: dict):
