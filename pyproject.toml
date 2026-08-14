@@ -4,8 +4,9 @@ version = "0.0.0"
 dependencies = ["requests", "sqlalchemy"]
 
 [project.optional-dependencies]
-dev     = ["pydoc-markdown", "pytest", "pytest-cov"]
-release = ["python-semantic-release"]
+dev      = ["pydoc-markdown", "pytest", "pytest-cov"]
+release  = ["python-semantic-release"]
+examples = ["plotly", "geobr"]
 
 [tool.setuptools.packages.find]
 include = ["hidrodb"]
