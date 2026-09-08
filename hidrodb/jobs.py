@@ -637,10 +637,12 @@ def filter_repeated_series_items(job_config: JobConfig, items):
     for index, item in enumerate(items):
         try:
             match job_config:
-                case (JobConfig.Series.RAIN      | JobConfig.Series.DISCHARGE_SUMMARY |
-                      JobConfig.Series.STAGE     | JobConfig.Series.WATER_QUALITY     |
-                      JobConfig.Series.SEDIMENTS | JobConfig.Series.FLOW_RATE):
+                case (JobConfig.Series.RAIN      | JobConfig.Series.WATER_QUALITY |
+                      JobConfig.Series.STAGE     | JobConfig.Series.FLOW_RATE     |
+                      JobConfig.Series.SEDIMENTS):
                     key = (item['codigoestacao'], item['Data_Hora_Dado'])
+                case JobConfig.Series.DISCHARGE_SUMMARY:
+                    key = tuple(sorted((k, str(v)) for k, v in item.items()))
                 case JobConfig.Series.GRANULOMETRY:
                     key = (item['codigoestacao'], item['Data_Dado'],
                            item['Hora_Inicial'], item['Hora_Final'])

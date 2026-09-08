@@ -645,9 +645,10 @@ class DischargeSummary(HidroBaseModel):
     __tablename__ = 'ResumoDescarga'
     __table_args__ = (
         UniqueConstraint(
-            'EstacaoCodigo',
-            'Data',
-            name='uq_discharge_summary'
+            'EstacaoCodigo', 'Data', 'DataAlt', 'NivelConsistencia',
+            'Profundidade', 'AreaMolhada', 'Cota', 'Largura',
+            'Vazao', 'VelMedia',
+            name='uq_discharge_summary_all_cols'
         ),
     )
 
