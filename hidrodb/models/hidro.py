@@ -307,8 +307,8 @@ class Station(HidroBaseModel):
     MunicipioCodigo               = Column(Integer)
     """int: identifier of the town which the station is located."""
 
-    EstadoCodigo                  = Column(Integer)
-    """int: identifier of the state which the station is located."""
+    EstadoSigla                  = Column(String)
+    """string: identifier of the state which the station is located."""
 
     OperadoraCodigo               = Column(BigInteger)
     """int: identifier of the operator of the station."""
@@ -514,12 +514,12 @@ class Station(HidroBaseModel):
             TipoRedeSedimentos            = json_data.get("Tipo_Rede_Sedimentos"),
             BaciaCodigo                   = json_data.get("codigobacia"),
             Codigo                        = json_data.get("codigoestacao"),
+            EstadoSigla                   = json_data.get("UF_Estacao"),
             # ?                           = json_data.get("Bacia_Nome"),
             # ?                           = json.get("Municipio_Nome"),
             # ?                           = json.get("Operadora_Sigla"),
             # ?                           = json.get("Rio_Nome"),
             # ?                           = json.get("Sub_Bacia_Nome"),            
-            # ?                           = json.get("UF_Estacao"),
             # ?                           = json.get("UF_Nome_Estacao"),
         )
 
